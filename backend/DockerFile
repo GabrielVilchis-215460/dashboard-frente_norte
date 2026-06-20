@@ -1,0 +1,27 @@
+# Imagen de docker de py
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Instalacion de dependencias del sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /lib/apt/lists/*
+
+# Copiar e instalar dependencias de los requirements.txt
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copiar el codigo fuente del back
+COPY . .
+
+# Exponer el puerto del entorno de dev
+EXPOSE 8000
+
+# Comando para ejecutar la aplicaciin mediante uvicorn
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "000"]

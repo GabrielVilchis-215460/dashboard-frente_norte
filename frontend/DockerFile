@@ -1,0 +1,19 @@
+# Imagen de docker de node.Js
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+
+# Instalar dependencias
+RUN npm install
+
+# Copiar el codigo fuente del frontend
+COPY . .
+
+# Exponer el puerto del entorno de dev
+EXPOSE 5173
+
+# Comando para arrancar el servidor de dev
+CMD ["npm", "run", "dev"]
