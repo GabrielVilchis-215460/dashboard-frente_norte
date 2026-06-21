@@ -1,27 +1,42 @@
-# Imagen de docker de py
-FROM python:3.11-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+# Stage 1: Construcción y Dependencias
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-# Instalacion de dependencias del sistema
+# Instalar dependencias del sistema necesarias para compilar
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+    gcc \
     libpq-dev \
-    && rm -rf /lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
-# Copiar e instalar dependencias de los requirements.txt
+# Crear un entorno virtual para aislar las dependencias
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
 
-# Copiar el codigo fuente del back
+# Stage 2: Imagen final para produccion
+FROM python:3.12-slim AS final
+
+WORKDIR /app
+
+# Copiar el entorno virtual completo con todas las dependencias e instrucciones
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Instalar solo la librería de runtime para PostgreSQL
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar el código fuente del proyecto
 COPY . .
 
-# Exponer el puerto del entorno de dev
 EXPOSE 8000
 
-# Comando para ejecutar la aplicaciin mediante uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "000"]
+# Entorno por defecto configurado para producción
+ENV ENVIRONMENT=production \
+    PYTHONUNBUFFERED=1
+
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"]
