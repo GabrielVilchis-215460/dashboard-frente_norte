@@ -17,48 +17,48 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.session import Base
 
-
 class Organizacion(Base):
     __tablename__ = "organizaciones"
 
-    id            = Column(Integer, primary_key=True, index=True)
-    nombre        = Column(String(255), nullable=False, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(255), nullable=False, index=True)
 
-    # Clasificación (tipo contemplado en el PDF y la encuesta)
-    tipo          = Column(String(100), nullable=False)
+    # Clasificación
+    tipo = Column(String(100), nullable=True)
     # ONG / Asociación civil | Institución educativa | Gobierno |
     # Empresa / Industria | Centro de investigación |
     # Makerspace / Laboratorio | Centro comunitario | Incubadora / Aceleradora
 
-    # Áreas STEM (array: Ciencia, Tecnología, Ingeniería, Matemáticas,
-    #             Robótica, IA, Medio ambiente, Historia Natural)
-    areas_stem    = Column(ARRAY(String), nullable=False, default=[])
+    # Áreas STEM (array: Ciencia, Tecnología, Ingeniería, Matemáticas, Robótica, IA, Medio ambiente, Historia Natural)
+    areas_stem = Column(ARRAY(String), nullable=True, default=[])
 
-    # Enfoque principal (de la encuesta)
+    # Enfoque principal 
     enfoque_principal = Column(String(255))
     # Educación / Capacitación técnica | Investigación / Desarrollo |
     # Articulación y políticas públicas | Incubación / Aceleración
 
-    descripcion   = Column(Text)
-    logo_url      = Column(String(500))
-    contacto      = Column(String(255))  # nombre + email + tel de la encuesta
-    sitio_web     = Column(String(500))
+    descripcion = Column(Text)
+    logo_url = Column(String(500))
+    contacto_nombre = Column(Text)
+    contacto_email = Column(Text)
+    contacto_telefono = Column(Text)
+    sitio_web = Column(String(500))
 
-    # Geolocalización (para el mapa interactivo)
-    latitud       = Column(Float)
-    longitud      = Column(Float)
-    direccion     = Column(String(500))
+    # Geolocalización para el mapa interactivo
+    latitud = Column(Float)
+    longitud = Column(Float)
+    direccion = Column(String(500))
 
     # Cobertura territorial
-    zona          = Column(String(50))   # Urbana | Rural | Ambas
-    colonias      = Column(ARRAY(String), default=[])
+    zona = Column(String(50))   # Urbana | Rural | Ambas
+    colonias = Column(ARRAY(String), default=[])
 
     # Metadatos
-    activo        = Column(Boolean, default=True)
-    fuente        = Column(String(100))  # encuesta | investigacion_documental
-    fecha_registro = Column(DateTime(timezone=True), server_default=func.now())
-    fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
+    activo = Column(Boolean, default=True)
+    fuente = Column(String(100))  # encuesta | investigacion_documental
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+)
 
     # Relación
-    programas     = relationship("Programa", back_populates="organizacion",
-                                  cascade="all, delete-orphan")
+    programas = relationship("Programa", back_populates="organizacion",cascade="all, delete-orphan")
