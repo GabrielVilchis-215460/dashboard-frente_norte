@@ -8,141 +8,439 @@ Fuentes:
 Ejecutar desde /backend:
     python -m scripts.seed_from_csv
 """
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-
+import sys, os, re, logging
 import pandas as pd
+from dotenv import load_dotenv
+from sqlalchemy.orm import Session
 from app.db.session import SessionLocal, engine
 from app.models import Organizacion, Programa
-from app.db.session import Base
+from app.db.session import Base, SessionLocal, engine
+from app.utils.constants import (
+    PCT_MUJERES_RANGOS, PCT_MUJERES_DEFAULT_MID, VOLUMEN_SEMESTRAL_MIDS, CSV_NULL_PLACEHOLDERS,
+)
 
-# Crear tablas si no existen
-Base.metadata.create_all(bind=engine)
+# Montaje del .env
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
-# ── Helpers ───────────────────────────────────────────────────
+# Montaje de los logs
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger("seed")
 
-def pct_mid(rango: str) -> float:
-    mapa = {"0–25%": 12.5, "0-25%": 12.5, "26–50%": 37.5, "51–75%": 62.5, "76–100%": 88.0}
-    return mapa.get(str(rango).strip(), 37.5)
+# Rutas de los CSVs
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ENCUESTA_CSV = os.path.join(BASE_DIR, "..", "data", "raw", "encuesta.csv")
+RODADORA_CSV = os.path.join(BASE_DIR, "..", "data", "raw", "rodadora.csv")
 
-def volumen_mid(rango: str) -> int:
-    mapa = {"1 - 50": 25, "1–50": 25, "51 - 200": 125, "51–200": 125,
-            "501 - 1000": 750, "Más de 1000": 1500, "Más de 1,000 personas.": 1500}
-    return mapa.get(str(rango).strip(), 0)
-
-def parse_list(val) -> list:
-    if pd.isna(val): return []
-    return [x.strip() for x in str(val).split(",") if x.strip()]
-
-
-# ── 1. Seed organizaciones desde encuesta ────────────────────
-
-def seed_encuesta(db, csv_path: str) -> dict:
-    """Retorna {nombre_org: id} para usarlo al insertar programas."""
-    df = pd.read_csv(csv_path)
-
-    # Deduplicar Centro de Estudios Industria 4.0 (aparece 2 veces)
-    df = df.drop_duplicates(subset=["Nombre de la organización"], keep="first")
-
-    org_ids = {}
-    for _, row in df.iterrows():
-        nombre = str(row["Nombre de la organización"]).strip()
-        if pd.isna(row["Nombre de la organización"]):
+# Funciones auxiliares de normalizacion de datos
+def clean_text(value) -> str | None:
+    """
+    Cleans a CSV cell value.
+ 
+    Returns None if:
+      - the value is pandas NaN
+      - the value is "." (Google Forms placeholder)
+      - the resulting string is empty after strip
+ 
+    Args:
+        value: Raw cell value (str, float NaN, etc.)
+ 
+    Returns:
+        Cleaned string, or None if the value is invalid/empty.
+    """
+    if pd.isna(value):
+        return None
+    text = str(value).strip()
+    if text in CSV_NULL_PLACEHOLDERS:
+        return None
+    return text or None
+ 
+def parse_contact(value) -> tuple[str | None, str | None, str | None]:
+    """
+    Extracts name, email and phone from a free-text contact field.
+ 
+    The Frente Norte survey did not separate these into distinct fields,
+    so they come combined in a single string. Real examples:
+      "Ivette de la Torre coordinacion.sems@pauta.org.mx 5554523888"
+      "José Roberto Carlos. 6562151067"
+      "rosella.sipinna@gmail.com"
+ 
+    Args:
+        value: Raw cell value from the CSV.
+ 
+    Returns:
+        Tuple (name, email, phone). Each element may be None if
+        it could not be extracted.
+    """
+    text = clean_text(value)
+    if not text:
+        return None, None, None
+ 
+    # Extract email
+    email_match = re.search(r'[\w.+-]+@[\w.-]+\.\w+', text)
+    email = email_match.group(0) if email_match else None
+ 
+    # Extract phone (at least 7 digits, may include +, spaces, dashes)
+    phone_match = re.search(r'[\+\d][\d\s\-\.]{7,14}', text)
+    phone = phone_match.group(0).strip() if phone_match else None
+ 
+    # Name: whatever remains after removing email and phone
+    name = text
+    if email:
+        name = name.replace(email, '')
+    if phone:
+        name = name.replace(phone, '')
+    name = re.sub(r'\s+', ' ', name).strip(' ,.-')
+    name = name if name else None
+ 
+    return name, email, phone
+ 
+def normalize_women_pct(value) -> tuple[str | None, int | None, int | None, float]:
+    """
+    Normalizes the women percentage range to canonical format
+    and decomposes it into min, max and midpoint.
+ 
+    CSVs use inconsistent formats:
+      "51–75%" (em-dash + %) → range="51-75", min=51, max=75, mid=63.0
+      "26–50%"               → range="26-50", min=26, max=50, mid=38.0
+ 
+    Args:
+        value: Raw cell value from the CSV.
+ 
+    Returns:
+        Tuple (normalized_range, min, max, mid).
+        If the format is not recognized, returns (None, None, None, 37.5).
+    """
+    text = clean_text(value)
+    if not text:
+        return None, None, None, PCT_MUJERES_DEFAULT_MID
+ 
+    entry = PCT_MUJERES_RANGOS.get(text)   # fix: was calling PCT_MUJERES_DEFAULT_MID(text) as a function
+    if entry:
+        range_str, mid = entry
+        parts = range_str.split('-')
+        try:
+            pct_min = int(parts[0])
+            pct_max = int(parts[1])
+        except (IndexError, ValueError):
+            pct_min, pct_max = None, None
+        return range_str, pct_min, pct_max, mid
+ 
+    logger.warning("Unknown pct_mujeres value: %r → using default 37.5", text)
+    return None, None, None, PCT_MUJERES_DEFAULT_MID
+ 
+def normalize_volume(value) -> tuple[str | None, int | None, int | None, int]:
+    """
+    Normalizes the semestral volume range and decomposes it into min, max and midpoint.
+ 
+    CSVs use different formats:
+      Encuesta: "1–50" (em-dash, no spaces)
+      Rodadora: "1 - 50" (hyphen with spaces)
+      Special:  "Más de 1000" / "Más de 1,000 personas."
+ 
+    Args:
+        value: Raw cell value from the CSV.
+ 
+    Returns:
+        Tuple (clean_original_range, min, max, mid).
+        If the format is not in the catalog, returns (text, None, None, 0).
+    """
+    text = clean_text(value)
+    if not text:
+        return None, None, None, 0
+ 
+    mid = VOLUMEN_SEMESTRAL_MIDS.get(text, 0)
+    if mid == 0:
+        logger.warning("Unknown volumen_semestral value: %r → mid = 0", text)
+        return text, None, None, 0
+ 
+    # Extract min and max from the range text
+    text_norm = text.replace(',', '').replace('–', '-').replace('—', '-')
+    mas_match = re.search(r'[Mm]ás\s+de\s+(\d+)', text_norm)
+    if mas_match:
+        vol_min = int(mas_match.group(1)) + 1
+        vol_max = vol_min + 999   # estimated upper bound
+        return text, vol_min, vol_max, mid
+ 
+    range_match = re.search(r'(\d+)\s*-\s*(\d+)', text_norm)
+    if range_match:
+        return text, int(range_match.group(1)), int(range_match.group(2)), mid
+ 
+    return text, None, None, mid
+ 
+def parse_list(value) -> list[str]:
+    """
+    Converts a comma-separated string into a list of clean strings.
+ 
+    Args:
+        value: Cell value, e.g. "Ciencia, Tecnología, Robótica"
+ 
+    Returns:
+        List of strings, e.g. ["Ciencia", "Tecnología", "Robótica"].
+        Empty list if the value is NaN or empty.
+    """
+    if pd.isna(value):
+        return []
+    return [x.strip() for x in str(value).split(",") if x.strip()]
+ 
+def seed_survey(db: Session, csv_path: str) -> dict[str, int]:
+    """
+    Imports organizations and their programs from the survey CSV.
+ 
+    Applies deduplication of "Centro de Estudios Industria 4.0" (appears
+    in rows 2 and 7 with the same name — keeps the first one).
+ 
+    The contact field comes as free text and is split into
+    contacto_nombre, contacto_email and contacto_telefono.
+ 
+    Women percentage and semestral volume ranges are stored both as
+    strings (for display) and as min/max/mid (for dashboard queries).
+ 
+    Args:
+        db: Active SQLAlchemy session.
+        csv_path: Absolute path to encuesta.csv.
+ 
+    Returns:
+        Dictionary {organization_name: db_id} used to link La Rodadora's
+        programs to the organization already created in this step.
+ 
+    Raises:
+        FileNotFoundError: If the CSV file does not exist at the given path.
+        Exception: Any DB error — automatic rollback handled in main().
+    """
+    logger.info("Reading survey CSV: %s", csv_path)
+    df = pd.read_csv(csv_path, encoding="utf-8-sig")
+    logger.info("Rows read: %d", len(df))
+ 
+    # Deduplicate Centro de Estudios Industria 4.0
+    col_name = "Nombre de la organización"
+    before = len(df)
+    df = df.drop_duplicates(subset=[col_name], keep="first")
+    after = len(df)
+    if before != after:
+        logger.info("Duplicates removed: %d row(s)", before - after)
+ 
+    org_ids: dict[str, int] = {}
+ 
+    for idx, row in df.iterrows():
+        name = clean_text(row.get(col_name))
+        if not name:
+            logger.warning("Row %s: empty organization name, skipped", idx)
             continue
-
+ 
+        org_type    = clean_text(row.get("Tipo de organización")) or "Sin clasificar"
+        description = clean_text(row.get("Descripción de la capacitación/programa:"))
+ 
+        # Split contact into its three components
+        contact_name, contact_email, contact_phone = parse_contact(
+            row.get("Favor de agregar un contacto principal")
+        )
+ 
         org = Organizacion(
-            nombre=nombre,
-            tipo=str(row.get("Tipo de organización", "")).strip(),
-            areas_stem=parse_list(row.get("Enfoque y áreas STEM", "")),
-            enfoque_principal=str(row.get("¿Cuál es su enfoque principal de trabajo?", "")).strip(),
-            descripcion=str(row.get("Descripción de la capacitación/programa:", "")).strip(),
-            logo_url=str(row.get("Logo de la organización ", "")).strip() or None,
-            contacto=str(row.get("Favor de agregar un contacto principal", "")).strip(),
-            zona=str(row.get("Zonas de operación:", "")).strip(),
-            colonias=parse_list(row.get("Colonias principales donde impactan:", "")),
+            nombre=name,
+            tipo=org_type,
+            areas_stem=parse_list(row.get("Enfoque y áreas STEM")),
+            enfoque_principal=clean_text(row.get("¿Cuál es su enfoque principal de trabajo?")),
+            descripcion=description,
+            logo_url=clean_text(row.get("Logo de la organización ")),
+            contacto_nombre=contact_name,
+            contacto_email=contact_email,
+            contacto_telefono=contact_phone,
+            zona=clean_text(row.get("Zonas de operación:")),
+            colonias=parse_list(row.get("Colonias principales donde impactan:")),
             fuente="encuesta_csv",
-            # latitud/longitud se llenan en la siguiente fase (investigación documental)
+            activo=True,
         )
         db.add(org)
-        db.flush()  # para obtener el id sin hacer commit
-        org_ids[nombre] = org.id
-
-        # Cada organización de la encuesta tiene UN programa implícito
-        prog = Programa(
-            organizacion_id=org.id,
-            nombre=f"Programa de {nombre}",
-            descripcion=str(row.get("Descripción de la capacitación/programa:", "")).strip(),
-            areas_stem=parse_list(row.get("Enfoque y áreas STEM", "")),
-            tipos_actividad=parse_list(row.get("¿Qué tipo de actividades ofrecen?", "")),
-            modalidad=str(row.get("Modalidad de los programas:", "")).strip(),
-            poblacion_objetivo=str(row.get("Tipo de población que atiende:", "")).strip(),
-            nivel_educativo=str(row.get("Nivel educativo predominante:", "")).strip(),
-            pct_mujeres_rango=str(row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ", "")).strip(),
-            pct_mujeres_mid=pct_mid(str(row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ", ""))),
-            zona=str(row.get("Zonas de operación:", "")).strip(),
-            colonias_impacto=parse_list(row.get("Colonias principales donde impactan:", "")),
-            volumen_semestral=str(row.get("Volumen de atención semestral:", "")).strip(),
-            volumen_mid=volumen_mid(str(row.get("Volumen de atención semestral:", ""))),
-            temporalidad=str(row.get("Temporalidad de los programas:", "")).strip(),
-            madurez=str(row.get("Madurez del programa:", "")).strip(),
-            casos_exito=str(row.get("Grupo muestra (Evidencia): Favor de mencionar de 3 a 5 perfiles de beneficiarios destacados o casos de éxito. ", "")).strip(),
-            siguiente_paso=str(row.get("Al concluir su programa, ¿cuál es el siguiente paso para el beneficiario?", "")).strip(),
-            fuente="encuesta_csv",
+        db.flush()   # get assigned ID without committing yet
+        org_ids[name] = org.id
+ 
+        # Implicit program for this organization
+        # nombre=None because the survey did not ask for a program name
+        pct_range, pct_min, pct_max, pct_mid = normalize_women_pct(
+            row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ")
         )
-        db.add(prog)
-
+        vol_str, vol_min, vol_max, vol_mid = normalize_volume(
+            row.get("Volumen de atención semestral:")
+        )
+ 
+        program = Programa(
+            organizacion_id=org.id,
+            nombre=None,
+            descripcion=description,
+            areas_stem=parse_list(row.get("Enfoque y áreas STEM")),
+            tipos_actividad=parse_list(row.get("¿Qué tipo de actividades ofrecen?")),
+            modalidad=clean_text(row.get("Modalidad de los programas:")),
+            poblacion_objetivo=clean_text(row.get("Tipo de población que atiende:")),
+            nivel_educativo=clean_text(row.get("Nivel educativo predominante:")),
+            pct_mujeres_rango=pct_range,
+            pct_mujeres_min=pct_min,
+            pct_mujeres_max=pct_max,
+            pct_mujeres_mid=pct_mid,
+            zona=clean_text(row.get("Zonas de operación:")),
+            colonias_impacto=parse_list(row.get("Colonias principales donde impactan:")),
+            volumen_semestral=vol_str,
+            volumen_min=vol_min,
+            volumen_max=vol_max,
+            volumen_mid=vol_mid,
+            temporalidad=clean_text(row.get("Temporalidad de los programas:")),
+            madurez=clean_text(row.get("Madurez del programa:")),
+            casos_exito=clean_text(
+                row.get("Grupo muestra (Evidencia): Favor de mencionar de 3 a 5 "
+                        "perfiles de beneficiarios destacados o casos de éxito. ")
+            ),
+            siguiente_paso=clean_text(
+                row.get("Al concluir su programa, ¿cuál es el siguiente paso para el beneficiario?")
+            ),
+            fuente="encuesta_csv",
+            activo=True,
+        )
+        db.add(program)
+        logger.info("  ✓ %s (%s)", name, org_type)
+ 
     db.commit()
-    print(f"✅ {len(org_ids)} organizaciones importadas desde encuesta")
+    logger.info("Survey: %d organizations imported", len(org_ids))
     return org_ids
 
-
-# ── 2. Seed programas de La Rodadora desde su CSV ────────────
-
-def seed_rodadora(db, csv_path: str, rodadora_id: int):
-    df = pd.read_csv(csv_path)
-    df = df.dropna(subset=["Nombre del programa"])  # elimina filas vacías
-
+def seed_rodadora(db: Session, csv_path: str, rodadora_id: int) -> None:
+    """
+    Imports La Rodadora's 6 programs from their specific CSV.
+ 
+    The Rodadora CSV has a different format from the survey:
+    - Column 0 is "Nombre del programa" (not "Nombre de la organización")
+    - No STEM areas column → assigned empty list
+    - No activity types column → assigned empty list
+    - Rows 7-13 have NaN names → silently skipped
+ 
+    Ranges are stored as min/max/mid the same way as in seed_survey.
+ 
+    Args:
+        db: Active SQLAlchemy session.
+        csv_path: Absolute path to rodadora.csv.
+        rodadora_id: ID of the "La Rodadora" organization in the DB.
+ 
+    Raises:
+        FileNotFoundError: If the CSV file does not exist at the given path.
+    """
+    logger.info("Reading rodadora CSV: %s", csv_path)
+    df = pd.read_csv(csv_path, encoding="utf-8-sig")
+    logger.info("Rows read: %d (including empty ones)", len(df))
+ 
+    df_valid = df.dropna(subset=["Nombre del programa"])
+    logger.info("Valid programs: %d", len(df_valid))
+ 
     count = 0
-    for _, row in df.iterrows():
-        prog = Programa(
-            organizacion_id=rodadora_id,
-            nombre=str(row["Nombre del programa"]).strip(),
-            descripcion=str(row.get("Descripción de la capacitación/programa:", "")).strip(),
-            areas_stem=[],  # el CSV de Rodadora no tiene columna de áreas; se llena manualmente
-            tipos_actividad=["Talleres / Cursos / Bootcamps"],  # default Rodadora
-            poblacion_objetivo=str(row.get("Tipo de población que atiende:", "")).strip(),
-            nivel_educativo=str(row.get("Nivel educativo predominante:", "")).strip(),
-            pct_mujeres_rango=str(row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ", "")).strip(),
-            pct_mujeres_mid=pct_mid(str(row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ", ""))),
-            zona=str(row.get("Zonas de operación:", "")).strip(),
-            colonias_impacto=parse_list(row.get("Colonias principales donde impactan:", "")),
-            volumen_semestral=str(row.get("Volumen de atención semestral:", "")).strip(),
-            volumen_mid=volumen_mid(str(row.get("Volumen de atención semestral:", ""))),
-            temporalidad=str(row.get("Temporalidad de los programas:", "")).strip(),
-            madurez=str(row.get("Madurez del programa:", "")).strip(),
-            siguiente_paso=str(row.get("Al concluir su programa, ¿cuál es el siguiente paso para el beneficiario?", "")).strip(),
-            fuente="rodadora_csv",
+    for _, row in df_valid.iterrows():
+        name = clean_text(row.get("Nombre del programa"))
+        if not name:
+            continue
+ 
+        pct_range, pct_min, pct_max, pct_mid = normalize_women_pct(
+            row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ")
         )
-        db.add(prog)
+        vol_str, vol_min, vol_max, vol_mid = normalize_volume(
+            row.get("Volumen de atención semestral:")
+        )
+ 
+        program = Programa(
+            organizacion_id=rodadora_id,
+            nombre=name,
+            descripcion=clean_text(row.get("Descripción de la capacitación/programa:")),
+            areas_stem=[],        # Rodadora CSV has no STEM areas column
+            tipos_actividad=[],   # Rodadora CSV has no activity types column
+            poblacion_objetivo=clean_text(row.get("Tipo de población que atiende:")),
+            nivel_educativo=clean_text(row.get("Nivel educativo predominante:")),
+            pct_mujeres_rango=pct_range,
+            pct_mujeres_min=pct_min,
+            pct_mujeres_max=pct_max,
+            pct_mujeres_mid=pct_mid,
+            zona=clean_text(row.get("Zonas de operación:")),
+            colonias_impacto=parse_list(row.get("Colonias principales donde impactan:")),
+            volumen_semestral=vol_str,
+            volumen_min=vol_min,
+            volumen_max=vol_max,
+            volumen_mid=vol_mid,
+            temporalidad=clean_text(row.get("Temporalidad de los programas:")),
+            madurez=clean_text(row.get("Madurez del programa:")),
+            siguiente_paso=clean_text(
+                row.get("Al concluir su programa, ¿cuál es el siguiente paso para el beneficiario?")
+            ),
+            fuente="rodadora_csv",
+            activo=True,
+        )
+        db.add(program)
         count += 1
-
+        logger.info("  ✓ %s", name)
+ 
     db.commit()
-    print(f"✅ {count} programas de La Rodadora importados")
-
-
-# ── Main ──────────────────────────────────────────────────────
-
-if __name__ == "__main__":
-    ENCUESTA_CSV = "../../data/raw/encuesta.csv"
-    RODADORA_CSV = "../../data/raw/rodadora.csv"
-
+    logger.info("Rodadora: %d programs imported", count)
+ 
+def main():
+    """
+    Runs the full seed in order:
+      1. Creates tables if they do not exist (no-op if Alembic already ran)
+      2. Checks that the DB is empty to prevent duplicates
+      3. Imports organizations and programs from the survey
+      4. Imports La Rodadora programs linked to the org created in step 3
+    """
+    logger.info("=" * 60)
+    logger.info("SEED — STEM Ecosystem Ciudad Juárez")
+    logger.info("=" * 60)
+ 
+    # Create tables if they do not exist 
+    Base.metadata.create_all(bind=engine)
+ 
     db = SessionLocal()
     try:
-        org_ids = seed_encuesta(db, ENCUESTA_CSV)
+        # Check that the DB is empty to prevent duplicates
+        existing_orgs = db.query(Organizacion).count()
+        if existing_orgs > 0:
+            logger.warning(
+                "DB already has %d organizations. "
+                "To re-seed, clear the tables first: "
+                "DELETE FROM programas; DELETE FROM organizaciones;",
+                existing_orgs,
+            )
+            answer = input("Continue anyway? (y/N): ").strip().lower()
+            if answer != "y":
+                logger.info("Seed cancelled.")
+                return
+ 
+        # Step 1: Survey
+        org_ids = seed_survey(db, ENCUESTA_CSV)
+ 
+        # Step 2: Rodadora
+        # La Rodadora was already inserted in step 1 (it appears in encuesta.csv).
+        # We look up its ID to link the additional programs from rodadora.csv.
         rodadora_id = org_ids.get("LA RODADORA ESPACIO INTERACTIVO")
         if rodadora_id:
             seed_rodadora(db, RODADORA_CSV, rodadora_id)
         else:
-            print("⚠️  La Rodadora no encontrada en encuesta, programas del CSV omitidos")
+            logger.warning(
+                "La Rodadora not found in encuesta.csv under the exact name "
+                "'LA RODADORA ESPACIO INTERACTIVO'. "
+                "Programs from rodadora.csv were skipped."
+            )
+            logger.warning("Names found: %s", list(org_ids.keys()))
+ 
+        # Summary
+        total_orgs  = db.query(Organizacion).count()
+        total_progs = db.query(Programa).count()
+        logger.info("=" * 60)
+        logger.info("SEED COMPLETE")
+        logger.info("  Organizations in DB: %d", total_orgs)
+        logger.info("  Programs in DB:      %d", total_progs)
+        logger.info("=" * 60)
+ 
+    except Exception as exc:
+        logger.error("Error during seed: %s", exc, exc_info=True)
+        db.rollback()
+        raise
     finally:
         db.close()
+ 
+if __name__ == "__main__":
+    main()
