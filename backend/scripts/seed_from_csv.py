@@ -93,6 +93,10 @@ def parse_contact(value) -> tuple[str | None, str | None, str | None]:
         name = name.replace(email, '')
     if phone:
         name = name.replace(phone, '')
+
+    # Remove noise words that appear in free-text contact fields
+    # e.g. "Cel", "Tel", "Tel.", "Cel." written before/after the phone number
+    name = re.sub(r'\b[Cc]el\.?\b|\b[Tt]el\.?\b|\b[Tt]eléfono\.?\b', '', name)
     name = re.sub(r'\s+', ' ', name).strip(' ,.-')
     name = name if name else None
  
@@ -118,7 +122,7 @@ def normalize_women_pct(value) -> tuple[str | None, int | None, int | None, floa
     if not text:
         return None, None, None, PCT_MUJERES_DEFAULT_MID
  
-    entry = PCT_MUJERES_RANGOS.get(text)   # fix: was calling PCT_MUJERES_DEFAULT_MID(text) as a function
+    entry = PCT_MUJERES_RANGOS.get(text)   
     if entry:
         range_str, mid = entry
         parts = range_str.split('-')
@@ -171,6 +175,30 @@ def normalize_volume(value) -> tuple[str | None, int | None, int | None, int]:
  
     return text, None, None, mid
  
+def normalize_logo_url(url: "str | None") -> "str | None":
+    """
+    Converts a Google Drive share URL to a direct-render URL
+
+    Google Drive share links (open?id=...) do not render as <img src> in
+    browsers. This converts them to the uc?export=view format which does.
+ 
+    Example:
+      Input:  "https://drive.google.com/open?id=1tFHZy..."
+      Output: "https://drive.google.com/uc?export=view&id=1tFHZy..."
+ 
+    Args:
+        url: Raw URL string, or None.
+ 
+    Returns:
+        Converted URL, original URL if format is not recognized, or None.
+    """
+    if not url: 
+        return 
+    match = re.search(r'[?&]id=([\w-]+)', url)
+    if match:
+        return f"https://drive.google.com/uc?export=view&id={match.group(1)}"
+    return url
+
 def parse_list(value) -> list[str]:
     """
     Converts a comma-separated string into a list of clean strings.
@@ -182,9 +210,11 @@ def parse_list(value) -> list[str]:
         List of strings, e.g. ["Ciencia", "Tecnología", "Robótica"].
         Empty list if the value is NaN or empty.
     """
+    # Patron de separacion para listas de localizacion
+    location_split = re. compile(r',\s*(?![A-Z]{2}\b)')
     if pd.isna(value):
         return []
-    return [x.strip() for x in str(value).split(",") if x.strip()]
+    return [x.strip() for x in location_split.split(str(value)) if x.strip()]
  
 def seed_survey(db: Session, csv_path: str) -> dict[str, int]:
     """
