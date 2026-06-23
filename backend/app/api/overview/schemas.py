@@ -1,0 +1,13 @@
+from pydantic import BaseModel
+from typing import List, Dict, Optional
+
+# Pestaña 1 - Modulo 1
+class PanoramaGeneral(BaseModel):
+    total_organizaciones: int
+    total_programas_activos: int
+    beneficiarios_semestre: int  # suma de volumen_mid de todos los programas
+    colonias_impactadas: int
+    organizaciones_por_tipo: Dict[str, int]   # {ONG: 5, Gobierno: 1, ...}
+    areas_stem_representadas: List[str]
+    top_organizaciones: List[str] # top 5 instituciones con mas programas (rodadora top 1)
+    # preview del mapa?
