@@ -94,6 +94,52 @@ MADUREZ_ORDEN: dict[str, int] = {
     "Exploración":    1,
 }
 
+# Direcciones de las instituciones para el archivo seed/ETL
+DATOS_GEOGRAFICOS_INSTITUCIONES = {
+    "SE SIPINNA Estatal": {
+        "direccion": "Bustamante #2504, Altavista, 31200 Chihuahua, Chih., Mexico",
+        "latitud": 28.6529623,
+        "longitud": -106.081874,
+        "sitio_web": "https://sipinna.chihuahua.gob.mx/"
+    },
+    "PAUTA": {
+        "direccion": None,
+        "latitud": None,
+        "longitud": None,
+        "sitio_web": "https://pauta.org.mx"
+    },
+    "CENTRO DE ESTUDIOS INDUSTRIA 4.0": {
+        "direccion": "Plaza Oscared, Av. Tecnológico 5476-Int. 2, La Cuesta, 32650 Juárez, Chih., Mexico",
+        "latitud": 31.6742947,
+        "longitud": -106.4241559,
+        "sitio_web": "http://www.roboed.mx/"
+    },
+    "Mech Robotix AC": {
+        "direccion": "Avenida Antonio J. Bermúdez 770 Ote, Plaza Bermúdez, Local 13, Parque Ind Bermúdez, 32470 Juárez, Chih., Mexico",
+        "latitud": 31.7247618,
+        "longitud": -106.3932477,
+        "sitio_web": "https://mechrobotix.wixsite.com/misitio"
+    },
+    "UNITED WAY CHIHUAHUA": {
+        "direccion": "Boulevard Manuel Gómez Morín #9360 Edificio A local 2E Col, Partido Senecú, 32545 Juárez, Chih., Mexico",
+        "latitud": 31.695404,
+        "longitud": -106.3908233,
+        "sitio_web": "http://www.uwchihuahua.org/"
+    },
+    "LA RODADORA ESPACIO INTERACTIVO": {
+        "direccion": "Calle Jesús Soltero Lozoya y Blvd. Teófilo Borunda, Supermanzana Del Norte, Comunitario Jarudo, 32652 Juárez, Chih., Mexico",
+        "latitud": 31.6901179,
+        "longitud": -106.42815,
+        "sitio_web": "http://www.larodadora.org/"
+    },
+    "Tecnológico de Monterrey": {
+        "direccion": "Bulevar Tomás Fernández 8945, Parques Industriales, 32470 Juárez, Chih., Mexico",
+        "latitud": 31.7160341,
+        "longitud": -106.3951052,
+        "sitio_web": "https://tec.mx/es/ciudad-juarez"
+    }
+}
+
 # ETL
 # Nombre del bucket de Supabase Storage donde se guardan los CSVs
 SUPABASE_BUCKET_STEM_DATA = "stem-data"

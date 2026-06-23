@@ -6,7 +6,7 @@ Fuentes:
   - Encuesta_de_Indicadores...csv → 7 organizaciones (deduplicando Centro Industria 4.0)
 
 Ejecutar desde /backend:
-    python -m scripts.seed_from_csv
+    python -m scripts.etl_seed
 """
 import sys, os, re, logging
 import pandas as pd
@@ -16,7 +16,7 @@ from app.db.session import SessionLocal, engine
 from app.models import Organizacion, Programa
 from app.db.session import Base, SessionLocal, engine
 from app.utils.constants import (
-    PCT_MUJERES_RANGOS, PCT_MUJERES_DEFAULT_MID, VOLUMEN_SEMESTRAL_MIDS, CSV_NULL_PLACEHOLDERS,
+    PCT_MUJERES_RANGOS, PCT_MUJERES_DEFAULT_MID, VOLUMEN_SEMESTRAL_MIDS, CSV_NULL_PLACEHOLDERS, DATOS_GEOGRAFICOS_INSTITUCIONES
 )
 
 # Montaje del .env
@@ -268,7 +268,15 @@ def seed_survey(db: Session, csv_path: str) -> dict[str, int]:
         contact_name, contact_email, contact_phone = parse_contact(
             row.get("Favor de agregar un contacto principal")
         )
- 
+
+        # Geographic data
+        geo_data = DATOS_GEOGRAFICOS_INSTITUCIONES.get(name, {
+            "direccion": None,
+            "latitud": None,
+            "longitud": None,
+            "sitio_web": None
+        })
+
         org = Organizacion(
             nombre=name,
             tipo=org_type,
@@ -279,6 +287,10 @@ def seed_survey(db: Session, csv_path: str) -> dict[str, int]:
             contacto_nombre=contact_name,
             contacto_email=contact_email,
             contacto_telefono=contact_phone,
+            direccion=geo_data.get("direccion"),
+            latitud=geo_data.get("latitud"),
+            longitud=geo_data.get("longitud"),
+            sitio_web=geo_data.get("sitio_web"),
             zona=clean_text(row.get("Zonas de operación:")),
             colonias=parse_list(row.get("Colonias principales donde impactan:")),
             fuente="encuesta_csv",
