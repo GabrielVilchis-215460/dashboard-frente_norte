@@ -5,6 +5,7 @@ Provee los datos georreferenciados de actores para construir
 el mapa interactivo solicitado en la ficha técnica.
 """
 from typing import Optional
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.organizacion import Organizacion
@@ -59,7 +60,7 @@ def obtener_mapa(
 
     conteos = {
         org_id: count
-        for org_id, count in db.query(Programa.organizacion_id, db.func.count(Programa.id))
+        for org_id, count in db.query(Programa.organizacion_id, func.count(Programa.id))
         .filter(Programa.activo == True)
         .group_by(Programa.organizacion_id)
         .all()
