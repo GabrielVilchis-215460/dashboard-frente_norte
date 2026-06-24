@@ -13,10 +13,16 @@ from app.api.admin_panel.schemas import (
     OrganizacionCreate,
     OrganizacionMapPin,
     OrganizacionOut,
-    OrganizacionUpdate
+    OrganizacionUpdate,
 )
+from app.api.auth.service import get_current_admin
 
-router = APIRouter(prefix="/panel_admin")
+# Todos los endpoints de este router requieren JWT válido
+router = APIRouter(
+    prefix="/panel_admin",
+    tags=["Panel de Administración"],
+    dependencies=[Depends(get_current_admin)],
+)
 
 @router.get("/organizaciones", response_model=List[OrganizacionOut])
 def listar_organizaciones(
@@ -173,3 +179,4 @@ def toggle_programa(prog_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(prog)
     return prog
+

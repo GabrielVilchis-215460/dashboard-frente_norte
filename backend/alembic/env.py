@@ -6,8 +6,11 @@ from sqlalchemy import pool
 from alembic import context
 
 import os
-from app.db.session import Base  
-import app.models  
+from dotenv import load_dotenv
+from app.db.session import Base
+import app.models
+
+load_dotenv()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
