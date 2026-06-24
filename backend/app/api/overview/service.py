@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.organizacion import Organizacion
 from app.models.programa import Programa
-from app.api.overview.schemas import PanoramaGeneral, MapaPreview
+from app.api.overview.schemas import PanoramaGeneral, MapaPreview, TopOrganizacion
 from app.utils.helpers import count_by_field, mid_volume
 import logging
 from sqlalchemy import func
@@ -31,7 +31,10 @@ def get_panorama(db: Session) -> PanoramaGeneral:
     programas = db.query(Programa).filter(Programa.activo == True).all()
 
     top_orgs = (
-        db.query(Organizacion.nombre)
+        db.query(
+            Organizacion.nombre,
+            func.count(Programa.id).label('total_programas') 
+        )
         .join(Programa, Organizacion.id == Programa.organizacion_id)
         .filter(Organizacion.activo == True, Programa.activo == True)
         .group_by(Organizacion.id, Organizacion.nombre)
@@ -73,7 +76,10 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         for row in mapa
     ]
 
-    top_organizaciones = [org[0] for org in top_orgs]
+    top_organizaciones = [
+        TopOrganizacion(nombre=row.nombre, total_programas=row.total_programas)
+        for row in top_orgs
+    ]
 
     tipos_count = count_by_field(orgs, "tipo")
 

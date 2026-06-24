@@ -11,6 +11,10 @@ class MapaPreview(BaseModel):
     logo_url: Optional[str] = None
     total_programas: int
     
+class TopOrganizacion(BaseModel):
+    nombre: str
+    total_programas: int
+
 class PanoramaGeneral(BaseModel):
     total_organizaciones: int
     total_programas_activos: int
@@ -18,5 +22,5 @@ class PanoramaGeneral(BaseModel):
     colonias_impactadas: int
     organizaciones_por_tipo: Dict[str, int]   # {ONG: 5, Gobierno: 1, ...}
     areas_stem_representadas: List[str]
-    top_organizaciones: List[str] # top 5 instituciones con mas programas (rodadora top 1)
+    top_organizaciones: List[TopOrganizacion] # top 5 instituciones con mas programas (rodadora top 1)
     preview_mapa: List[MapaPreview]
