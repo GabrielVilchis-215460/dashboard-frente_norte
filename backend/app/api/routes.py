@@ -13,10 +13,10 @@ from app.api.export.routes import router as export_router
 
 api_router = APIRouter(prefix="/api")
 
-# ── Autenticación (público) ────────────────────────────────────────────────────
+# Autenticación (público) 
 api_router.include_router(auth_router)
 
-# ── Módulos de métricas (públicos, solo lectura) ───────────────────────────────
+# Módulos de métricas (públicos, solo lectura) 
 api_router.include_router(panorama_router)
 api_router.include_router(beneficiarios_router)
 api_router.include_router(inclusion_router)
@@ -26,8 +26,8 @@ api_router.include_router(cobertura_router)
 api_router.include_router(mapa_router)
 api_router.include_router(indice_router)
 
-# ── Panel de administración (requiere JWT) ─────────────────────────────────────
+# Panel de administración (requiere JWT) 
 api_router.include_router(admin_router)
 
-# ── Exportación de datos (requiere JWT) ───────────────────────────────────────
+# Exportación de datos (requiere JWT) 
 api_router.include_router(export_router)
