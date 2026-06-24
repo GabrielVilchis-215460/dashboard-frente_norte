@@ -14,7 +14,7 @@ router = APIRouter(prefix="/panorama_general")
     response_model=PanoramaGeneral,
     summary="Indicadores generales del ecosistema",
     description="""
-Retorna los 6 KPIs principales del ecosistema STEM de Ciudad Juárez.
+Retorna los 8 KPIs principales del ecosistema STEM de Ciudad Juárez.
 
 Alimenta el **Módulo 1 — Panorama General** del dashboard.
 
@@ -24,6 +24,8 @@ Incluye:
 - Colonias impactadas
 - Distribución de organizaciones por tipo
 - Áreas STEM representadas
+- Top organizaciones con mas programas activos
+- Preview del mapa con logos de las instituciones
     """,
     responses={
         200: {"description": "Indicadores calculados exitosamente"},

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from app.models.organizacion import Organizacion
 from app.models.programa import Programa
-from app.api.overview.schemas import PanoramaGeneral
+from app.api.overview.schemas import PanoramaGeneral, MapaPreview
 from app.utils.helpers import count_by_field, mid_volume
 import logging
 from sqlalchemy import func
@@ -40,6 +40,39 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         .all()
     )
 
+    mapa = (
+        db.query(
+            Organizacion.id,
+            Organizacion.nombre,
+            Organizacion.latitud,
+            Organizacion.longitud,
+            Organizacion.logo_url,
+            func.count(Programa.id).label("total_programas")
+        )
+        .outerjoin(Programa, (Organizacion.id == Programa.organizacion_id) & (Programa.activo == True))
+        .filter(
+            Organizacion.activo == True,
+            Organizacion.latitud.isnot(None),
+            Organizacion.longitud.isnot(None)
+        )
+        .group_by(Organizacion.id)
+        .order_by(func.count(Programa.id).desc()) # Traer las que tienen más impacto primero
+        .limit(15) # Límite para el preview por el momento
+        .all()
+    )
+
+    preview_marcadores = [
+        MapaPreview(
+            id=row.id,
+            nombre=row.nombre,
+            latitud=row.latitud,
+            longitud=row.longitud,
+            logo_url=row.logo_url,
+            total_programas=row.total_programas
+        )
+        for row in mapa
+    ]
+
     top_organizaciones = [org[0] for org in top_orgs]
 
     tipos_count = count_by_field(orgs, "tipo")
@@ -69,5 +102,6 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         colonias_impactadas=len(colonias),
         organizaciones_por_tipo=tipos_count,
         areas_stem_representadas=sorted(areas),
-        top_organizaciones=top_organizaciones
+        top_organizaciones=top_organizaciones,
+        preview_mapa=preview_marcadores
     )
