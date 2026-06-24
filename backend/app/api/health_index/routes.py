@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.api.health_index.schemas import IndiceSaludEcosistema
 from app.api.health_index.service import get_indice_salud
 
-router = APIRouter(prefix="/indice_salud")
+router = APIRouter(prefix="/indice_salud", tags=["Indice de Salud del Ecosistema"])
 
 logger = logging.getLogger("stem_api.indice_salud")
 

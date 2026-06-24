@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.api.ecosystem_maturity.service import get_madurez
 from app.api.ecosystem_maturity.schemas import MadurezEcosistema
 
-router = APIRouter(prefix="/madurez_ecosistema")
+router = APIRouter(prefix="/madurez_ecosistema", tags=["Madurez del Ecosistema STEM"])
 
 logger = logging.getLogger("stem_api.madurez_ecosistema")
 

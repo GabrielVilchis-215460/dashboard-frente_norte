@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.api.woman_inclusion.schemas import InclusionFemenina
 from app.api.woman_inclusion.service import get_inclusion_femenina
 
-router = APIRouter(prefix="/inclusion")
+router = APIRouter(prefix="/inclusion", tags=["Inclusion Femenina al Ecosistema"])
 
 logger = logging.getLogger("stem_api.inclusion_femenina")
 

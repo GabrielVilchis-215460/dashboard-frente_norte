@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.api.STEM_offerings.schemas import OfertaSTEM
 from app.api.STEM_offerings.service import get_oferta_stem
 
-router = APIRouter(prefix="/oferta_stem")
+router = APIRouter(prefix="/oferta_stem", tags=["Oferta STEM del Ecosistema"])
 
 logger = logging.getLogger("stem_api.ofertas_stem")
 

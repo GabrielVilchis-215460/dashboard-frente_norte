@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.api.territorial_coverage.schemas import CoberturaTerritorial
 from app.api.territorial_coverage.service import get_cobertura
 
-router = APIRouter(prefix="/cobertura_territorial")
+router = APIRouter(prefix="/cobertura_territorial", tags=["Cobertura Territorial"])
 
 logger = logging.getLogger("stem_api.cobertura_territorial")
 

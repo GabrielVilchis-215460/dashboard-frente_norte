@@ -5,7 +5,7 @@ from app.db.session import get_db
 from app.api.beneficiary_profile.schemas import PerfilBeneficiarios
 from app.api.beneficiary_profile.service import get_perfil_beneficiarios
 
-router = APIRouter(prefix="/beneficiarios",)
+router = APIRouter(prefix="/beneficiarios", tags=["Perfil de Beneficiarios"])
 
 logger = logging.getLogger("stem_api.beneficiarios")
 

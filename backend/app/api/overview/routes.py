@@ -7,7 +7,7 @@ from app.api.overview.service import get_panorama
 
 logger = logging.getLogger("stem_api.panorama_general")
 
-router = APIRouter(prefix="/panorama_general")
+router = APIRouter(prefix="/panorama_general", tags=["Panorama General"])
 
 @router.get(
     "/",
