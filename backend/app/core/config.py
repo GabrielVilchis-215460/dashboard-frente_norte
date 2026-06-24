@@ -3,8 +3,23 @@ from typing import List
 
 
 class Settings(BaseSettings):
+    # ── Base de datos ──────────────────────────────────────────────────────────
     DATABASE_URL: str
-    SECRET_KEY: str = "dev-secret"
+
+    # ── Seguridad JWT ──────────────────────────────────────────────────────────
+    # SECRET_KEY: mínimo 32 caracteres en producción.
+    # Genera uno seguro con: openssl rand -hex 32
+    SECRET_KEY: str = "dev-secret-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 horas
+
+    # ── Credenciales del administrador ─────────────────────────────────────────
+    # ADMIN_PASSWORD_HASH: hash bcrypt de la contraseña.
+    # Genera uno con: python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('tu_contraseña'))"
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD_HASH: str = ""
+
+    # ── Entorno y CORS ─────────────────────────────────────────────────────────
     ENVIRONMENT: str = "development"
     CORS_ORIGINS: List[str] = ["http://localhost:5173"]
 
