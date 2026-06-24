@@ -219,24 +219,22 @@ def parse_list(value) -> list[str]:
 def seed_survey(db: Session, csv_path: str) -> dict[str, int]:
     """
     Imports organizations and their programs from the survey CSV.
- 
-    Applies deduplication of "Centro de Estudios Industria 4.0" (appears
-    in rows 2 and 7 with the same name — keeps the first one).
- 
-    The contact field comes as free text and is split into
-    contacto_nombre, contacto_email and contacto_telefono.
- 
-    Women percentage and semestral volume ranges are stored both as
-    strings (for display) and as min/max/mid (for dashboard queries).
- 
+
+    Deduplication strategy:
+      - CSV-level: drops duplicate organization names before processing.
+      - DB-level: checks each organization by name (case-insensitive) before
+        inserting. If it already exists, the row is skipped and the existing
+        ID is reused to link programs. Programs are also skipped if the
+        organization already has a program from encuesta_csv source.
+
     Args:
         db: Active SQLAlchemy session.
         csv_path: Absolute path to encuesta.csv.
- 
+
     Returns:
         Dictionary {organization_name: db_id} used to link La Rodadora's
         programs to the organization already created in this step.
- 
+
     Raises:
         FileNotFoundError: If the CSV file does not exist at the given path.
         Exception: Any DB error — automatic rollback handled in main().
@@ -244,149 +242,184 @@ def seed_survey(db: Session, csv_path: str) -> dict[str, int]:
     logger.info("Reading survey CSV: %s", csv_path)
     df = pd.read_csv(csv_path, encoding="utf-8-sig")
     logger.info("Rows read: %d", len(df))
- 
-    # Deduplicate Centro de Estudios Industria 4.0
+
+    # CSV-level deduplication
     col_name = "Nombre de la organización"
     before = len(df)
     df = df.drop_duplicates(subset=[col_name], keep="first")
     after = len(df)
     if before != after:
-        logger.info("Duplicates removed: %d row(s)", before - after)
- 
+        logger.info("CSV duplicates removed: %d row(s)", before - after)
+
     org_ids: dict[str, int] = {}
- 
+    stats = {"orgs_inserted": 0, "orgs_skipped": 0, "progs_inserted": 0, "progs_skipped": 0}
+
     for idx, row in df.iterrows():
         name = clean_text(row.get(col_name))
         if not name:
             logger.warning("Row %s: empty organization name, skipped", idx)
             continue
- 
-        org_type    = clean_text(row.get("Tipo de organización")) or "Sin clasificar"
-        description = clean_text(row.get("Descripción de la capacitación/programa:"))
- 
-        # Split contact into its three components
-        contact_name, contact_email, contact_phone = parse_contact(
-            row.get("Favor de agregar un contacto principal")
-        )
 
-        # Geographic data
-        geo_data = DATOS_GEOGRAFICOS_INSTITUCIONES.get(name, {
-            "direccion": None,
-            "latitud": None,
-            "longitud": None,
-            "sitio_web": None
-        })
+        # ── DB-level deduplication: organization ──────────────────────────────
+        existing_org = db.query(Organizacion).filter(
+            Organizacion.nombre.ilike(name)
+        ).first()
 
-        org = Organizacion(
-            nombre=name,
-            tipo=org_type,
-            areas_stem=parse_list(row.get("Enfoque y áreas STEM")),
-            enfoque_principal=clean_text(row.get("¿Cuál es su enfoque principal de trabajo?")),
-            descripcion=description,
-            logo_url=clean_text(row.get("Logo de la organización ")),
-            contacto_nombre=contact_name,
-            contacto_email=contact_email,
-            contacto_telefono=contact_phone,
-            direccion=geo_data.get("direccion"),
-            latitud=geo_data.get("latitud"),
-            longitud=geo_data.get("longitud"),
-            sitio_web=geo_data.get("sitio_web"),
-            zona=clean_text(row.get("Zonas de operación:")),
-            colonias=parse_list(row.get("Colonias principales donde impactan:")),
-            fuente="encuesta_csv",
-            activo=True,
-        )
-        db.add(org)
-        db.flush()   # get assigned ID without committing yet
-        org_ids[name] = org.id
- 
-        # Implicit program for this organization
-        # nombre=None because the survey did not ask for a program name
-        pct_range, pct_min, pct_max, pct_mid = normalize_women_pct(
-            row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ")
-        )
-        vol_str, vol_min, vol_max, vol_mid = normalize_volume(
-            row.get("Volumen de atención semestral:")
-        )
- 
-        program = Programa(
-            organizacion_id=org.id,
-            nombre=None,
-            descripcion=description,
-            areas_stem=parse_list(row.get("Enfoque y áreas STEM")),
-            tipos_actividad=parse_list(row.get("¿Qué tipo de actividades ofrecen?")),
-            modalidad=clean_text(row.get("Modalidad de los programas:")),
-            poblacion_objetivo=clean_text(row.get("Tipo de población que atiende:")),
-            nivel_educativo=clean_text(row.get("Nivel educativo predominante:")),
-            pct_mujeres_rango=pct_range,
-            pct_mujeres_min=pct_min,
-            pct_mujeres_max=pct_max,
-            pct_mujeres_mid=pct_mid,
-            zona=clean_text(row.get("Zonas de operación:")),
-            colonias_impacto=parse_list(row.get("Colonias principales donde impactan:")),
-            volumen_semestral=vol_str,
-            volumen_min=vol_min,
-            volumen_max=vol_max,
-            volumen_mid=vol_mid,
-            temporalidad=clean_text(row.get("Temporalidad de los programas:")),
-            madurez=clean_text(row.get("Madurez del programa:")),
-            casos_exito=clean_text(
-                row.get("Grupo muestra (Evidencia): Favor de mencionar de 3 a 5 "
-                        "perfiles de beneficiarios destacados o casos de éxito. ")
-            ),
-            siguiente_paso=clean_text(
-                row.get("Al concluir su programa, ¿cuál es el siguiente paso para el beneficiario?")
-            ),
-            fuente="encuesta_csv",
-            activo=True,
-        )
-        db.add(program)
-        logger.info("  ✓ %s (%s)", name, org_type)
- 
+        if existing_org:
+            logger.info("  ↩ SKIP org (already exists): %s (id=%d)", name, existing_org.id)
+            org_ids[name] = existing_org.id
+            stats["orgs_skipped"] += 1
+        else:
+            org_type    = clean_text(row.get("Tipo de organización")) or "Sin clasificar"
+            description = clean_text(row.get("Descripción de la capacitación/programa:"))
+            contact_name, contact_email, contact_phone = parse_contact(
+                row.get("Favor de agregar un contacto principal")
+            )
+            geo_data = DATOS_GEOGRAFICOS_INSTITUCIONES.get(name, {
+                "direccion": None, "latitud": None, "longitud": None, "sitio_web": None
+            })
+
+            org = Organizacion(
+                nombre=name,
+                tipo=org_type,
+                areas_stem=parse_list(row.get("Enfoque y áreas STEM")),
+                enfoque_principal=clean_text(row.get("¿Cuál es su enfoque principal de trabajo?")),
+                descripcion=description,
+                logo_url=clean_text(row.get("Logo de la organización ")),
+                contacto_nombre=contact_name,
+                contacto_email=contact_email,
+                contacto_telefono=contact_phone,
+                direccion=geo_data.get("direccion"),
+                latitud=geo_data.get("latitud"),
+                longitud=geo_data.get("longitud"),
+                sitio_web=geo_data.get("sitio_web"),
+                zona=clean_text(row.get("Zonas de operación:")),
+                colonias=parse_list(row.get("Colonias principales donde impactan:")),
+                fuente="encuesta_csv",
+                activo=True,
+            )
+            db.add(org)
+            db.flush()
+            org_ids[name] = org.id
+            stats["orgs_inserted"] += 1
+            logger.info("  ✓ INSERT org: %s (%s)", name, org_type)
+            existing_org = org
+
+        # ── DB-level deduplication: program ───────────────────────────────────
+        # Each org from the survey generates one implicit program (nombre=None).
+        # Skip if that org already has a program from this source.
+        existing_prog = db.query(Programa).filter(
+            Programa.organizacion_id == existing_org.id,
+            Programa.fuente == "encuesta_csv",
+        ).first()
+
+        if existing_prog:
+            logger.info("    ↩ SKIP program (already exists for this org)")
+            stats["progs_skipped"] += 1
+        else:
+            description = clean_text(row.get("Descripción de la capacitación/programa:"))
+            pct_range, pct_min, pct_max, pct_mid = normalize_women_pct(
+                row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ")
+            )
+            vol_str, vol_min, vol_max, vol_mid = normalize_volume(
+                row.get("Volumen de atención semestral:")
+            )
+
+            program = Programa(
+                organizacion_id=existing_org.id,
+                nombre=None,
+                descripcion=description,
+                areas_stem=parse_list(row.get("Enfoque y áreas STEM")),
+                tipos_actividad=parse_list(row.get("¿Qué tipo de actividades ofrecen?")),
+                modalidad=clean_text(row.get("Modalidad de los programas:")),
+                poblacion_objetivo=clean_text(row.get("Tipo de población que atiende:")),
+                nivel_educativo=clean_text(row.get("Nivel educativo predominante:")),
+                pct_mujeres_rango=pct_range,
+                pct_mujeres_min=pct_min,
+                pct_mujeres_max=pct_max,
+                pct_mujeres_mid=pct_mid,
+                zona=clean_text(row.get("Zonas de operación:")),
+                colonias_impacto=parse_list(row.get("Colonias principales donde impactan:")),
+                volumen_semestral=vol_str,
+                volumen_min=vol_min,
+                volumen_max=vol_max,
+                volumen_mid=vol_mid,
+                temporalidad=clean_text(row.get("Temporalidad de los programas:")),
+                madurez=clean_text(row.get("Madurez del programa:")),
+                casos_exito=clean_text(
+                    row.get("Grupo muestra (Evidencia): Favor de mencionar de 3 a 5 "
+                            "perfiles de beneficiarios destacados o casos de éxito. ")
+                ),
+                siguiente_paso=clean_text(
+                    row.get("Al concluir su programa, ¿cuál es el siguiente paso para el beneficiario?")
+                ),
+                fuente="encuesta_csv",
+                activo=True,
+            )
+            db.add(program)
+            stats["progs_inserted"] += 1
+            logger.info("    ✓ INSERT program for: %s", name)
+
     db.commit()
-    logger.info("Survey: %d organizations imported", len(org_ids))
+    logger.info(
+        "Survey complete — orgs: %d inserted, %d skipped | programs: %d inserted, %d skipped",
+        stats["orgs_inserted"], stats["orgs_skipped"],
+        stats["progs_inserted"], stats["progs_skipped"],
+    )
     return org_ids
 
 def seed_rodadora(db: Session, csv_path: str, rodadora_id: int) -> None:
     """
     Imports La Rodadora's 6 programs from their specific CSV.
- 
-    The Rodadora CSV has a different format from the survey:
-    - Column 0 is "Nombre del programa" (not "Nombre de la organización")
-    - No STEM areas column → assigned empty list
-    - No activity types column → assigned empty list
-    - Rows 7-13 have NaN names → silently skipped
- 
-    Ranges are stored as min/max/mid the same way as in seed_survey.
- 
+
+    Deduplication strategy:
+      - Each program is identified by (organizacion_id + nombre).
+      - If a program with the same name already exists for La Rodadora, it is skipped.
+
     Args:
         db: Active SQLAlchemy session.
         csv_path: Absolute path to rodadora.csv.
         rodadora_id: ID of the "La Rodadora" organization in the DB.
- 
+
     Raises:
         FileNotFoundError: If the CSV file does not exist at the given path.
     """
     logger.info("Reading rodadora CSV: %s", csv_path)
     df = pd.read_csv(csv_path, encoding="utf-8-sig")
     logger.info("Rows read: %d (including empty ones)", len(df))
- 
+
     df_valid = df.dropna(subset=["Nombre del programa"])
     logger.info("Valid programs: %d", len(df_valid))
- 
-    count = 0
+
+    # Preload existing program names for La Rodadora to avoid N+1 queries
+    existing_names = {
+        p.nombre
+        for p in db.query(Programa.nombre)
+        .filter(Programa.organizacion_id == rodadora_id, Programa.nombre.isnot(None))
+        .all()
+    }
+
+    inserted = 0
+    skipped  = 0
+
     for _, row in df_valid.iterrows():
         name = clean_text(row.get("Nombre del programa"))
         if not name:
             continue
- 
+
+        # DB-level deduplication: program by name within this organization
+        if name in existing_names:
+            logger.info("  ↩ SKIP program (already exists): %s", name)
+            skipped += 1
+            continue
+
         pct_range, pct_min, pct_max, pct_mid = normalize_women_pct(
             row.get("¿Qué porcentaje de sus beneficiarios son mujeres? ")
         )
         vol_str, vol_min, vol_max, vol_mid = normalize_volume(
             row.get("Volumen de atención semestral:")
         )
- 
+
         program = Programa(
             organizacion_id=rodadora_id,
             nombre=name,
@@ -414,11 +447,12 @@ def seed_rodadora(db: Session, csv_path: str, rodadora_id: int) -> None:
             activo=True,
         )
         db.add(program)
-        count += 1
-        logger.info("  ✓ %s", name)
- 
+        existing_names.add(name)   # prevent duplicates within the same CSV run
+        inserted += 1
+        logger.info("  ✓ INSERT program: %s", name)
+
     db.commit()
-    logger.info("Rodadora: %d programs imported", count)
+    logger.info("Rodadora complete — %d inserted, %d skipped", inserted, skipped)
  
 def main():
     """
@@ -437,19 +471,13 @@ def main():
  
     db = SessionLocal()
     try:
-        # Check that the DB is empty to prevent duplicates
         existing_orgs = db.query(Organizacion).count()
         if existing_orgs > 0:
-            logger.warning(
-                "DB already has %d organizations. "
-                "To re-seed, clear the tables first: "
-                "DELETE FROM programas; DELETE FROM organizaciones;",
+            logger.info(
+                "DB already has %d organization(s). "
+                "Running in idempotent mode — existing records will be skipped.",
                 existing_orgs,
             )
-            answer = input("Continue anyway? (y/N): ").strip().lower()
-            if answer != "y":
-                logger.info("Seed cancelled.")
-                return
  
         # Step 1: Survey
         org_ids = seed_survey(db, ENCUESTA_CSV)

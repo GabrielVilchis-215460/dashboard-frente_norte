@@ -179,3 +179,4 @@ def toggle_programa(prog_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(prog)
     return prog
+
