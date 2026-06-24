@@ -35,12 +35,6 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
         for tipo in (p.tipos_actividad or []):
             actividades[tipo] = actividades.get(tipo, 0) + 1
 
-    # Conteo de organizaciones por área de especialización (para heatmap)
-    especialidad: dict[str, int] = {}
-    for org in orgs:
-        for area in (org.areas_stem or []):
-            especialidad[area] = especialidad.get(area, 0) + 1
-
     orgs_programas = {}
     for p in programas: 
         nombre_org = p.organizacion.nombre if p.organizacion else "Organización Desconocida"
@@ -72,7 +66,7 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
     return OfertaSTEM(
         programas_por_area=dict(sorted(areas.items(), key=lambda x: x[1], reverse=True)),
         tipos_actividad_ofrecidos=dict(sorted(actividades.items(), key=lambda x: x[1], reverse=True)),
-        organizaciones_por_especialidad=dict(sorted(especialidad.items(), key=lambda x: x[1], reverse=True)),
+        #organizaciones_por_especialidad=dict(sorted(especialidad.items(), key=lambda x: x[1], reverse=True)),
         organizaciones_con_programas=lista_orgs_programas,
         modalidades_programas=lista_modalidades
     )

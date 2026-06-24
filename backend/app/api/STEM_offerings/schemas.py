@@ -13,6 +13,6 @@ class OrganizacionProgramas(BaseModel):
 class OfertaSTEM(BaseModel):
     programas_por_area: Dict[str, int] # {Robótica: 5, IA: 3, ...}
     tipos_actividad_ofrecidos: Dict[str, int]  # {Talleres: 7, Mentorías: 3, ...}
-    organizaciones_por_especialidad: Dict[str, int]
+    #organizaciones_por_especialidad: Dict[str, int]
     organizaciones_con_programas: List[OrganizacionProgramas]
     modalidades_programas: List[ModalidadProgramas]
