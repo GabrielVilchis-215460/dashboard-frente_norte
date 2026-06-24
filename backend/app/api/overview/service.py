@@ -4,6 +4,7 @@ from app.models.programa import Programa
 from app.api.overview.schemas import PanoramaGeneral
 from app.utils.helpers import count_by_field, mid_volume
 import logging
+from sqlalchemy import func
 
 logger = logging.getLogger("stem_api.panorama_general")
 
@@ -28,6 +29,18 @@ def get_panorama(db: Session) -> PanoramaGeneral:
 
     orgs = db.query(Organizacion).filter(Organizacion.activo == True).all()
     programas = db.query(Programa).filter(Programa.activo == True).all()
+
+    top_orgs = (
+        db.query(Organizacion.nombre)
+        .join(Programa, Organizacion.id == Programa.organizacion_id)
+        .filter(Organizacion.activo == True, Programa.activo == True)
+        .group_by(Organizacion.id, Organizacion.nombre)
+        .order_by(func.count(Programa.id).desc())
+        .limit(5)
+        .all()
+    )
+
+    top_organizaciones = [org[0] for org in top_orgs]
 
     tipos_count = count_by_field(orgs, "tipo")
 
@@ -56,4 +69,5 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         colonias_impactadas=len(colonias),
         organizaciones_por_tipo=tipos_count,
         areas_stem_representadas=sorted(areas),
+        top_organizaciones=top_organizaciones
     )
