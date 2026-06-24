@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD_HASH: str = ""
 
+    # ── Supabase ───────────────────────────────────────────────────────────────
+    # Requeridas para usar la API REST de Supabase (Storage, RLS, Data API, etc.)
+    SUPABASE_URL: str = ""
+    SUPABASE_SECRET_KEY: str = ""
+
     # ── Entorno y CORS ─────────────────────────────────────────────────────────
     ENVIRONMENT: str = "development"
     CORS_ORIGINS: List[str] = ["http://localhost:5173"]
