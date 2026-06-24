@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
 from app.api.auth.schemas import LoginRequest, TokenResponse
 from app.api.auth.service import authenticate_admin
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.core.limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -15,10 +16,12 @@ router = APIRouter(prefix="/auth", tags=["Autenticación"])
     description=(
         "Autentica las credenciales del administrador y retorna un JWT de acceso. "
         "El token debe enviarse en el header `Authorization: Bearer <token>` en todas "
-        "las peticiones al panel de administración."
+        "las peticiones al panel de administración. "
+        "Limitado a **5 intentos por minuto** por IP para prevenir fuerza bruta."
     ),
 )
-def login(credentials: LoginRequest):
+@limiter.limit("5/minute")
+def login(request: Request, credentials: LoginRequest):
     """
     Endpoint de autenticación. Valida usuario y contraseña, y emite un JWT.
 

@@ -5,13 +5,14 @@ La dependencia `get_current_admin` debe usarse en cualquier endpoint que
 requiera acceso autenticado. Extrae y valida el JWT del header Authorization.
 """
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.core.config import settings
 from app.core.security import decode_access_token, verify_password
 
-# Apunta al endpoint de login para que Swagger UI pueda autenticar automáticamente
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+# HTTPBearer extrae automáticamente el token del header Authorization: Bearer <token>
+# y lo expone como un campo "Authorize" limpio en Swagger UI
+bearer_scheme = HTTPBearer()
 
 
 def authenticate_admin(username: str, password: str) -> bool:
@@ -39,7 +40,7 @@ def authenticate_admin(username: str, password: str) -> bool:
     return verify_password(password, settings.ADMIN_PASSWORD_HASH)
 
 
-def get_current_admin(token: str = Depends(oauth2_scheme)) -> str:
+def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> str:
     """
     Dependencia de FastAPI que valida el JWT en el header Authorization.
 
@@ -58,7 +59,7 @@ def get_current_admin(token: str = Depends(oauth2_scheme)) -> str:
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    username = decode_access_token(token)
+    username = decode_access_token(credentials.credentials)
     if username is None:
         raise credentials_exception
 
