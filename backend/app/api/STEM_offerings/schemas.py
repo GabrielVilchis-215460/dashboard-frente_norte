@@ -8,6 +8,8 @@ class ModalidadProgramas(BaseModel):
 
 class OrganizacionProgramas(BaseModel):
     organizacion: str
+    enfoque_principal: Optional[str] = "No especificado"
+    tipo_organizacion: Optional[str] = "No especificado"
     programas: List[str]
 
 class OfertaSTEM(BaseModel):

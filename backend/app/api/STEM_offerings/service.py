@@ -21,7 +21,6 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
     """
     logger.info("Calculando oferta STEM")
     programas = db.query(Programa).filter(Programa.activo == True).all()
-    orgs = db.query(Organizacion).filter(Organizacion.activo == True).all()
 
     # Conteo de programas por área STEM (un programa puede tener múltiples áreas)
     areas: dict[str, int] = {}
@@ -38,16 +37,27 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
     orgs_programas = {}
     for p in programas: 
         nombre_org = p.organizacion.nombre if p.organizacion else "Organización Desconocida"
+        enfoque_org = p.organizacion.enfoque_principal if p.organizacion and p.organizacion.enfoque_principal else "No especificado"
+        tipo_org = p.organizacion.tipo if p.organizacion and p.organizacion.tipo else "No especificado"
 
         if nombre_org not in orgs_programas:
-            orgs_programas[nombre_org] = []
+            orgs_programas[nombre_org] = {
+                "enfoque_principal": enfoque_org,
+                "tipo_organizacion": tipo_org,
+                "programas": []
+            }
 
         if p.nombre:
-            orgs_programas[nombre_org].append(p.nombre)
+            orgs_programas[nombre_org]["programas"].append(p.nombre)
 
     lista_orgs_programas = [
-        OrganizacionProgramas(organizacion=k, programas=v)
-        for k, v in orgs_programas.items()
+        OrganizacionProgramas(
+            organizacion=nombre, 
+            enfoque_principal=datos["enfoque_principal"],
+            tipo_organizacion=datos["tipo_organizacion"],
+            programas=datos["programas"]
+        )
+        for nombre, datos in orgs_programas.items()
     ]
 
     modalidades_conteo = {}
