@@ -48,18 +48,15 @@ def get_inclusion_femenina(db: Session) -> InclusionFemenina:
         elif p.pct_mujeres_rango == "76-100":
             rangos_conteo["76% - 100%"] += 1
 
-        es_destacado = False
-
         # logica para tarjetas y carrusel del frontend
         if p.pct_mujeres_rango == "76-100":
             total_mujeres += 1
-            es_destacado = True
 
         if p.poblacion_objetivo and p.poblacion_objetivo.strip() in poblaciones_femeninas:
             total_ninas += 1
-            es_destacado = True
 
-        if es_destacado:
+        # solo muestra aquellos programas con mas del 75 % de inclusion
+        if pct_valor >= 75.0:
             carrusel_destacados.append(
                 ProgramaDetalle(
                     nombre=nombre_prog,
