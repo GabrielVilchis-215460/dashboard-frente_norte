@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - /app/venv  # Evita que el venv local interfiera con el del contenedor
+    env_file:
+      - ./backend/.env
+    # Para gestionar migraciones de la bd
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules  # Evita que los node_modules locales interfieran
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend

@@ -1,0 +1,42 @@
+# Stage 1: Construcción y Dependencias
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias para compilar
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Crear un entorno virtual para aislar las dependencias
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Imagen final para produccion
+FROM python:3.12-slim AS final
+
+WORKDIR /app
+
+# Copiar el entorno virtual completo con todas las dependencias e instrucciones
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Instalar solo la librería de runtime para PostgreSQL
+RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar el código fuente del proyecto
+COPY . .
+
+EXPOSE 8000
+
+# Entorno por defecto configurado para producción
+ENV ENVIRONMENT=production \
+    PYTHONUNBUFFERED=1
+
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"]
