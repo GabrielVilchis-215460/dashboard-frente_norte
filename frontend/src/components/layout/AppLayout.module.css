@@ -1,0 +1,34 @@
+.shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--color-bg-base);
+}
+
+.content {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  min-height: 100vh;
+  overflow-y: auto;
+}
+
+.inner {
+  padding: var(--space-8) var(--space-8);
+  max-width: 1400px;
+}
+
+@media (max-width: 1200px) {
+  .inner {
+    padding: var(--space-6);
+  }
+}
+
+@media (max-width: 768px) {
+  .content {
+    margin-left: 0;
+    padding-bottom: 80px;
+  }
+
+  .inner {
+    padding: var(--space-4);
+  }
+}
