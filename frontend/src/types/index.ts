@@ -68,10 +68,9 @@ export interface PanoramaGeneralResponse {
 // --- Perfil de Beneficiarios ---
 
 export interface BeneficiariosResponse {
-  distribucion_etaria: Record<string, number>;
-  distribucion_nivel_educativo: Record<EducationLevel, number>;
-  distribucion_poblacion_objetivo: Record<string, number>;
-  alcance_por_zona: Record<string, number>;
+  por_grupo_etario: Record<string, number>;
+  por_nivel_educativo: Record<string, number>;
+  por_zona: Record<string, number>;
 }
 
 // Inclusión y Género 

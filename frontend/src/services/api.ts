@@ -44,25 +44,25 @@ export const api = {
   // --- Perfil de Beneficiarios ---
   getBeneficiarios: () =>
     client
-      .get<BeneficiariosResponse>('/dashboard/beneficiarios')
+      .get<BeneficiariosResponse>('/api/beneficiarios')
       .then((r) => r.data),
 
   // --- Inclusión y Género ---
   getInclusion: () =>
     client
-      .get<InclusionResponse>('/dashboard/inclusion')
+      .get<InclusionResponse>('/api/inclusion')
       .then((r) => r.data),
 
   // --- Oferta STEM ---
   getOfertaSTEM: () =>
     client
-      .get<OfertaSTEMResponse>('/dashboard/oferta-stem')
+      .get<OfertaSTEMResponse>('/api/oferta_stem')
       .then((r) => r.data),
 
   // --- Madurez del Ecosistema ---
   getMadurez: () =>
     client
-      .get<MadurezResponse>('/dashboard/madurez')
+      .get<MadurezResponse>('/api/madurez_ecosistema')
       .then((r) => r.data),
 
   // --- Mapa del Ecosistema ---
@@ -74,6 +74,6 @@ export const api = {
     madurez?: string;
   }) =>
     client
-      .get<MapaEcosistemaResponse>('/dashboard/mapa', { params: filters })
+      .get<MapaEcosistemaResponse>('/api/mapa_ecosistema', { params: filters })
       .then((r) => r.data),
 };
