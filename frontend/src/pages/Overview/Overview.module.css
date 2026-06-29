@@ -1,0 +1,76 @@
+.page {
+  animation: fadeIn var(--transition-slow) both;
+}
+
+/* KPI Grid — 3 columnas + tabla lateral */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr) 1fr;
+  grid-template-rows: auto auto auto;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+/*
+  Layout
+  Col 1-2: 3 filas de 2 KPI cards (6 cards = 3 filas × 2 cols)
+  Col 3:   tabla "Top organizaciones" que abarca las 3 filas
+*/
+.topOrgCard {
+  grid-column: 3;
+  grid-row: 1 / 4;
+  display: flex;
+  flex-direction: column;
+}
+
+.topOrgCard > * {
+  flex: 1;
+}
+
+/* Bottom grid: Donut | Barras | Mapa */
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr;
+  gap: var(--space-4);
+}
+
+.donutCard,
+.barsCard {
+  min-height: 300px;
+}
+
+.mapCard {
+  min-height: 300px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .topOrgCard {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .bottomGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mapCard {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 640px) {
+  .kpiGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+}

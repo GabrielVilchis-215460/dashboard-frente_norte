@@ -7,7 +7,7 @@ export const ROUTES = {
   STEM_OFFER:     '/oferta-stem',
   MATURITY:       '/madurez',
   MAP:            '/mapa',
-  GAPS:           '/brechas',
+  HEALTH:         '/salud',
   ADMIN:          '/admin',
 } as const;
 

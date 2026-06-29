@@ -13,7 +13,7 @@ const Inclusion    = lazy(() => import('./pages/Inclusion').then(m => ({ default
 const STEMOffer    = lazy(() => import('./pages/STEMOffer').then(m => ({ default: m.STEMOffer })));
 const Maturity     = lazy(() => import('./pages/Maturity').then(m => ({ default: m.Maturity })));
 const MapPage      = lazy(() => import('./pages/Map').then(m => ({ default: m.MapPage })));
-const Gaps         = lazy(() => import('./pages/Gaps').then(m => ({ default: m.Gaps })));
+const Health         = lazy(() => import('./pages/Health').then(m => ({ default: m.Health })));
 const Admin        = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 
 function PageLoader() {
@@ -84,10 +84,10 @@ export default function App() {
             }
           />
           <Route
-            path={ROUTES.GAPS}
+            path={ROUTES.HEALTH}
             element={
               <Suspense fallback={<PageLoader />}>
-                <Gaps />
+                <Health />
               </Suspense>
             }
           />

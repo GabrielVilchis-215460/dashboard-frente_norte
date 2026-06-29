@@ -49,7 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'health',
     label: 'Índice de Salud',
-    path: ROUTES.GAPS,
+    path: ROUTES.HEALTH,
     icon: 'IconActivity',
   },
 ];
