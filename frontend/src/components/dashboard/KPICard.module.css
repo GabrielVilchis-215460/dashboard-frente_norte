@@ -1,19 +1,21 @@
 .card {
-  background: var(--gradient-card);
-  border: 1px solid var(--color-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--glass-shadow);
   transition:
-    border-color var(--transition-base),
+    background var(--transition-base),
     transform var(--transition-base),
     box-shadow var(--transition-base);
   animation-fill-mode: both;
 }
 
 .card:hover {
-  border-color: var(--color-border-accent);
+  background: rgba(255, 255, 255, 0.15);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-elevated);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
 }
 
 .inner {
@@ -35,14 +37,14 @@
   font-family: var(--font-display);
   font-size: var(--text-3xl);
   font-weight: 700;
-  color: var(--color-text-primary);
+  color: var(--text-100);
   letter-spacing: -0.03em;
   line-height: 1.1;
 }
 
 .label {
   font-size: var(--text-sm);
-  color: var(--color-text-secondary);
+  color: var(--text-80);
   font-weight: 400;
 }
 
@@ -50,8 +52,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text-muted);
-  opacity: 0.6;
+  color: var(--text-60);
   flex-shrink: 0;
   margin-top: 4px;
 }

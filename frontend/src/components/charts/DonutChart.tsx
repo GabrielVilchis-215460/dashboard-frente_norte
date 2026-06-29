@@ -1,34 +1,25 @@
 // -- Gráfica de dona --
 
 import {
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
+  PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
 } from 'recharts';
 import { Skeleton } from '../ui';
 import styles from './DonutChart.module.css';
 
-const COLORS = [
-  '#2dd4bf', // cyan
-  '#3b82f6', // blue
-  '#10b981', // green
-  '#0891b2', // teal oscuro
-  '#6366f1', // indigo
-  '#8b5cf6', // violet
-];
-
-interface DataPoint {
-  name: string;
-  value: number;
+// Los colores se leen en runtime desde las CSS vars del tema
+function getThemeColors(): string[] {
+  const el = document.documentElement;
+  const style = getComputedStyle(el);
+  return [
+    style.getPropertyValue('--accent-a').trim() || '#60a5fa',
+    style.getPropertyValue('--accent-b').trim() || '#34d399',
+    style.getPropertyValue('--accent-c').trim() || '#a78bfa',
+    style.getPropertyValue('--accent-d').trim() || '#f472b6',
+  ];
 }
 
-interface Props {
-  data: DataPoint[];
-  loading?: boolean;
-}
+interface DataPoint { name: string; value: number; }
+interface Props { data: DataPoint[]; loading?: boolean; }
 
 function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
@@ -41,13 +32,10 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function DonutChart({ data, loading = false }: Props) {
-  if (loading) {
-    return <Skeleton width="100%" height="220px" borderRadius="12px" />;
-  }
+  if (loading) return <Skeleton width="100%" height="220px" borderRadius="12px" />;
+  if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
-  if (!data.length) {
-    return <p className={styles.empty}>Sin datos disponibles</p>;
-  }
+  const COLORS = getThemeColors();
 
   return (
     <div className={styles.wrapper}>
@@ -64,12 +52,8 @@ export function DonutChart({ data, loading = false }: Props) {
             animationBegin={0}
             animationDuration={600}
           >
-            {data.map((_, index) => (
-              <Cell
-                key={index}
-                fill={COLORS[index % COLORS.length]}
-                stroke="transparent"
-              />
+            {data.map((_, i) => (
+              <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="transparent" />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />

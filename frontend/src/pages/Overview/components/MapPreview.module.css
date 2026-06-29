@@ -1,33 +1,44 @@
 .wrapper {
   position: relative;
-  height: 100%;
-  min-height: 300px;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  min-height: 300px;
+  height: 100%;
+
+  /* Mismo glassmorphism que las Card */
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
 }
 
-.label {
+/* Título flotante sobre el mapa */
+.title {
   position: absolute;
   top: var(--space-4);
   left: var(--space-4);
   z-index: 500;
   font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--color-text-primary);
-  background: rgba(15, 23, 41, 0.8);
-  backdrop-filter: blur(4px);
+  color: var(--text-100);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--glass-border);
+  pointer-events: none;
 }
 
+/* El mapa ocupa TODO el contenedor */
 .map {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  min-height: 300px;
 }
 
-/* Pines personalizados */
+/* Pines */
 :global(.leaflet-div-icon) {
   background: transparent;
   border: none;
@@ -37,9 +48,9 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--color-accent-cyan);
-  border: 2px solid rgba(45, 212, 191, 0.4);
-  box-shadow: 0 0 8px rgba(45, 212, 191, 0.5);
+  background: var(--accent-a);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 8px var(--accent-a);
   transition: transform var(--transition-fast);
 }
 
@@ -47,18 +58,19 @@
   transform: scale(1.4);
 }
 
-/* Tooltip de Leaflet personalizado */
+/* Tooltip Leaflet */
 :global(.leaflet-tooltip) {
-  background: var(--color-bg-elevated) !important;
-  border: 1px solid var(--color-border) !important;
-  color: var(--color-text-primary) !important;
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  color: rgba(255, 255, 255, 1) !important;
   font-family: var(--font-body) !important;
   font-size: 12px !important;
   border-radius: var(--radius-sm) !important;
-  box-shadow: var(--shadow-card) !important;
+  box-shadow: var(--glass-shadow) !important;
   padding: 6px 10px !important;
 }
 
 :global(.leaflet-tooltip-top::before) {
-  border-top-color: var(--color-border) !important;
+  border-top-color: rgba(255, 255, 255, 0.20) !important;
 }

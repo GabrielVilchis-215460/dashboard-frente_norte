@@ -2,20 +2,20 @@
   animation: fadeIn var(--transition-slow) both;
 }
 
-/* KPI Grid — 3 columnas + tabla lateral */
-.kpiGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr) 1fr;
-  grid-template-rows: auto auto auto;
-  gap: var(--space-4);
-  margin-bottom: var(--space-5);
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-/*
-  Layout
-  Col 1-2: 3 filas de 2 KPI cards (6 cards = 3 filas × 2 cols)
-  Col 3:   tabla "Top organizaciones" que abarca las 3 filas
-*/
+/* KPI Grid: 2 cols de cards + columna de tabla Top Organizaciones */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr) 1.1fr;
+  grid-template-rows: repeat(3, auto);
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
 .topOrgCard {
   grid-column: 3;
   grid-row: 1 / 4;
@@ -23,54 +23,60 @@
   flex-direction: column;
 }
 
-.topOrgCard > * {
-  flex: 1;
-}
+.topOrgCard > * { flex: 1; }
 
-/* Bottom grid: Donut | Barras | Mapa */
+/* ---- Fila inferior ----
+   Columna izquierda: Donut (arriba) + Barras (abajo) apilados
+   Columna derecha: Mapa ocupando todo el alto
+*/
 .bottomGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.4fr;
+  grid-template-columns: 1fr 1.25fr;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "donut map"
+    "bars  map";
   gap: var(--space-4);
 }
 
-.donutCard,
+.donutCard {
+  grid-area: donut;
+  min-height: 280px;
+}
+
 .barsCard {
+  grid-area: bars;
   min-height: 300px;
 }
 
 .mapCard {
-  min-height: 300px;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
+  grid-area: map;
+  /* Ocupa el alto completo de las dos filas izquierdas */
+  min-height: 100%;
 }
 
-/* Responsive */
 @media (max-width: 1100px) {
   .kpiGrid {
     grid-template-columns: repeat(2, 1fr);
   }
-
   .topOrgCard {
     grid-column: 1 / -1;
     grid-row: auto;
   }
-
+  /* Apila todo en una columna */
   .bottomGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "donut"
+      "bars"
+      "map";
   }
-
   .mapCard {
-    grid-column: 1 / -1;
+    height: 320px;
+    min-height: 320px;
   }
 }
 
 @media (max-width: 640px) {
-  .kpiGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .bottomGrid {
-    grid-template-columns: 1fr;
-  }
+  .kpiGrid { grid-template-columns: 1fr; }
 }

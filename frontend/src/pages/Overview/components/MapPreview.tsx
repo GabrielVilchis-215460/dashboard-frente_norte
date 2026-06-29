@@ -13,9 +13,10 @@ const DEFAULT_ZOOM = 11;
 interface Props {
   points: PreviewMapaPoint[];
   loading: boolean;
+  className?: string;
 }
 
-export function MapPreview({ points, loading }: Props) {
+export function MapPreview({ points, loading, className = '' }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<import('leaflet').Map | null>(null);
 
@@ -40,6 +41,9 @@ export function MapPreview({ points, loading }: Props) {
       ).addTo(map);
 
       mapInstanceRef.current = map;
+
+      // Leaflet necesita recalcular tras montarse en un contenedor flexible
+      setTimeout(() => map.invalidateSize(), 100);
     });
 
     return () => {
@@ -48,7 +52,6 @@ export function MapPreview({ points, loading }: Props) {
     };
   }, [loading]);
 
-  // Agregar marcadores cuando llegan los datos
   useEffect(() => {
     if (!mapInstanceRef.current || points.length === 0) return;
 
@@ -65,19 +68,25 @@ export function MapPreview({ points, loading }: Props) {
           .addTo(mapInstanceRef.current!)
           .bindTooltip(
             `<strong>${point.nombre}</strong><br/>${point.total_programas} programas`,
-            { className: styles.tooltip, direction: 'top' }
+            { className: styles.leafletTooltip, direction: 'top' }
           );
       });
     });
   }, [points]);
 
   if (loading) {
-    return <Skeleton width="100%" height="300px" borderRadius="0" />;
+    return (
+      <div className={`${styles.wrapper} ${className}`}>
+        <Skeleton width="100%" height="100%" borderRadius="16px" />
+      </div>
+    );
   }
 
   return (
-    <div className={styles.wrapper}>
-      <div className={styles.label}>Mapa del Ecosistema</div>
+    <div className={`${styles.wrapper} ${className}`}>
+      {/* Título integrado sobre el mapa */}
+      <div className={styles.title}>Mapa del Ecosistema</div>
+      {/* El mapa ocupa todo el contenedor */}
       <div ref={mapRef} className={styles.map} />
     </div>
   );

@@ -112,14 +112,13 @@ export function Overview() {
         <Card title="Organizaciones por tipo" className={styles.donutCard}>
           <DonutChart data={donutData} loading={loading} />
         </Card>
-
+ 
         <Card title="Áreas" className={styles.barsCard}>
           <HorizontalBarChart data={areasData} loading={loading} />
         </Card>
-
-        <Card title="Mapa del Ecosistema" noPadding className={styles.mapCard}>
-          <MapPreview points={data?.preview_mapa ?? []} loading={loading} />
-        </Card>
+ 
+        {/* Mapa */}
+        <MapPreview points={data?.preview_mapa ?? []} loading={loading} className={styles.mapCard} />
       </section>
     </div>
   );
