@@ -98,25 +98,24 @@ export interface InclusionResponse {
 
 // Oferta STEM
 
+export interface ModalidadPrograma {
+  name: string;
+  value: number;
+}
+
+export interface OrganizacionProgramas {
+  logo_url: string | null;
+  organizacion: string;
+  enfoque_principal: string | null;
+  tipo_organizacion: string | null;
+  programas: string[];
+}
+
 export interface OfertaSTEMResponse {
-  programas_por_area: Record<STEMArea, number>;
-  organizaciones_por_especialidad: Record<string, number>;
-  tipos_actividad: Record<ActivityType, number>;
-  heatmap_area_nivel: Record<STEMArea, Record<EducationLevel, number>>;
-}
-
-// Madurez del Ecosistema 
-
-export interface MaturityStage {
-  nivel: MaturityLevel;
-  num_programas: number;
-  beneficiarios: number;
-  organizaciones: string[];
-}
-
-export interface MadurezResponse {
-  etapas: MaturityStage[];
-  organizaciones_por_nivel: Record<MaturityLevel, number>;
+  programas_por_area: Record<string, number>;
+  tipos_actividad_ofrecidos: Record<string, number>;
+  organizaciones_con_programas: OrganizacionProgramas[];
+  modalidades_programas: ModalidadPrograma[];
 }
 
 // Mapa del Ecosistema
