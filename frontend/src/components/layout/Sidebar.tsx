@@ -10,7 +10,6 @@ import {
   IconMap,
   IconActivity,
   IconSettings,
-  IconMountain,
 } from '@tabler/icons-react';
 import { NAV_ITEMS } from '../../constants/navigation';
 import { ROUTES } from '../../constants/routes';
@@ -41,9 +40,11 @@ export function Sidebar() {
     <aside className={styles.sidebar}>
       {/* Logo / Brand */}
       <div className={styles.brand}>
-        <div className={styles.logoIcon}>
-          <IconMountain size={22} stroke={2} />
-        </div>
+        <img
+          src="/frente_norte_logo.png"
+          alt="Frente Norte"
+          className={styles.logoIcon}
+        />
         <span className={styles.brandName}>Frente Norte</span>
       </div>
 

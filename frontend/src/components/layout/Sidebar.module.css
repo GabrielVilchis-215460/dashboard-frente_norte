@@ -19,13 +19,8 @@
 .logoIcon {
   width: 36px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.20);
-  border: 1px solid rgba(255, 255, 255, 0.30);
   border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-100);
+  object-fit: contain;
   flex-shrink: 0;
 }
 

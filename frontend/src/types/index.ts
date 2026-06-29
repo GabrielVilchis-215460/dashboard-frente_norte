@@ -57,13 +57,15 @@ export interface PanoramaGeneralResponse {
   total_programas_activos: number;
   beneficiarios_semestre: number;
   colonias_impactadas: number;
+  pct_mujeres_beneficiarias: number;
+  pct_programas_enfoque_integral: number;
   organizaciones_por_tipo: Record<string, number>;
-  areas_stem_representadas: string[];
+  areas_stem_representadas: Record<string, number>;
   top_organizaciones: TopOrganizacion[];
   preview_mapa: PreviewMapaPoint[];
 }
 
-// Perfil de Beneficiarios
+// --- Perfil de Beneficiarios ---
 
 export interface BeneficiariosResponse {
   distribucion_etaria: Record<string, number>;

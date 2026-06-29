@@ -38,7 +38,7 @@ export const api = {
   // --- Panorama General ---
   getPanoramaGeneral: () =>
     client
-      .get<PanoramaGeneralResponse>('/dashboard/panorama-general')
+      .get<PanoramaGeneralResponse>('/api/panorama_general')
       .then((r) => r.data),
 
   // --- Perfil de Beneficiarios ---

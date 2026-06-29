@@ -17,12 +17,13 @@ import { Card } from '../../components/ui';
 import { PageHeader } from '../../components/layout';
 import { useApi } from '../../hooks/useApi';
 import { api } from '../../services/api';
+import { formatLabel } from '../../utils/format';
 import { TopOrgTable } from './components/TopOrgTable';
 import { MapPreview } from './components/MapPreview';
 import styles from './Overview.module.css';
 
 export function Overview() {
-  const { data, loading } = useApi(api.getPanoramaGeneral);
+  const { data, loading, error, refetch } = useApi(api.getPanoramaGeneral);
 
   const kpis = [
     {
@@ -49,12 +50,16 @@ export function Overview() {
     },
     {
       label: 'Beneficiarias mujeres',
-      value: '—',
+      value: data?.pct_mujeres_beneficiarias != null
+        ? `${data.pct_mujeres_beneficiarias}%`
+        : '—',
       icon: <IconVenus size={28} stroke={1.2} />,
     },
     {
       label: 'Programas enfoque integral',
-      value: '—',
+      value: data?.pct_programas_enfoque_integral != null
+        ? `${data.pct_programas_enfoque_integral}%`
+        : '—',
       icon: <IconChartPie size={28} stroke={1.2} />,
     },
   ];
@@ -62,16 +67,18 @@ export function Overview() {
   // Preparar datos para la donut de organizaciones por tipo
   const donutData = data?.organizaciones_por_tipo
     ? Object.entries(data.organizaciones_por_tipo).map(([name, value]) => ({
-        name,
+        name: formatLabel(name),
         value,
       }))
     : [];
 
   // Preparar datos para la barra de áreas STEM
-  const areasData = data?.areas_stem_representadas.map((area, i) => ({
-    name: area,
-    value: 30 - i * 4, // placeholder
-  })) ?? [];
+  const areasData = data?.areas_stem_representadas
+    ? Object.entries(data.areas_stem_representadas).map(([name, value]) => ({
+        name: formatLabel(name),
+        value,
+      }))
+    : [];
 
   return (
     <div className={styles.page}>
@@ -79,6 +86,15 @@ export function Overview() {
         title="Panorama General"
         description="Vista general del estado del ecosistema STEM"
       />
+
+      {error && (
+        <div className={styles.errorBanner} role="alert">
+          <span>No se pudieron cargar los datos: {error}</span>
+          <button onClick={refetch} className={styles.retryBtn}>
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* KPI Grid */}
       <section

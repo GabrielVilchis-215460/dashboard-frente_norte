@@ -1,18 +1,22 @@
 // -- Gráfica de barras horizontales --
 
+import { useRef, useState, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell,
 } from 'recharts';
 import { Skeleton } from '../ui';
 import styles from './HorizontalBarChart.module.css';
 
-function getThemeColors(): string[] {
-  const style = getComputedStyle(document.documentElement);
+const FALLBACK = ['#60a5fa', '#34d399', '#a78bfa', '#f472b6'];
+
+function readThemeColors(node: HTMLElement | null): string[] {
+  const el = node ?? document.documentElement;
+  const style = getComputedStyle(el);
   return [
-    style.getPropertyValue('--accent-a').trim() || '#60a5fa',
-    style.getPropertyValue('--accent-b').trim() || '#34d399',
-    style.getPropertyValue('--accent-c').trim() || '#a78bfa',
-    style.getPropertyValue('--accent-d').trim() || '#f472b6',
+    style.getPropertyValue('--accent-a').trim() || FALLBACK[0],
+    style.getPropertyValue('--accent-b').trim() || FALLBACK[1],
+    style.getPropertyValue('--accent-c').trim() || FALLBACK[2],
+    style.getPropertyValue('--accent-d').trim() || FALLBACK[3],
   ];
 }
 
@@ -30,13 +34,18 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function HorizontalBarChart({ data, loading = false, singleColor = false }: Props) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [colors, setColors] = useState<string[]>(FALLBACK);
+
+  useEffect(() => {
+    setColors(readThemeColors(wrapperRef.current));
+  }, [loading, data]);
+
   if (loading) return <Skeleton width="100%" height="220px" borderRadius="12px" />;
   if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
-  const COLORS = getThemeColors();
-
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} ref={wrapperRef}>
       <ResponsiveContainer width="100%" height={Math.max(data.length * 40, 160)}>
         <BarChart layout="vertical" data={data} margin={{ top: 0, right: 36, bottom: 0, left: 0 }}>
           <XAxis type="number" hide />
@@ -53,7 +62,7 @@ export function HorizontalBarChart({ data, loading = false, singleColor = false 
             {data.map((_, i) => (
               <Cell
                 key={i}
-                fill={singleColor ? COLORS[0] : COLORS[i % COLORS.length]}
+                fill={singleColor ? colors[0] : colors[i % colors.length]}
               />
             ))}
           </Bar>
