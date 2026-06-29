@@ -154,6 +154,21 @@ export interface MapaEcosistemaResponse {
   total: number;
 }
 
+// Índice de Salud del Ecosistema (ISE) 
+ 
+export interface DimensionISE {
+  nombre: string;
+  score: number;
+  peso: number;
+  descripcion: string;
+}
+ 
+export interface IndiceSaludResponse {
+  score_global: number;
+  nivel: string;
+  dimensiones: DimensionISE[];
+}
+
 // UI
 
 export interface ApiState<T> {

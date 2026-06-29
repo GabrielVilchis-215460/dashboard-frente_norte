@@ -1,0 +1,81 @@
+.tableWrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.table th {
+  text-align: center;
+  font-weight: 500;
+  color: var(--text-60);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--glass-border);
+  white-space: nowrap;
+}
+
+.thLeft {
+  text-align: left !important;
+}
+
+.row {
+  transition: background var(--transition-fast);
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.table td {
+  padding: var(--space-3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-80);
+}
+
+.dimName {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.center {
+  text-align: center;
+}
+
+.bold {
+  font-weight: 700;
+  color: var(--text-100);
+}
+
+.desc {
+  color: var(--text-60);
+  font-size: var(--text-sm);
+}
+
+.totalRow td {
+  border-bottom: none;
+  padding-top: var(--space-4);
+}
+
+.totalValue {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--accent-b);
+}
+
+.skeletonWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.empty {
+  font-size: var(--text-sm);
+  color: var(--text-60);
+  text-align: center;
+  padding: var(--space-8) 0;
+}

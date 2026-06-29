@@ -8,6 +8,7 @@ import type {
   OfertaSTEMResponse,
   MadurezResponse,
   MapaEcosistemaResponse,
+  IndiceSaludResponse,
 } from '../types';
 
 const client = axios.create({
@@ -76,4 +77,11 @@ export const api = {
     client
       .get<MapaEcosistemaResponse>('/api/mapa_ecosistema', { params: filters })
       .then((r) => r.data),
+  
+  // --- Índice de Salud del Ecosistema ---
+  getIndiceSalud: () =>
+    client
+      .get<IndiceSaludResponse>('/api/indice_salud/indice-salud')
+      .then((r) => r.data),
+
 };
