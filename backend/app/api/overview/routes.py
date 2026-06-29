@@ -21,9 +21,11 @@ Alimenta el **Módulo 1 — Panorama General** del dashboard.
 Incluye:
 - Total de organizaciones y programas activos
 - Beneficiarios estimados en el semestre
+- Porcentaje de beneficiarias mujeres
+- Porcentaje de programas con enfoque integral
 - Colonias impactadas
 - Distribución de organizaciones por tipo
-- Áreas STEM representadas
+- Conteo de organizaciones por área STEM
 - Top organizaciones con mas programas activos
 - Preview del mapa con logos de las instituciones
     """,
