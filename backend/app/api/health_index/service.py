@@ -2,7 +2,7 @@ import logging
 from app.api.health_index.schemas import IndiceSaludEcosistema, DimensionISE
 from sqlalchemy.orm import Session
 from app.utils.constants import (
-    TOTAL_COLONIAS_JUAREZ,
+    #TOTAL_COLONIAS_JUAREZ,
     TOTAL_AREAS_STEM,
     META_BENEFICIARIOS_SEMESTRE,
     ISE_PESOS
@@ -39,7 +39,8 @@ def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
 
     # Dimensión 1: Cobertura territorial 
     # Colonias impactadas como porcentaje del total de colonias de Cd. Juárez
-    d_cobertura = min(100.0, (panorama.colonias_impactadas / TOTAL_COLONIAS_JUAREZ) * 100)
+    #d_cobertura = min(100.0, (panorama.colonias_impactadas / TOTAL_COLONIAS_JUAREZ) * 100)
+    d_cobertura = min(100.0, (panorama.colonias_impactadas / 20) * 100)
 
     # Dimensión 2: Diversidad de oferta STEM 
     # Áreas STEM cubiertas como porcentaje de las 8 áreas posibles
@@ -50,7 +51,6 @@ def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
     d_inclusion = min(100.0, inclusion.pct_promedio_mujeres)
 
     # Dimensión 4: Alcance de beneficiarios 
-    # Beneficiarios semestral como porcentaje de la meta
     d_alcance = min(100.0, (panorama.beneficiarios_semestre / META_BENEFICIARIOS_SEMESTRE) * 100)
 
     # Dimensión 5: Madurez de programas
@@ -80,7 +80,7 @@ def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
                 nombre="Cobertura territorial",
                 score=round(d_cobertura, 1),
                 peso=ISE_PESOS["cobertura"],
-                descripcion=f"Colonias impactadas vs. {TOTAL_COLONIAS_JUAREZ} en Cd. Juárez",
+                descripcion=f"Presencia activa en {panorama.colonias_impactadas} colonias de Ciudad Juárez",
             ),
             DimensionISE(
                 nombre="Diversidad de oferta STEM",
@@ -98,7 +98,8 @@ def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
                 nombre="Alcance de beneficiarios",
                 score=round(d_alcance, 1),
                 peso=ISE_PESOS["alcance"],
-                descripcion=f"Beneficiarios semestre vs. meta de {META_BENEFICIARIOS_SEMESTRE:,}",
+                #descripcion=f"Beneficiarios semestre vs. meta de {META_BENEFICIARIOS_SEMESTRE:,}",
+                descripcion="Beneficiarios únicos registrados en el semestre actual",
             ),
             DimensionISE(
                 nombre="Madurez de programas",
