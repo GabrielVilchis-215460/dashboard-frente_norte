@@ -75,19 +75,25 @@ export interface BeneficiariosResponse {
 
 // Inclusión y Género 
 
-export interface ProgramaFemenino {
+export interface RangoParticipacion {
+  rango: string;
+  cantidad: number;
+}
+ 
+export interface ProgramaDetalle {
   nombre: string;
   organizacion: string;
-  porcentaje_femenino_range: string;
-  descripcion: string;
+  pct_mujeres: number;
+  descripcion: string | null;
 }
-
+ 
 export interface InclusionResponse {
-  participacion_femenina_promedio: number;
-  organizaciones_enfoque_mujeres: number;
-  programas_ninas_adolescentes: number;
-  distribucion_por_nivel: Record<EducationLevel, number>;
-  programas_enfocados: ProgramaFemenino[];
+  pct_promedio_mujeres: number;
+  total_ninas_adolescentes: number;
+  total_enfocados_mujeres: number;
+  distribucion_por_rango: RangoParticipacion[];
+  por_nivel_educativo: Record<string, number>;
+  carrusel_programas_destacados: ProgramaDetalle[];
 }
 
 // Oferta STEM

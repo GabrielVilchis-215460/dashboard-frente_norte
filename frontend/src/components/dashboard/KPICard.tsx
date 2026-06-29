@@ -7,7 +7,7 @@ import styles from './KPICard.module.css';
 interface KPICardProps {
   label: string;
   value: string | number;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   loading?: boolean;
   animationDelay?: number;
 }
@@ -37,9 +37,11 @@ export function KPICard({
           <span className={styles.value}>{value}</span>
           <span className={styles.label}>{label}</span>
         </div>
-        <div className={styles.iconWrap} aria-hidden="true">
-          {icon}
-        </div>
+        {icon && (
+          <div className={styles.iconWrap} aria-hidden="true">
+            {icon}
+          </div>
+        )}
       </div>
     </div>
   );

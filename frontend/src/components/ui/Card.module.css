@@ -8,6 +8,8 @@
   transition:
     background var(--transition-base),
     border-color var(--transition-base);
+  display: flex;
+  flex-direction: column;
 }
 
 .card:hover {
@@ -20,6 +22,7 @@
   justify-content: space-between;
   padding: var(--space-5) var(--space-6) 0;
   gap: var(--space-4);
+  flex-shrink: 0;
 }
 
 .title {
@@ -42,4 +45,6 @@
 
 .body {
   padding: var(--space-5) var(--space-6) var(--space-6);
+  flex: 1;
+  min-height: 0;
 }

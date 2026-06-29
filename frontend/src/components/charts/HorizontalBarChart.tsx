@@ -21,7 +21,13 @@ function readThemeColors(node: HTMLElement | null): string[] {
 }
 
 interface DataPoint { name: string; value: number; }
-interface Props { data: DataPoint[]; loading?: boolean; singleColor?: boolean; }
+interface Props {
+  data: DataPoint[];
+  loading?: boolean;
+  singleColor?: boolean;
+  /** Si true, el gráfico llena el alto del contenedor en vez de altura fija */
+  fillHeight?: boolean;
+}
 
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
@@ -33,7 +39,7 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export function HorizontalBarChart({ data, loading = false, singleColor = false }: Props) {
+export function HorizontalBarChart({ data, loading = false, singleColor = false, fillHeight = false }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [colors, setColors] = useState<string[]>(FALLBACK);
 
@@ -45,9 +51,21 @@ export function HorizontalBarChart({ data, loading = false, singleColor = false 
   if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
   return (
-    <div className={styles.wrapper} ref={wrapperRef}>
-      <ResponsiveContainer width="100%" height={Math.max(data.length * 40, 160)}>
-        <BarChart layout="vertical" data={data} margin={{ top: 0, right: 36, bottom: 0, left: 0 }}>
+    <div
+      className={styles.wrapper}
+      ref={wrapperRef}
+      style={fillHeight ? { height: '100%' } : undefined}
+    >
+      <ResponsiveContainer
+        width="100%"
+        height={fillHeight ? '100%' : Math.max(data.length * 40, 160)}
+      >
+        <BarChart
+          layout="vertical"
+          data={data}
+          margin={{ top: 0, right: 36, bottom: 0, left: 0 }}
+          barCategoryGap={fillHeight ? '28%' : '20%'}
+        >
           <XAxis type="number" hide />
           <YAxis
             type="category"
