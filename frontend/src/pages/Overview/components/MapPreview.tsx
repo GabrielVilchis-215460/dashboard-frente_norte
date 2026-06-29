@@ -7,8 +7,8 @@ import { Skeleton } from '../../../components/ui';
 import styles from './MapPreview.module.css';
 
 // Coordenadas de Ciudad Juárez
-const JUAREZ_CENTER: [number, number] = [31.6904, -106.4245];
-const DEFAULT_ZOOM = 11;
+const JUAREZ_CENTER: [number, number] = [31.7059, -106.4245];
+const DEFAULT_ZOOM = 13;
 
 interface Props {
   points: PreviewMapaPoint[];

@@ -8,6 +8,8 @@ import type {
   OfertaSTEMResponse,
   MadurezResponse,
   MapaEcosistemaResponse,
+  FichaActor,
+  MapFilters,
   IndiceSaludResponse,
 } from '../types';
 
@@ -67,15 +69,14 @@ export const api = {
       .then((r) => r.data),
 
   // --- Mapa del Ecosistema ---
-  getMapaEcosistema: (filters?: {
-    tipo?: string;
-    area?: string;
-    nivel_educativo?: string;
-    zona?: string;
-    madurez?: string;
-  }) =>
+  getMapaEcosistema: (filters?: MapFilters) =>
     client
-      .get<MapaEcosistemaResponse>('/api/mapa_ecosistema', { params: filters })
+      .get<MapaEcosistemaResponse>('/api/mapa_ecosistema/', { params: filters })
+      .then((r) => r.data),
+ 
+  getFichaActor: (orgId: number) =>
+    client
+      .get<FichaActor>(`/api/mapa_ecosistema/actor/${orgId}`)
       .then((r) => r.data),
   
   // --- Índice de Salud del Ecosistema ---

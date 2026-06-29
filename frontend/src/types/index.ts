@@ -133,25 +133,52 @@ export interface MadurezResponse {
 
 // Mapa del Ecosistema
 
-export interface MapOrganizacion {
+export interface PinMapa {
   id: number;
   nombre: string;
-  tipo: OrganizationType;
-  latitud: number;
-  longitud: number;
-  logo_url: string;
-  areas_stem: STEMArea[];
-  nivel_educativo: EducationLevel[];
-  nivel_madurez: MaturityLevel;
-  participacion_femenina: number;
+  tipo: string;
+  areas_stem: string[];
+  latitud: number | null;
+  longitud: number | null;
+  zona: string | null;
   total_programas: number;
-  zona: string;
-  descripcion?: string;
 }
-
+ 
+export interface FichaActor {
+  id: number;
+  nombre: string;
+  tipo: string;
+  descripcion: string | null;
+  areas_stem: string[];
+  enfoque_principal: string | null;
+  sitio_web: string | null;
+  contacto_nombre: string | null;
+  contacto_email: string | null;
+  contacto_telefono: string | null;
+  direccion: string | null;
+  zona: string | null;
+  colonias: string[];
+  latitud: number | null;
+  longitud: number | null;
+  total_programas: number;
+  programas: string[];
+}
+ 
 export interface MapaEcosistemaResponse {
-  organizaciones: MapOrganizacion[];
-  total: number;
+  total_actores: number;
+  actores_con_coordenadas: number;
+  pins: PinMapa[];
+}
+ 
+export interface MapFilters {
+  tipo?: string;
+  area_stem?: string;
+  zona?: string;
+  madurez?: string;
+  nivel_educativo?: string;
+  poblacion?: string;
+  pct_mujeres_rango?: string;
+  solo_con_coordenadas?: boolean;
 }
 
 // Índice de Salud del Ecosistema (ISE) 

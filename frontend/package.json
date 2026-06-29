@@ -13,6 +13,7 @@
     "@tabler/icons-react": "^3.24.0",
     "axios": "^1.7.9",
     "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-leaflet": "^4.2.1",
