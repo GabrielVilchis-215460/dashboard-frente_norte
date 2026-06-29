@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.organizacion import Organizacion
 from app.models.programa import Programa
 from app.api.overview.schemas import PanoramaGeneral, MapaPreview, TopOrganizacion
-from app.utils.helpers import count_by_field, mid_volume
+from app.utils.helpers import count_by_field, mid_volume, mid_pct
 import logging
 from sqlalchemy import func
 
@@ -83,10 +83,16 @@ def get_panorama(db: Session) -> PanoramaGeneral:
 
     tipos_count = count_by_field(orgs, "tipo")
 
-    # Unión de todas las áreas STEM presentes en los programas activos
-    areas: set[str] = set()
-    for p in programas:
-        areas.update(p.areas_stem or [])
+    pcts_mujeres = [mid_pct(p.pct_mujeres_rango) for p in programas if p.pct_mujeres_rango]
+    pct_mujeres = round(sum(pcts_mujeres) / len(pcts_mujeres), 1) if pcts_mujeres else 0.0
+
+    integrales_count = sum(1 for p in programas if p.areas_stem and len(p.areas_stem) > 1)
+    pct_integral = round((integrales_count / len(programas)) * 100, 1) if programas else 0.0
+
+    areas_conteo: dict[str, int] = {}
+    for org in orgs:
+        for area in (org.areas_stem or []):
+            areas_conteo[area] = areas_conteo.get(area, 0) + 1
 
     # Unión de todas las colonias impactadas
     colonias: set[str] = set()
@@ -106,8 +112,10 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         total_programas_activos=len(programas),
         beneficiarios_semestre=beneficiarios,
         colonias_impactadas=len(colonias),
+        pct_mujeres_beneficiarias=pct_mujeres, 
+        pct_programas_enfoque_integral=pct_integral, 
         organizaciones_por_tipo=tipos_count,
-        areas_stem_representadas=sorted(areas),
+        areas_stem_representadas=dict(sorted(areas_conteo.items(), key=lambda x: x[1], reverse=True)), # MODIFICADO
         top_organizaciones=top_organizaciones,
         preview_mapa=preview_marcadores
     )
