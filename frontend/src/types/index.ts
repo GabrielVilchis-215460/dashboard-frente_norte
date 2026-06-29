@@ -118,6 +118,19 @@ export interface OfertaSTEMResponse {
   modalidades_programas: ModalidadPrograma[];
 }
 
+// Madurez del Ecosistema 
+export interface MadurezDetalle {
+  etapa: string;
+  cantidad: number;
+  organizaciones: string[];
+}
+ 
+export interface MadurezResponse {
+  por_etapa: Record<string, number>;
+  beneficiarios_por_etapa: Record<string, number>;
+  organizaciones_por_madurez: MadurezDetalle[];
+}
+
 // Mapa del Ecosistema
 
 export interface MapOrganizacion {
