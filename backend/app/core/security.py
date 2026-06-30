@@ -7,26 +7,18 @@ definidas en app/api/auth/service.py.
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt as _bcrypt
 from jose import jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 
-# Contexto de hashing — bcrypt es el estándar recomendado para contraseñas
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def _truncate(password: str) -> str:
-    # bcrypt tiene un límite de 72 bytes
-    return password.encode()[:72].decode(errors="ignore")
-
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(_truncate(plain_password), hashed_password)
+    return _bcrypt.checkpw(plain_password.encode()[:72], hashed_password.encode())
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(_truncate(password))
+    return _bcrypt.hashpw(password.encode()[:72], _bcrypt.gensalt()).decode()
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
