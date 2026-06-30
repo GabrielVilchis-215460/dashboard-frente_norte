@@ -2,11 +2,12 @@
 // Leaflet con mapa oscuro + pines de organizaciones
 
 import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { PreviewMapaPoint } from '../../../types';
 import { Skeleton } from '../../../components/ui';
+import { ROUTES } from '../../../constants/routes';
 import styles from './MapPreview.module.css';
 
-// Coordenadas de Ciudad Juárez
 const JUAREZ_CENTER: [number, number] = [31.7150, -106.4245];
 const DEFAULT_ZOOM = 13;
 
@@ -19,13 +20,12 @@ interface Props {
 export function MapPreview({ points, loading, className = '' }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<import('leaflet').Map | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (loading || !mapRef.current || mapInstanceRef.current) return;
 
-    // Import dinámico de Leaflet para evitar SSR issues
     import('leaflet').then((L) => {
-      // Tile oscuro tipo CartoDB Dark Matter (sin API key)
       const map = L.map(mapRef.current!, {
         center: JUAREZ_CENTER,
         zoom: DEFAULT_ZOOM,
@@ -33,6 +33,7 @@ export function MapPreview({ points, loading, className = '' }: Props) {
         attributionControl: false,
         dragging: false,
         scrollWheelZoom: false,
+        doubleClickZoom: false,   // deshabilitar zoom con doble clic
       });
 
       L.tileLayer(
@@ -41,8 +42,6 @@ export function MapPreview({ points, loading, className = '' }: Props) {
       ).addTo(map);
 
       mapInstanceRef.current = map;
-
-      // Leaflet necesita recalcular tras montarse en un contenedor flexible
       setTimeout(() => map.invalidateSize(), 100);
     });
 
@@ -56,6 +55,11 @@ export function MapPreview({ points, loading, className = '' }: Props) {
     if (!mapInstanceRef.current || points.length === 0) return;
 
     import('leaflet').then((L) => {
+      // Limpiar marcadores anteriores para evitar duplicados en re-renders
+      mapInstanceRef.current!.eachLayer((layer) => {
+        if (layer instanceof L.Marker) layer.remove();
+      });
+
       points.forEach((point) => {
         const icon = L.divIcon({
           className: '',
@@ -64,15 +68,35 @@ export function MapPreview({ points, loading, className = '' }: Props) {
           iconAnchor: [6, 6],
         });
 
-        L.marker([point.latitud, point.longitud], { icon })
+        // Tooltip con logo, nombre y número de programas
+        const logoHtml = point.logo_url
+          ? `<img src="${point.logo_url}" alt="${point.nombre}" class="${styles.tooltipLogo}" onerror="this.style.display='none'" />`
+          : '';
+
+        const tooltipContent = `
+          <div class="${styles.tooltipContent}">
+            ${logoHtml}
+            <div class="${styles.tooltipText}">
+              <strong>${point.nombre}</strong>
+              <span>${point.total_programas} programa${point.total_programas !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        `;
+
+        const marker = L.marker([point.latitud, point.longitud], { icon })
           .addTo(mapInstanceRef.current!)
-          .bindTooltip(
-            `<strong>${point.nombre}</strong><br/>${point.total_programas} programas`,
-            { className: styles.leafletTooltip, direction: 'top' }
-          );
+          .bindTooltip(tooltipContent, {
+            className: styles.leafletTooltip,
+            direction: 'top',
+          });
+
+        // Click en pin → navegar al mapa con el pin seleccionado
+        marker.on('click', () => {
+          navigate(`${ROUTES.MAP}?org=${point.id}`);
+        });
       });
     });
-  }, [points]);
+  }, [points, navigate]);
 
   if (loading) {
     return (
@@ -84,9 +108,8 @@ export function MapPreview({ points, loading, className = '' }: Props) {
 
   return (
     <div className={`${styles.wrapper} ${className}`}>
-      {/* Título integrado sobre el mapa */}
       <div className={styles.title}>Mapa del Ecosistema</div>
-      {/* El mapa ocupa todo el contenedor */}
+      <div className={styles.hint}>Clic en un pin para ver el detalle</div>
       <div ref={mapRef} className={styles.map} />
     </div>
   );

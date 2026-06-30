@@ -1,6 +1,7 @@
 // Mapa del Ecosistema
 
 import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   IconBuildingCommunity,
   IconFlame,
@@ -21,6 +22,7 @@ type ViewMode = 'pins' | 'heatmap';
 const EMPTY_FILTERS: MapFilters = { solo_con_coordenadas: true };
 
 export function MapPage() {
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<MapFilters>(EMPTY_FILTERS);
   const [mode, setMode] = useState<ViewMode>('pins');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -33,6 +35,19 @@ export function MapPage() {
   const [ficha, setFicha] = useState<FichaActor | null>(null);
   const [fichaLoading, setFichaLoading] = useState(false);
 
+  // Click en pin: cierra menús abiertos
+  const handlePinClick = useCallback((id: number) => {
+    setSelectedId(id);
+    setFicha(null);
+    setFichaLoading(true);
+    setFilterOpen(false);
+    setModeMenuOpen(false);
+    api.getFichaActor(id)
+      .then(setFicha)
+      .catch(console.error)
+      .finally(() => setFichaLoading(false));
+  }, []);
+
   // Cargar pines cuando cambian los filtros
   useEffect(() => {
     setPinsLoading(true);
@@ -42,11 +57,19 @@ export function MapPage() {
       .finally(() => setPinsLoading(false));
   }, [filters]);
 
+  // Abrir pin automáticamente si viene ?org=id desde Panorama General
+  useEffect(() => {
+    const orgId = searchParams.get('org');
+    if (!orgId || pinsLoading) return;
+    const id = parseInt(orgId);
+    if (!isNaN(id)) handlePinClick(id);
+  }, [searchParams, pinsLoading, handlePinClick]);
+
   // Cambiar modo: limpiar filtros y cerrar todo
   const handleModeChange = useCallback((newMode: ViewMode) => {
     setMode(newMode);
     setModeMenuOpen(false);
-    setFilters(EMPTY_FILTERS);
+    setFilters({ ...EMPTY_FILTERS }); // nueva referencia para forzar refetch de pines
     setSelectedId(null);
     setFicha(null);
     setFilterOpen(false);
@@ -74,19 +97,6 @@ export function MapPage() {
 
   const handleClearFilters = useCallback(() => {
     setFilters(EMPTY_FILTERS);
-  }, []);
-
-  // Click en pin: cierra menús abiertos
-  const handlePinClick = useCallback((id: number) => {
-    setSelectedId(id);
-    setFicha(null);
-    setFichaLoading(true);
-    setFilterOpen(false);
-    setModeMenuOpen(false);
-    api.getFichaActor(id)
-      .then(setFicha)
-      .catch(console.error)
-      .finally(() => setFichaLoading(false));
   }, []);
 
   const handleCloseSheet = useCallback(() => {

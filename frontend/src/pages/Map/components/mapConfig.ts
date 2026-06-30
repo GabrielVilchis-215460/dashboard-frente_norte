@@ -7,11 +7,11 @@ export interface TipoConfig {
 
 const TIPO_MAP: Array<{ keywords: string[]; config: TipoConfig }> = [
   {
-    keywords: ['ONG / Asociación Civil', 'ong', 'asociacion', 'civil', 'asociación'],
+    keywords: ['ong', 'asociacion', 'civil'],
     config: { label: 'ONG / Asociación Civil', color: '#38bdf8' },
   },
   {
-    keywords: ['Institución Educativa', 'educativ', 'escuela', 'universidad', 'colegio', 'institucion', 'institución'],
+    keywords: ['educativ', 'escuela', 'universidad', 'colegio', 'institucion'],
     config: { label: 'Institución Educativa', color: '#34d399' },
   },
   {
@@ -19,7 +19,7 @@ const TIPO_MAP: Array<{ keywords: string[]; config: TipoConfig }> = [
     config: { label: 'Empresa Tecnológica', color: '#a78bfa' },
   },
   {
-    keywords: ['investigacion', 'investigación', 'centro', 'research', 'lab'],
+    keywords: ['investigacion', 'centro', 'research', 'lab'],
     config: { label: 'Centro de Investigación', color: '#fbbf24' },
   },
   {
@@ -38,7 +38,7 @@ function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[̀-ͯ]/g, '');
 }
 
 export function getTipoConfig(tipo: string): TipoConfig {
@@ -51,15 +51,10 @@ export function getTipoConfig(tipo: string): TipoConfig {
   return DEFAULT_CONFIG;
 }
 
-// Legend para mostrar en la UI
+// Legend derivada de TIPO_MAP para garantizar consistencia de colores
 export const TIPO_LEGEND: TipoConfig[] = [
-  { label: 'ONG / Asociación Civil', color: '#38bdf8' },
-  { label: 'Institución Educativa', color: '#34d399' },
-  { label: 'Empresa Tecnológica', color: '#a78bfa' },
-  { label: 'Centro de Investigación', color: '#fbbf24' },
-  { label: 'Gobierno', color: '#f87171' },
-  { label: 'Makerspace / Lab', color: '#2dd4bf' },
-  { label: 'Otro', color: '#94a3b8' },
+  ...TIPO_MAP.map((e) => e.config),
+  DEFAULT_CONFIG,
 ];
 
 // ----- Opciones de filtros -----
@@ -103,7 +98,7 @@ export const FILTER_GROUPS: FilterGroup[] = [
       { label: 'Inteligencia Artificial', value: 'Inteligencia Artificial' },
       { label: 'Medio Ambiente', value: 'Medio ambiente' },
       { label: 'Historia Natural', value: 'Historia Natural' },
-      { label: 'Articulación y políticas públicas', value: 'Articulación y políticas públicas.' },
+      { label: 'Articulación y políticas públicas', value: 'Articulación y políticas públicas' },
     ],
   },
   {
