@@ -16,7 +16,7 @@ interface Props {
 }
 
 // Asigna un icono según palabras clave del nombre de la categoría
-function pickIcon(label: string): React.ComponentType<{ size?: number; stroke?: number }> {
+function pickIcon(label: string): React.ComponentType<any> {
   const l = label.toLowerCase();
   if (l.includes('taller') || l.includes('curso') || l.includes('bootcamp')) return IconTools;
   if (l.includes('evento') || l.includes('conferencia')) return IconMicrophone;

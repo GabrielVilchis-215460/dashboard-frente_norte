@@ -17,7 +17,7 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import styles from './Sidebar.module.css';
 
 // Map de iconos — extensible sin tocar el componente
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconChartBar,
   IconUsers,
   IconVenus,

@@ -174,3 +174,21 @@
   font-size: var(--text-xs);
   color: var(--text-60);
 }
+
+.exportBtn {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-80);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: background var(--transition-fast);
+}
+.exportBtn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.13); }
+.exportBtn:disabled { opacity: 0.45; cursor: not-allowed; }

@@ -22,6 +22,14 @@ function OrgsTable() {
   const [form, setForm] = useState(defaultOrg());
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try { await adminApi.exportOrganizaciones(); }
+    catch { /* el interceptor ya muestra el error */ }
+    finally { setExporting(false); }
+  }
 
   const filtered = useMemo(() => {
     if (!data) return [];
@@ -90,7 +98,12 @@ function OrgsTable() {
             <input className={styles.searchInput} placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
             <span className={styles.count}>{filtered.length} registros</span>
           </div>
-          <button className={styles.addBtn} onClick={openCreate}>+ Nueva organización</button>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Exportando…' : '↓ Exportar CSV'}
+            </button>
+            <button className={styles.addBtn} onClick={openCreate}>+ Nueva organización</button>
+          </div>
         </div>
 
         <table className={styles.table}>
@@ -176,6 +189,14 @@ function ProgramasTable() {
   const [form, setForm] = useState(defaultPrograma());
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try { await adminApi.exportProgramas(); }
+    catch { /* el interceptor ya muestra el error */ }
+    finally { setExporting(false); }
+  }
 
   const orgMap = useMemo(() => {
     const m: Record<number, string> = {};
@@ -252,7 +273,12 @@ function ProgramasTable() {
             <input className={styles.searchInput} placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
             <span className={styles.count}>{filtered.length} registros</span>
           </div>
-          <button className={styles.addBtn} onClick={openCreate}>+ Nuevo programa</button>
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
+              {exporting ? 'Exportando…' : '↓ Exportar CSV'}
+            </button>
+            <button className={styles.addBtn} onClick={openCreate}>+ Nuevo programa</button>
+          </div>
         </div>
 
         <table className={styles.table}>
