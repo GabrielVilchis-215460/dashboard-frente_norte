@@ -11,7 +11,7 @@ import { STAGES, normalizeStage } from './stageConfig';
 import type { MadurezResponse } from '../../../types';
 import styles from './MaturityFunnel.module.css';
 
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconRocket,
   IconPlant,
   IconTrendingUp,
@@ -105,7 +105,7 @@ export function MaturityFunnel({ data, loading }: Props) {
             ))}
           </defs>
 
-          {stageData.map((s, i) => (
+          {stageData.map((_, i) => (
             <polygon
               key={i}
               points={trapezoidPoints(i)}

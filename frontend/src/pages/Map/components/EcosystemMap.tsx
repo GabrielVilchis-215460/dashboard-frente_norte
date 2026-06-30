@@ -1,6 +1,6 @@
 // Mapa interactivo principal con Leaflet
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import type { PinMapa } from '../../../types';
 import { getTipoConfig } from './mapConfig';
 import { JUAREZ_CENTER, DEFAULT_ZOOM } from './mapConfig';

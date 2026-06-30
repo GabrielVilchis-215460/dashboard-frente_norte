@@ -29,7 +29,7 @@ export function Maturity() {
 
       {/* Niveles de madurez: funnel + detalle */}
       <Card title="Niveles de madurez" className={styles.funnelCard}>
-        <MaturityFunnel data={data} loading={loading} />
+        <MaturityFunnel data={data ?? undefined} loading={loading} />
       </Card>
 
       {/* Organizaciones por nivel de madurez */}

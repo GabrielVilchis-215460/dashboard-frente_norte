@@ -12,7 +12,7 @@ import {
 import { JOURNEY_STEPS } from './journeyData';
 import styles from './BeneficiaryJourney.module.css';
 
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconUserSearch,
   IconClipboardCheck,
   IconBooks,

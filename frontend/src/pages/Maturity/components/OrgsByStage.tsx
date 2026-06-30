@@ -10,7 +10,7 @@ import { STAGES, normalizeStage } from './stageConfig';
 import type { MadurezDetalle } from '../../../types';
 import styles from './OrgsByStage.module.css';
 
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconRocket,
   IconPlant,
   IconTrendingUp,
