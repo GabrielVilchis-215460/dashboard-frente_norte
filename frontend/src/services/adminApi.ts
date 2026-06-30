@@ -137,4 +137,25 @@ export const adminApi = {
 
   togglePrograma: (id: number) =>
     adminClient.patch<Programa>(`/api/panel_admin/programas/${id}/toggle`).then((r) => r.data),
+
+  // Exportación CSV (requiere JWT — se inyecta automáticamente)
+  exportOrganizaciones: async () => {
+    const res = await adminClient.get('/api/exportar/organizaciones', { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'organizaciones.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  exportProgramas: async () => {
+    const res = await adminClient.get('/api/exportar/programas', { responseType: 'blob' });
+    const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'programas.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  },
 };
