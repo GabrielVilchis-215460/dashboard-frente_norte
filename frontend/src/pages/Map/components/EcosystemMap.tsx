@@ -92,8 +92,8 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
 
         import('leaflet.heat').then(() => {
           if (!mapRef.current) return; // guarda: componente desmontado durante import
-          const L_any = L as any;
-          heatLayerRef.current = L_any.heatLayer(heatData, {
+          const Linst = (L as any).default ?? L;
+          heatLayerRef.current = Linst.heatLayer(heatData, {
             radius: 30,
             blur: 20,
             maxZoom: 14,
