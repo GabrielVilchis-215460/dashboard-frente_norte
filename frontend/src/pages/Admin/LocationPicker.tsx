@@ -12,13 +12,19 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const markerRef = useRef<import('leaflet').Marker | null>(null);
+  const LRef = useRef<typeof import('leaflet') | null>(null);
 
-  function placeMarker(L: typeof import('leaflet'), lat: number, lng: number) {
+  // Coloca o mueve el pin — solo funciona si L y el mapa ya están listos
+  function placeMarker(lat: number, lng: number) {
+    const L = LRef.current;
+    const map = mapRef.current;
+    if (!L || !map) return;
+
     const pos: [number, number] = [lat, lng];
     if (markerRef.current) {
       markerRef.current.setLatLng(pos);
     } else {
-      markerRef.current = L.marker(pos, { draggable: true }).addTo(mapRef.current!);
+      markerRef.current = L.marker(pos, { draggable: true }).addTo(map);
       markerRef.current.on('dragend', () => {
         const p = markerRef.current!.getLatLng();
         onChange(parseFloat(p.lat.toFixed(6)), parseFloat(p.lng.toFixed(6)));
@@ -26,10 +32,13 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
     }
   }
 
+  // Inicializar mapa — guarda L en ref para que otros efectos lo usen
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     import('leaflet').then((L) => {
+      LRef.current = L;
+
       const map = L.map(containerRef.current!, {
         center: (latitud && longitud) ? [latitud, longitud] : JUAREZ_CENTER,
         zoom: (latitud && longitud) ? 15 : 13,
@@ -37,21 +46,24 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
         attributionControl: false,
       });
 
-      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: 'Tiles © Esri',
-      }).addTo(map);
+      L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, attribution: 'Tiles © Esri' }
+      ).addTo(map);
 
-      if (latitud && longitud) placeMarker(L, latitud, longitud);
+      mapRef.current = map;
 
+      // Colocar pin inicial si ya hay coordenadas
+      if (latitud && longitud) placeMarker(latitud, longitud);
+
+      // Click en el mapa → colocar/mover pin
       map.on('click', (e) => {
         const lat = parseFloat(e.latlng.lat.toFixed(6));
         const lng = parseFloat(e.latlng.lng.toFixed(6));
-        placeMarker(L, lat, lng);
+        placeMarker(lat, lng);
         onChange(lat, lng);
       });
 
-      mapRef.current = map;
       setTimeout(() => map.invalidateSize(), 150);
     });
 
@@ -59,27 +71,30 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
       mapRef.current?.remove();
       mapRef.current = null;
       markerRef.current = null;
+      LRef.current = null;
     };
   }, []);
 
+  // Sincronizar pin cuando cambian las coordenadas desde los inputs
   useEffect(() => {
-    if (!mapRef.current) return;
-    import('leaflet').then((L) => {
-      if (latitud && longitud) {
-        placeMarker(L, latitud, longitud);
-        mapRef.current!.setView([latitud, longitud], mapRef.current!.getZoom());
-      } else {
-        if (markerRef.current) {
-          markerRef.current.remove();
-          markerRef.current = null;
-        }
+    if (!mapRef.current || !LRef.current) return;
+
+    if (latitud && longitud) {
+      placeMarker(latitud, longitud);
+      mapRef.current.setView([latitud, longitud], mapRef.current.getZoom());
+    } else {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
       }
-    });
+    }
   }, [latitud, longitud]);
 
   return (
     <div className={styles.wrapper}>
-      <p className={styles.hint}>Haz clic en el mapa para colocar el pin, escribe las coordenadas manualmente o arrastra el pin para ajustar.</p>
+      <p className={styles.hint}>
+        Haz clic en el mapa para colocar el pin, escribe las coordenadas manualmente o arrastra el pin para ajustar.
+      </p>
 
       <div ref={containerRef} className={styles.mapContainer} />
 

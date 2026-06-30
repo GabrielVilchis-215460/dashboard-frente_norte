@@ -3,7 +3,7 @@ import { LocationPicker } from './LocationPicker';
 import type { Organizacion, OrganizacionCreate } from '../../services/adminApi';
 
 const TIPOS = ['ONG / Asociación civil', 'Institución educativa', 'Gobierno', 'Empresa / Industria', 'Centro de investigación', 'Makerspace / Laboratorio', 'Centro comunitario', 'Incubadora / Aceleradora'];
-const AREAS = ['Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas', 'Robótica', 'IA', 'Medio ambiente', 'Historia Natural'];
+const AREAS = ['Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas', 'Robótica', 'IA', 'Medio ambiente', 'Historia Natural', 'Articulación y políticas públicas'];
 const ZONAS = ['Urbana', 'Rural', 'Ambas'];
 const ENFOQUES = ['Educación / Capacitación técnica', 'Investigación / Desarrollo', 'Articulación y políticas públicas', 'Incubación / Aceleración'];
 

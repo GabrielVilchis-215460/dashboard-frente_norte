@@ -1,7 +1,7 @@
 import styles from './AdminForm.module.css';
 import type { Programa, ProgramaCreate, Organizacion } from '../../services/adminApi';
 
-const AREAS = ['Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas', 'Robótica', 'IA', 'Medio ambiente', 'Historia Natural'];
+const AREAS = ['Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas', 'Robótica', 'IA', 'Medio ambiente', 'Historia Natural', 'Articulación y políticas públicas'];
 const TIPOS_ACTIVIDAD = ['Talleres/Cursos/Bootcamps', 'Eventos/Conferencias', 'Mentorías/Programas de largo plazo', 'Incubación/Aceleración', 'Investigación/Proyectos', 'Visualización/Divulgación'];
 const MODALIDADES = ['Presencial', 'Virtual', 'Híbrido'];
 const POBLACIONES = ['Niñez (6-12)', 'Adolescentes (13-17)', 'Jóvenes', 'Profesionistas/Docentes/Emprendedores', 'Público general'];
@@ -105,24 +105,72 @@ export function ProgramaForm({ value, onChange, organizaciones }: ProgramaFormPr
       ))}
 
       <span className={styles.sectionTitle}>Participación femenina</span>
-      <div className={styles.fieldGroup}>
-        <label className={styles.label}>Rango (ej: 51-75)</label>
-        <input className={styles.input} value={value.pct_mujeres_rango ?? ''} onChange={(e) => set('pct_mujeres_rango', e.target.value)} placeholder="0-25 / 26-50 / 51-75 / 76-100" />
-      </div>
-      <div className={styles.fieldGroup}>
-        <label className={styles.label}>% mujeres promedio</label>
-        <input className={styles.input} type="number" min="0" max="100" step="0.1" value={value.pct_mujeres_mid ?? ''} onChange={(e) => set('pct_mujeres_mid', e.target.value ? parseFloat(e.target.value) : undefined)} />
+      <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
+        <label className={styles.label}>Cuartil de participación femenina</label>
+        <select
+          className={styles.select}
+          value={value.pct_mujeres_rango ?? ''}
+          onChange={(e) => {
+            const rango = e.target.value;
+            const map: Record<string, { min: number; max: number; mid: number }> = {
+              '0-25':   { min: 0,  max: 25,  mid: 12.5 },
+              '26-50':  { min: 26, max: 50,  mid: 38 },
+              '51-75':  { min: 51, max: 75,  mid: 63 },
+              '76-100': { min: 76, max: 100, mid: 88 },
+            };
+            const vals = map[rango];
+            onChange({
+              ...value,
+              pct_mujeres_rango: rango || undefined,
+              pct_mujeres_min: vals?.min,
+              pct_mujeres_max: vals?.max,
+              pct_mujeres_mid: vals?.mid,
+            });
+          }}
+        >
+          <option value="">Sin datos</option>
+          <option value="0-25">0% – 25%</option>
+          <option value="26-50">26% – 50%</option>
+          <option value="51-75">51% – 75%</option>
+          <option value="76-100">76% – 100%</option>
+        </select>
+        {value.pct_mujeres_mid != null && (
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-60)', marginTop: 4 }}>
+            Promedio calculado: {value.pct_mujeres_mid}%
+          </span>
+        )}
       </div>
 
       <span className={styles.sectionTitle}>Volumen semestral</span>
       <div className={styles.fieldGroup}>
-        <label className={styles.label}>Rango (ej: 51-200)</label>
-        <input className={styles.input} value={value.volumen_semestral ?? ''} onChange={(e) => set('volumen_semestral', e.target.value)} />
+        <label className={styles.label}>Mínimo</label>
+        <input className={styles.input} type="number" min="0" value={value.volumen_min ?? ''}
+          onChange={(e) => {
+            const min = e.target.value ? parseInt(e.target.value) : undefined;
+            const max = value.volumen_max;
+            const mid = min != null && max != null ? Math.round((min + max) / 2) : undefined;
+            onChange({ ...value, volumen_min: min, volumen_mid: mid,
+              volumen_semestral: min != null && max != null ? `${min}-${max}` : value.volumen_semestral });
+          }} />
       </div>
       <div className={styles.fieldGroup}>
-        <label className={styles.label}>Promedio beneficiarios</label>
-        <input className={styles.input} type="number" value={value.volumen_mid ?? ''} onChange={(e) => set('volumen_mid', e.target.value ? parseInt(e.target.value) : undefined)} />
+        <label className={styles.label}>Máximo</label>
+        <input className={styles.input} type="number" min="0" value={value.volumen_max ?? ''}
+          onChange={(e) => {
+            const max = e.target.value ? parseInt(e.target.value) : undefined;
+            const min = value.volumen_min;
+            const mid = min != null && max != null ? Math.round((min + max) / 2) : undefined;
+            onChange({ ...value, volumen_max: max, volumen_mid: mid,
+              volumen_semestral: min != null && max != null ? `${min}-${max}` : value.volumen_semestral });
+          }} />
       </div>
+      {value.volumen_mid != null && (
+        <div className={styles.fullWidth}>
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-60)' }}>
+            Promedio calculado: {value.volumen_mid} beneficiarios
+          </span>
+        </div>
+      )}
 
       <span className={styles.sectionTitle}>Notas adicionales</span>
       <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
@@ -132,6 +180,10 @@ export function ProgramaForm({ value, onChange, organizaciones }: ProgramaFormPr
       <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
         <label className={styles.label}>Casos de éxito</label>
         <textarea className={styles.textarea} value={value.casos_exito ?? ''} onChange={(e) => set('casos_exito', e.target.value)} />
+      </div>
+      <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
+        <label className={styles.label}>Siguiente paso / Ruta del beneficiario</label>
+        <textarea className={styles.textarea} value={value.siguiente_paso ?? ''} onChange={(e) => set('siguiente_paso', e.target.value)} placeholder="¿A dónde va el beneficiario después de este programa?" />
       </div>
 
       <label className={styles.checkboxRow}>
