@@ -1,0 +1,32 @@
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--text-100);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.description {
+  font-size: var(--text-sm);
+  color: var(--text-60);
+  margin-top: var(--space-1);
+}
+
+.action {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .title {
+    font-size: var(--text-xl);
+  }
+}

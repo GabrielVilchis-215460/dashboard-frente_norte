@@ -1,0 +1,86 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.flaskArea {
+  position: relative;
+  width: 100%;
+  max-width: 200px;
+}
+
+.flaskSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* El cuerpo del líquido transiciona suave al cambiar de nivel */
+.liquidBody {
+  transition: y 1.2s cubic-bezier(0.25, 0.8, 0.4, 1),
+              height 1.2s cubic-bezier(0.25, 0.8, 0.4, 1);
+}
+
+/* Ondas oscilantes — desplazamiento horizontal sutil e infinito */
+.wave1 {
+  transition: d 1.2s cubic-bezier(0.25, 0.8, 0.4, 1);
+  animation: waveMove1 3s ease-in-out infinite;
+}
+
+.wave2 {
+  transition: d 1.2s cubic-bezier(0.25, 0.8, 0.4, 1);
+  animation: waveMove2 4s ease-in-out infinite;
+}
+
+@keyframes waveMove1 {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(-26px); }
+}
+
+@keyframes waveMove2 {
+  0%, 100% { transform: translateX(-26px); }
+  50%      { transform: translateX(0); }
+}
+
+/* Texto central */
+.scoreOverlay {
+  position: absolute;
+  bottom: 18%;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.score {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-100);
+  line-height: 1;
+}
+
+.scoreMax {
+  font-size: var(--text-base);
+  font-weight: 500;
+  color: var(--text-80);
+}
+
+.nivel {
+  font-size: var(--text-sm);
+  color: var(--text-80);
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wave1, .wave2 {
+    animation: none;
+  }
+}

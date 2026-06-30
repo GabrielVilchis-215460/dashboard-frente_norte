@@ -1,0 +1,62 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  gap: 2px;
+}
+
+.skeletonRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 8px 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+  animation-fill-mode: both;
+}
+
+.row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-80);
+  flex-shrink: 0;
+}
+
+.row:first-child .rank {
+  background: rgba(255, 255, 255, 0.20);
+  color: var(--text-100);
+}
+
+.name {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-100);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count {
+  font-size: var(--text-xs);
+  color: var(--text-60);
+  white-space: nowrap;
+}

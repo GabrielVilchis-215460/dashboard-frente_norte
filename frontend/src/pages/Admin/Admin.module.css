@@ -1,0 +1,176 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.logoutBtn {
+  background: rgba(248, 113, 113, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+.logoutBtn:hover { background: rgba(248, 113, 113, 0.25); }
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: var(--space-3);
+}
+
+.tab {
+  background: none;
+  border: none;
+  color: var(--text-60);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  font-family: var(--font-body);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.tab:hover { color: var(--text-80); background: var(--glass-bg); }
+
+.tabActive {
+  color: var(--accent-a) !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+}
+
+.tableCard {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.tableActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--glass-border);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.searchInput {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-100);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  width: 220px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+.searchInput::placeholder { color: var(--text-60); }
+.searchInput:focus { border-color: var(--accent-a); }
+
+.addBtn {
+  background: var(--accent-a);
+  color: #0c2340;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity var(--transition-fast);
+}
+.addBtn:hover { opacity: 0.85; }
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-60);
+  padding: var(--space-3) var(--space-5);
+  text-align: left;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.table td {
+  font-size: var(--text-sm);
+  color: var(--text-80);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  vertical-align: middle;
+}
+
+.table tr:last-child td { border-bottom: none; }
+.table tr:hover td { background: rgba(255,255,255,0.03); }
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: var(--text-xs);
+  font-weight: 500;
+}
+
+.pillActive { background: rgba(52, 211, 153, 0.18); color: #6ee7b7; }
+.pillInactive { background: rgba(248, 113, 113, 0.15); color: #fca5a5; }
+
+.rowActions { display: flex; gap: var(--space-2); }
+
+.editBtn, .deleteBtn {
+  background: none;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: background var(--transition-fast);
+}
+
+.editBtn { color: var(--accent-a); }
+.editBtn:hover { background: rgba(56, 189, 248, 0.12); }
+
+.deleteBtn { color: #fca5a5; }
+.deleteBtn:hover { background: rgba(248, 113, 113, 0.12); }
+
+.empty {
+  text-align: center;
+  padding: var(--space-10);
+  color: var(--text-60);
+  font-size: var(--text-sm);
+}
+
+.errorBanner {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.25);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+  color: #fca5a5;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+.count {
+  font-size: var(--text-xs);
+  color: var(--text-60);
+}

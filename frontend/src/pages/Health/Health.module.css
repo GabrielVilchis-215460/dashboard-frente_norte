@@ -1,0 +1,82 @@
+.page {
+  animation: fadeIn var(--transition-slow) both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Banner de error */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.30);
+  color: #fca5a5;
+  font-size: var(--text-sm);
+}
+
+.retryBtn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--glass-border);
+  color: var(--text-100);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.retryBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Fila superior: frasco (angosto) + dimensiones (ancho) */
+.topGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.flaskCard {
+  min-height: 420px;
+}
+
+.flaskContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  height: 100%;
+}
+
+.iseDesc {
+  font-size: var(--text-sm);
+  color: var(--text-60);
+  line-height: 1.6;
+  text-align: center;
+}
+
+.dimCard {
+  min-height: 420px;
+}
+
+.formulaCard {
+  /* hereda glass */
+}
+
+@media (max-width: 1000px) {
+  .topGrid {
+    grid-template-columns: 1fr;
+  }
+}

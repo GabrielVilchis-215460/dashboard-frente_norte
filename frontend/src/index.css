@@ -1,111 +1,165 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* --- Tipografía --- */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body:    'Inter', sans-serif;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --text-xs:   0.75rem;
+  --text-sm:   0.875rem;
+  --text-base: 1rem;
+  --text-lg:   1.125rem;
+  --text-xl:   1.25rem;
+  --text-2xl:  1.5rem;
+  --text-3xl:  1.875rem;
+  --text-4xl:  2.25rem;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* --- Textos: blanco con opacidades --- */
+  --text-100: rgba(255, 255, 255, 1.00);
+  --text-80:  rgba(255, 255, 255, 0.80);
+  --text-60:  rgba(255, 255, 255, 0.60);
+
+  /* --- Glassmorphism --- */
+  --glass-bg:        rgba(255, 255, 255, 0.10);
+  --glass-bg-active: rgba(255, 255, 255, 0.20);
+  --glass-border:    rgba(255, 255, 255, 0.20);
+  --glass-blur:      16px;
+  --glass-shadow:    0 8px 32px rgba(0, 0, 0, 0.25);
+  --radius-lg:       16px;
+  --radius-md:       12px;
+  --radius-sm:       6px;
+
+  /* --- Espaciado --- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* --- Layout --- */
+  --sidebar-width: 240px;
+
+  /* --- Transiciones --- */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 400ms ease;
+
+  /* --- Acentos para charts (sobreescritos por tema) --- */
+  --accent-a: #60a5fa;
+  --accent-b: #34d399;
+  --accent-c: #a78bfa;
+  --accent-d: #f472b6;
+}
+
+/* Temas de colores por pestaña */
+/* NAVY — Panorama, Oferta, Índice */
+.theme-navy {
+  --bg-gradient: radial-gradient(
+      120% 120% at 85% 10%,
+      #24407a 0%,
+      #16284f 38%,
+      #0f1b3d 75%
+    );
+  --accent-a: #60a5fa;
+  --accent-b: #93c5fd;
+  --accent-c: #3b82f6;
+  --accent-d: #bfdbfe;
+}
+
+/* TEAL — Perfil, Madurez */
+.theme-teal {
+  --bg-gradient: radial-gradient(
+      120% 120% at 85% 10%,
+      #1c5e58 0%,
+      #124441 40%,
+      #0c2926 78%
+    );
+  --accent-a: #2dd4bf;
+  --accent-b: #5eead4;
+  --accent-c: #0f766e;
+  --accent-d: #99f6e4;
+}
+
+/* CYAN — Inclusión, Mapa, Admin */
+.theme-cyan {
+  --bg-gradient: radial-gradient(
+      120% 120% at 85% 10%,
+      #1e5688 0%,
+      #163e63 40%,
+      #0c2340 78%
+    );
+  --accent-a: #38bdf8;
+  --accent-b: #7dd3fc;
+  --accent-c: #0284c7;
+  --accent-d: #bae6fd;
+}
+
+/* Reset & Base */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
 }
 
 body {
-  margin: 0;
+  font-family: var(--font-body);
+  color: var(--text-100);
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* Scrollbar */
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.30);
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+/* Animaciones globales */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.animate-fade-in-up { animation: fadeInUp var(--transition-slow) both; }
+.animate-fade-in    { animation: fadeIn var(--transition-base) both; }
+
+.stagger-children > *:nth-child(1) { animation-delay:   0ms; }
+.stagger-children > *:nth-child(2) { animation-delay:  60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }

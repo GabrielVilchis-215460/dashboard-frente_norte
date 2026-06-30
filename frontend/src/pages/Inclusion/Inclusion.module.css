@@ -1,0 +1,101 @@
+.page {
+  animation: fadeIn var(--transition-slow) both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Banner de error */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.30);
+  color: #fca5a5;
+  font-size: var(--text-sm);
+}
+
+.retryBtn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--glass-border);
+  color: var(--text-100);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.retryBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Fila superior: donut | columna 2 KPIs | barras de rangos */
+.topGrid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1.2fr;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  align-items: stretch;
+}
+
+.donutCard {
+  min-height: 300px;
+}
+
+/* Columna de 2 KPIs apilados */
+.kpiColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.kpiColumn > * {
+  flex: 1;
+}
+
+.rangoCard {
+  min-height: 300px;
+}
+
+/* Fila inferior: barras nivel | carrusel */
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: var(--space-4);
+}
+
+.nivelCard {
+  min-height: 320px;
+}
+
+.carouselCard {
+  min-height: 320px;
+}
+
+@media (max-width: 1100px) {
+  .topGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .rangoCard {
+    grid-column: 1 / -1;
+  }
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .topGrid {
+    grid-template-columns: 1fr;
+  }
+}
