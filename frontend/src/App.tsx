@@ -5,16 +5,18 @@ import { lazy, Suspense } from 'react';
 import { AppLayout } from './components/layout';
 import { ROUTES } from './constants/routes';
 import { Skeleton } from './components/ui';
+import { RequireAuth } from './pages/Admin/RequireAuth';
 
 // Lazy loading
-const Overview     = lazy(() => import('./pages/Overview').then(m => ({ default: m.Overview })));
+const Overview      = lazy(() => import('./pages/Overview').then(m => ({ default: m.Overview })));
 const Beneficiaries = lazy(() => import('./pages/Beneficiaries').then(m => ({ default: m.Beneficiaries })));
-const Inclusion    = lazy(() => import('./pages/Inclusion').then(m => ({ default: m.Inclusion })));
-const STEMOffer    = lazy(() => import('./pages/STEMOffer').then(m => ({ default: m.STEMOffer })));
-const Maturity     = lazy(() => import('./pages/Maturity').then(m => ({ default: m.Maturity })));
-const MapPage      = lazy(() => import('./pages/Map').then(m => ({ default: m.MapPage })));
-const Health         = lazy(() => import('./pages/Health').then(m => ({ default: m.Health })));
-const Admin        = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
+const Inclusion     = lazy(() => import('./pages/Inclusion').then(m => ({ default: m.Inclusion })));
+const STEMOffer     = lazy(() => import('./pages/STEMOffer').then(m => ({ default: m.STEMOffer })));
+const Maturity      = lazy(() => import('./pages/Maturity').then(m => ({ default: m.Maturity })));
+const MapPage       = lazy(() => import('./pages/Map').then(m => ({ default: m.MapPage })));
+const Health        = lazy(() => import('./pages/Health').then(m => ({ default: m.Health })));
+const Admin         = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
+const AdminLogin    = lazy(() => import('./pages/Admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
 
 function PageLoader() {
   return (
@@ -34,6 +36,16 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Ruta de login — fuera del AppLayout (sin sidebar) */}
+        <Route
+          path="/admin/login"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <AdminLogin />
+            </Suspense>
+          }
+        />
+
         <Route element={<AppLayout />}>
           <Route
             path={ROUTES.OVERVIEW}
@@ -95,7 +107,9 @@ export default function App() {
             path={ROUTES.ADMIN}
             element={
               <Suspense fallback={<PageLoader />}>
-                <Admin />
+                <RequireAuth>
+                  <Admin />
+                </RequireAuth>
               </Suspense>
             }
           />

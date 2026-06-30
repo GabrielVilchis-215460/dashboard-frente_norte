@@ -35,9 +35,7 @@ def listar_organizaciones(
 ):
     """Lista organizaciones con filtros opcionales. Por defecto devuelve solo las activas."""
     q = db.query(Organizacion)
-    if activo is None:
-        q = q.filter(Organizacion.activo == True)
-    else:
+    if activo is not None:
         q = q.filter(Organizacion.activo == activo)
     if tipo: q = q.filter(Organizacion.tipo == tipo)
     if zona: q = q.filter(Organizacion.zona == zona)
@@ -123,9 +121,7 @@ def listar_programas(
     db: Session = Depends(get_db),
 ):
     q = db.query(Programa)
-    if activo is None:
-        q = q.filter(Programa.activo == True)
-    else:
+    if activo is not None:
         q = q.filter(Programa.activo == activo)
     if organizacion_id: q = q.filter(Programa.organizacion_id == organizacion_id)
     if madurez: q = q.filter(Programa.madurez == madurez)

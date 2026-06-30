@@ -1,10 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
-# CRUD de programas
+
+# ── Programas ─────────────────────────────────────────────────────────────────
+
 class ProgramaBase(BaseModel):
-    nombre: str
+    nombre: Optional[str] = None
     organizacion_id: int
     descripcion: Optional[str] = None
     areas_stem: List[str] = []
@@ -13,10 +15,14 @@ class ProgramaBase(BaseModel):
     poblacion_objetivo: Optional[str] = None
     nivel_educativo: Optional[str] = None
     pct_mujeres_rango: Optional[str] = None
+    pct_mujeres_min: Optional[int] = None
+    pct_mujeres_max: Optional[int] = None
     pct_mujeres_mid: Optional[float] = None
     zona: Optional[str] = None
     colonias_impacto: List[str] = []
     volumen_semestral: Optional[str] = None
+    volumen_min: Optional[int] = None
+    volumen_max: Optional[int] = None
     volumen_mid: Optional[int] = None
     temporalidad: Optional[str] = None
     madurez: Optional[str] = None
@@ -25,21 +31,26 @@ class ProgramaBase(BaseModel):
     activo: bool = True
     fuente: Optional[str] = None
 
+
 class ProgramaCreate(ProgramaBase):
     pass
 
+
 class ProgramaUpdate(ProgramaBase):
-    nombre: Optional[str] = None
     organizacion_id: Optional[int] = None
+
 
 class ProgramaOut(ProgramaBase):
     id: int
-    fecha_registro: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
-# CRUD de organizaciones/instituciones
+
+# ── Organizaciones ────────────────────────────────────────────────────────────
+
 class OrganizacionBase(BaseModel):
     nombre: str
     tipo: str
@@ -47,7 +58,9 @@ class OrganizacionBase(BaseModel):
     enfoque_principal: Optional[str] = None
     descripcion: Optional[str] = None
     logo_url: Optional[str] = None
-    contacto: Optional[str] = None
+    contacto_nombre: Optional[str] = None
+    contacto_email: Optional[str] = None
+    contacto_telefono: Optional[str] = None
     sitio_web: Optional[str] = None
     latitud: Optional[float] = None
     longitud: Optional[float] = None
@@ -57,30 +70,34 @@ class OrganizacionBase(BaseModel):
     activo: bool = True
     fuente: Optional[str] = None
 
+
 class OrganizacionCreate(OrganizacionBase):
     pass
+
 
 class OrganizacionUpdate(OrganizacionBase):
     nombre: Optional[str] = None
     tipo: Optional[str] = None
 
+
 class OrganizacionOut(OrganizacionBase):
     id: int
-    fecha_registro: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
+
 class OrganizacionMapPin(BaseModel):
-    """Schema ligero solo para el mapa — evita cargar todos los campos"""
+    """Schema ligero solo para el mapa — evita cargar todos los campos."""
     id: int
     nombre: str
-    tipo: str
-    areas_stem: List[str]
+    tipo: Optional[str]
+    areas_stem: List[str] = []
     latitud: Optional[float]
     longitud: Optional[float]
     zona: Optional[str]
 
     class Config:
         from_attributes = True
-
