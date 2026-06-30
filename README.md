@@ -1,78 +1,144 @@
 # Dashboard del Ecosistema STEM — Ciudad Juárez
-Desarrollado para **Frente Norte** · Observatorio del Ecosistema STEM
+Developed for **Frente Norte / FICOSEC** · STEM Ecosystem Observatory
 
-## Estructura del repositorio
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18 + TypeScript + Vite |
+| Styling | CSS Modules · Glassmorphism design system (3 themes) |
+| State | Zustand · custom `useApi` hook |
+| Maps | Leaflet.js + leaflet.heat |
+| Charts | Recharts |
+| Backend | FastAPI + SQLAlchemy 2.0 |
+| Database | PostgreSQL (Supabase) |
+| Auth | JWT (HTTPBearer) + bcrypt · slowapi rate limiting |
+
+---
+
+## Repository Structure
 
 ```
-stem-dashboard/
-├── backend/                   # FastAPI + PostgreSQL
+dashboard-frente_norte/
+├── backend/
 │   ├── app/
-│   │   ├── api/routers/       # organizaciones | programas | metricas
-│   │   ├── core/              # config, settings
-│   │   ├── db/                # session, Base
-│   │   ├── models/            # Organizacion | Programa | Colonia
-│   │   ├── schemas/           # Pydantic I/O + métricas
-│   │   └── services/          # metricas_service (lógica del dashboard + ISE)
+│   │   ├── api/
+│   │   │   ├── admin_panel/        # CRUD orgs & programs (protected)
+│   │   │   ├── auth/               # JWT login
+│   │   │   ├── overview/           # Panorama General
+│   │   │   ├── beneficiary_profile/
+│   │   │   ├── woman_inclusion/
+│   │   │   ├── STEM_offerings/
+│   │   │   ├── ecosystem_maturity/
+│   │   │   ├── territorial_coverage/
+│   │   │   ├── ecosystem_map/
+│   │   │   ├── health_index/       # ISE
+│   │   │   └── export/             # Excel / PDF export
+│   │   ├── core/                   # config, security, rate limiter
+│   │   ├── db/                     # session, Base
+│   │   ├── models/                 # Organizacion | Programa
+│   │   └── utils/                  # constants, helpers
 │   ├── scripts/
-│   │   └── seed_from_csv.py   # Importa los CSVs reales a la BD
-│   └── tests/
-├── frontend/                  # React + Vite + TypeScript
-│   └── src/
-│       ├── components/
-│       │   ├── layout/        # Sidebar (8 módulos)
-│       │   ├── dashboard/     # KPI cards
-│       │   ├── charts/        # Recharts wrappers
-│       │   ├── map/           # Leaflet.js + pines
-│       │   └── ui/            # Componentes reutilizables
-│       ├── pages/             # Una página por módulo del PDF
-│       ├── services/          # api.ts — toda comunicación con backend
-│       └── types/             # index.ts — todos los tipos TS
-├── data/
-│   ├── raw/                   # CSVs originales de Frente Norte
-│   ├── processed/             # CSVs limpios post-deduplicación
-│   └── seeds/                 # JSON listos para importar
-└── docs/                      # Diccionario de indicadores, metodología
+│   │   └── etl_seed.py             # ETL — seeds DB from CSV data
+│   └── requirements.txt
+└── frontend/
+    └── src/
+        ├── components/
+        │   ├── layout/             # AppLayout, Sidebar, PageHeader
+        │   ├── dashboard/          # KPICard
+        │   ├── charts/             # DonutChart, HorizontalBarChart, CenterDonut
+        │   └── ui/                 # Card, Badge, Skeleton
+        ├── pages/
+        │   ├── Overview/           # Panorama General + mini map
+        │   ├── Beneficiaries/      # Perfil de Beneficiarios
+        │   ├── Inclusion/          # Inclusión y Participación Femenina
+        │   ├── STEMOffer/          # Oferta STEM
+        │   ├── Maturity/           # Madurez del Ecosistema
+        │   ├── Health/             # Índice de Salud del Ecosistema (ISE)
+        │   ├── Map/                # Mapa Interactivo (pines + heatmap)
+        │   └── Admin/              # Panel de administración (protegido)
+        ├── services/
+        │   ├── api.ts              # Public API client (Axios)
+        │   └── adminApi.ts         # Admin API client (Axios + JWT interceptors)
+        ├── store/                  # Zustand global store
+        ├── hooks/                  # useApi
+        ├── types/                  # TypeScript types
+        └── utils/                  # format helpers
 ```
 
-## Módulos del Dashboard (según ficha técnica PDF)
+---
 
-| # | Módulo | Endpoint | Status |
-|---|--------|----------|--------|
-| 1 | Panorama General | `GET /api/v1/metricas/panorama` | 🟡 esqueleto |
-| 2 | Perfil de Beneficiarios | `GET /api/v1/metricas/beneficiarios` | 🟡 esqueleto |
-| 3 | Inclusión y Participación Femenina | `GET /api/v1/metricas/inclusion` | 🟡 esqueleto |
-| 4 | Oferta STEM | `GET /api/v1/metricas/oferta` | 🟡 esqueleto |
-| 5 | Madurez del Ecosistema | `GET /api/v1/metricas/madurez` | 🟡 esqueleto |
-| 6 | Cobertura Territorial | `GET /api/v1/metricas/cobertura` | 🟡 esqueleto |
-| 🗺 | Mapa Interactivo | `GET /api/v1/organizaciones/mapa` | 🟡 esqueleto |
-| 💡 | Índice de Salud (ISE) | `GET /api/v1/metricas/indice-salud` | 🟡 esqueleto |
+## Dashboard Modules
 
-## Arranque local
+| # | Module | API Endpoint | Status |
+|---|--------|-------------|--------|
+| 1 | Panorama General | `GET /api/v1/overview/` | ✅ Done |
+| 2 | Perfil de Beneficiarios | `GET /api/v1/beneficiary-profile/` | ✅ Done |
+| 3 | Inclusión y Participación Femenina | `GET /api/v1/woman-inclusion/` | ✅ Done |
+| 4 | Oferta STEM | `GET /api/v1/stem-offerings/` | ✅ Done |
+| 5 | Madurez del Ecosistema | `GET /api/v1/ecosystem-maturity/` | ✅ Done |
+| 6 | Índice de Salud (ISE) | `GET /api/v1/health-index/` | ✅ Done |
+| 🗺 | Mapa Interactivo | `GET /api/v1/ecosystem-map/` | ✅ Done |
+| ⚙️ | Panel de Administración | `POST /api/v1/auth/login` + `/admin-panel/` | ✅ Done |
+| 📤 | Exportación | `GET /api/v1/export/` | ✅ Done |
+
+---
+
+## Local Setup
+
+### Backend
 
 ```bash
-# Backend
 cd backend
-cp .env.example .env        # llenar DATABASE_URL con Supabase
+cp .env.example .env        # fill in DATABASE_URL (Supabase) and ADMIN_PASSWORD_HASH
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 # → http://localhost:8000/docs
+```
 
-# Seed de datos
-python -m scripts.seed_from_csv
+> **Note:** `ADMIN_PASSWORD_HASH` must be wrapped in quotes inside `.env` to prevent shell interpolation of `$` characters.
+> Generate a new hash with: `python -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('your_password'))"`
+> Requires `bcrypt==4.0.1` for passlib compatibility.
 
-# Frontend
+### Seed the database
+
+```bash
+cd backend
+python -m scripts.etl_seed
+```
+
+### Frontend
+
+```bash
 cd frontend
-cp .env.example .env
 npm install
 npm run dev
 # → http://localhost:5173
 ```
 
-## Datos disponibles
+---
 
-- `data/raw/encuesta.csv` — 7 organizaciones (encuesta Frente Norte, deduplicado)
-- `data/raw/rodadora.csv` — 6 programas de La Rodadora Espacio Interactivo
+## Admin Panel
 
-**Pendiente de investigación documental:**
-- Coordenadas (lat/lon) de cada organización
-- Organizaciones no encuestadas: UACJ, CITA, CENALTEC, FABLab, TechHub, etc.
+Access at `/admin` (redirects to `/admin/login` if not authenticated).
+
+- Session token stored in `sessionStorage`
+- Auto-redirect to login on 401
+- Organizations and programs support soft-delete (toggle active/inactive) instead of hard delete to preserve data integrity
+- Location picker uses an interactive Leaflet satellite map
+
+---
+
+## Design System
+
+Three color themes applied per route section:
+
+| Theme | Routes | Accent |
+|-------|--------|--------|
+| `theme-navy` | Overview, STEMOffer, Health | Blue `#60a5fa` |
+| `theme-teal` | Beneficiaries, Maturity | Teal `#2dd4bf` |
+| `theme-cyan` | Inclusion, Map, Admin | Cyan `#38bdf8` |
+
+Charts use a unified `CHART_PALETTE` combining accent colors from all three themes for consistent cross-theme readability.
