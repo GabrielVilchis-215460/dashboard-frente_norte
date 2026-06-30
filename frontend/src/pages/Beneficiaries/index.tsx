@@ -47,7 +47,7 @@ export function Beneficiaries() {
         </Card>
 
         <Card title="Programas por nivel educativo" className={styles.card}>
-          <HorizontalBarChart data={nivelEducativoData} loading={loading} />
+          <HorizontalBarChart data={nivelEducativoData} loading={loading} fillHeight/>
         </Card>
       </section>
 

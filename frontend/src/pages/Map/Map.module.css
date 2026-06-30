@@ -22,9 +22,9 @@
 
 .controls {
   position: absolute;
-  top: var(--space-4);
-  left: var(--space-4);
-  right: var(--space-4);
+  top: var(--space-3);
+  left: 60px;      /* deja espacio para los botones del zoom */
+  right: var(--space-3);
   display: flex;
   align-items: flex-start;
   justify-content: space-between;

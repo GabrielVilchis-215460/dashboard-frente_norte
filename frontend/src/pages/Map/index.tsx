@@ -1,7 +1,12 @@
 // Mapa del Ecosistema
 
 import { useState, useCallback, useEffect } from 'react';
-import { IconBuildingCommunity, IconFlame } from '@tabler/icons-react';
+import {
+  IconBuildingCommunity,
+  IconFlame,
+  IconChevronDown,
+  IconChevronUp,
+} from '@tabler/icons-react';
 import { PageHeader } from '../../components/layout';
 import { api } from '../../services/api';
 import type { MapFilters, FichaActor } from '../../types';
@@ -13,8 +18,10 @@ import styles from './Map.module.css';
 
 type ViewMode = 'pins' | 'heatmap';
 
+const EMPTY_FILTERS: MapFilters = { solo_con_coordenadas: true };
+
 export function MapPage() {
-  const [filters, setFilters] = useState<MapFilters>({ solo_con_coordenadas: true });
+  const [filters, setFilters] = useState<MapFilters>(EMPTY_FILTERS);
   const [mode, setMode] = useState<ViewMode>('pins');
   const [filterOpen, setFilterOpen] = useState(false);
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
@@ -35,22 +42,47 @@ export function MapPage() {
       .finally(() => setPinsLoading(false));
   }, [filters]);
 
-  const handleFilterChange = useCallback((key: keyof MapFilters, value: string | undefined) => {
-    setFilters((prev) => ({ ...prev, [key]: value }));
+  // Cambiar modo: limpiar filtros y cerrar todo
+  const handleModeChange = useCallback((newMode: ViewMode) => {
+    setMode(newMode);
+    setModeMenuOpen(false);
+    setFilters(EMPTY_FILTERS);
     setSelectedId(null);
     setFicha(null);
+    setFilterOpen(false);
+  }, []);
+
+  // Abrir/cerrar menú de modo: cierra el de filtros y la ficha
+  const handleToggleModeMenu = useCallback(() => {
+    setModeMenuOpen((o) => !o);
+    setFilterOpen(false);
+    setSelectedId(null);
+    setFicha(null);
+  }, []);
+
+  // Abrir/cerrar filtros: cierra el de modo y la ficha
+  const handleToggleFilter = useCallback(() => {
+    setFilterOpen((o) => !o);
+    setModeMenuOpen(false);
+    setSelectedId(null);
+    setFicha(null);
+  }, []);
+
+  const handleFilterChange = useCallback((key: keyof MapFilters, value: string | undefined) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const handleClearFilters = useCallback(() => {
-    setFilters({ solo_con_coordenadas: true });
-    setSelectedId(null);
-    setFicha(null);
+    setFilters(EMPTY_FILTERS);
   }, []);
 
+  // Click en pin: cierra menús abiertos
   const handlePinClick = useCallback((id: number) => {
     setSelectedId(id);
     setFicha(null);
     setFichaLoading(true);
+    setFilterOpen(false);
+    setModeMenuOpen(false);
     api.getFichaActor(id)
       .then(setFicha)
       .catch(console.error)
@@ -61,10 +93,6 @@ export function MapPage() {
     setSelectedId(null);
     setFicha(null);
   }, []);
-
-  const activeFilterCount = Object.entries(filters)
-    .filter(([k, v]) => k !== 'solo_con_coordenadas' && v)
-    .length;
 
   return (
     <div className={styles.page}>
@@ -79,28 +107,29 @@ export function MapPage() {
         <div className={styles.controls}>
           {/* Dropdown de modo de visualización */}
           <div className={styles.modeWrapper}>
-            <button
-              className={styles.modeBtn}
-              onClick={() => setModeMenuOpen((o) => !o)}
-            >
+            <button className={styles.modeBtn} onClick={handleToggleModeMenu}>
               {mode === 'pins'
                 ? <><IconBuildingCommunity size={16} stroke={1.5} /> Organizaciones</>
                 : <><IconFlame size={16} stroke={1.5} /> Mapa de calor</>
               }
-              {modeMenuOpen ? ' ∧' : ' ∨'}
+              {modeMenuOpen
+                ? <IconChevronUp size={14} stroke={2} />
+                : <IconChevronDown size={14} stroke={2} />
+              }
             </button>
+
             {modeMenuOpen && (
               <div className={styles.modeMenu}>
                 <button
                   className={`${styles.modeOption} ${mode === 'pins' ? styles.modeOptionActive : ''}`}
-                  onClick={() => { setMode('pins'); setModeMenuOpen(false); }}
+                  onClick={() => handleModeChange('pins')}
                 >
                   <IconBuildingCommunity size={16} stroke={1.5} />
                   Organizaciones
                 </button>
                 <button
                   className={`${styles.modeOption} ${mode === 'heatmap' ? styles.modeOptionActive : ''}`}
-                  onClick={() => { setMode('heatmap'); setModeMenuOpen(false); }}
+                  onClick={() => handleModeChange('heatmap')}
                 >
                   <IconFlame size={16} stroke={1.5} />
                   Mapa de calor
@@ -115,7 +144,7 @@ export function MapPage() {
             onChange={handleFilterChange}
             onClear={handleClearFilters}
             open={filterOpen}
-            onToggle={() => setFilterOpen((o) => !o)}
+            onToggle={handleToggleFilter}
           />
         </div>
 

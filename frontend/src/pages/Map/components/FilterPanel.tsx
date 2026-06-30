@@ -1,6 +1,6 @@
 // Panel de filtros del mapa
 
-import { IconFilter, IconX } from '@tabler/icons-react';
+import { IconFilter, IconX, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
 import { FILTER_GROUPS } from './mapConfig';
 import type { MapFilters } from '../../../types';
 import styles from './FilterPanel.module.css';
@@ -14,18 +14,23 @@ interface Props {
 }
 
 export function FilterPanel({ filters, onChange, onClear, open, onToggle }: Props) {
-  const activeCount = Object.values(filters).filter(Boolean).length;
+  const activeCount = Object.entries(filters)
+    .filter(([k, v]) => k !== 'solo_con_coordenadas' && v)
+    .length;
 
   return (
     <div className={styles.wrapper}>
-      {/* Trigger button */}
+      {/* Trigger button — único, no se duplica dentro del panel */}
       <button className={styles.triggerBtn} onClick={onToggle}>
         <IconFilter size={16} stroke={1.5} />
         Filtros
         {activeCount > 0 && (
           <span className={styles.badge}>{activeCount}</span>
         )}
-        {open ? ' ∧' : ' ∨'}
+        {open
+          ? <IconChevronUp size={14} stroke={2} />
+          : <IconChevronDown size={14} stroke={2} />
+        }
       </button>
 
       {/* Panel desplegable */}
@@ -35,10 +40,6 @@ export function FilterPanel({ filters, onChange, onClear, open, onToggle }: Prop
             <button className={styles.clearBtn} onClick={onClear}>
               Limpiar filtros
             </button>
-            {/* <button className={styles.triggerBtn} onClick={onToggle}>
-              <IconFilter size={14} stroke={1.5} />
-              Filtros ∧
-            </button> */}
           </div>
 
           <div className={styles.groups}>

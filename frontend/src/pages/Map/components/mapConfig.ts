@@ -7,11 +7,11 @@ export interface TipoConfig {
 
 const TIPO_MAP: Array<{ keywords: string[]; config: TipoConfig }> = [
   {
-    keywords: ['ong', 'asociacion', 'civil', 'asociación'],
+    keywords: ['ONG / Asociación Civil', 'ong', 'asociacion', 'civil', 'asociación'],
     config: { label: 'ONG / Asociación Civil', color: '#38bdf8' },
   },
   {
-    keywords: ['educativ', 'escuela', 'universidad', 'colegio', 'institucion', 'institución'],
+    keywords: ['Institución Educativa', 'educativ', 'escuela', 'universidad', 'colegio', 'institucion', 'institución'],
     config: { label: 'Institución Educativa', color: '#34d399' },
   },
   {
@@ -82,10 +82,10 @@ export const FILTER_GROUPS: FilterGroup[] = [
     label: 'Tipo de organización',
     queryParam: 'tipo',
     options: [
-      { label: 'ONG / Asociación Civil', value: 'ONG' },
-      { label: 'Institución Educativa', value: 'Institución Educativa' },
-      { label: 'Empresa Tecnológica', value: 'Empresa Tecnológica' },
-      { label: 'Centro de Investigación', value: 'Centro de Investigación' },
+      { label: 'ONG / Asociación Civil', value: 'ONG / Asociación civil' },
+      { label: 'Institución Educativa', value: 'Institución educativa' },
+      { label: 'Empresa Tecnológica', value: 'Empresa tecnológica' },
+      { label: 'Centro de Investigación', value: 'Centro de investigación' },
       { label: 'Gobierno', value: 'Gobierno' },
       { label: 'Makerspace / Lab', value: 'Makerspace' },
     ],
@@ -162,5 +162,5 @@ export const FILTER_GROUPS: FilterGroup[] = [
 ];
 
 // Coordenadas de Ciudad Juárez
-export const JUAREZ_CENTER: [number, number] = [31.7059, -106.4245];
+export const JUAREZ_CENTER: [number, number] = [31.7150, -106.4245];
 export const DEFAULT_ZOOM = 13;
