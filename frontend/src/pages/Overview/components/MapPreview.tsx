@@ -1,7 +1,7 @@
 // MapPreview: Mini mapa en Panorama General
 // Leaflet con mapa oscuro + pines de organizaciones
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { PreviewMapaPoint } from '../../../types';
 import { Skeleton } from '../../../components/ui';
@@ -21,6 +21,7 @@ export function MapPreview({ points, loading, className = '' }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<import('leaflet').Map | null>(null);
   const navigate = useNavigate();
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (loading || !mapRef.current || mapInstanceRef.current) return;
@@ -33,7 +34,7 @@ export function MapPreview({ points, loading, className = '' }: Props) {
         attributionControl: false,
         dragging: false,
         scrollWheelZoom: false,
-        doubleClickZoom: false,   // deshabilitar zoom con doble clic
+        doubleClickZoom: false,
       });
 
       L.tileLayer(
@@ -42,17 +43,18 @@ export function MapPreview({ points, loading, className = '' }: Props) {
       ).addTo(map);
 
       mapInstanceRef.current = map;
-      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => { map.invalidateSize(); setMapReady(true); }, 100);
     });
 
     return () => {
       mapInstanceRef.current?.remove();
       mapInstanceRef.current = null;
+      setMapReady(false);
     };
   }, [loading]);
 
   useEffect(() => {
-    if (!mapInstanceRef.current || points.length === 0) return;
+    if (!mapReady || !mapInstanceRef.current || points.length === 0) return;
 
     import('leaflet').then((L) => {
       // Limpiar marcadores anteriores para evitar duplicados en re-renders
@@ -96,7 +98,7 @@ export function MapPreview({ points, loading, className = '' }: Props) {
         });
       });
     });
-  }, [points, navigate]);
+  }, [points, navigate, mapReady]);
 
   if (loading) {
     return (
