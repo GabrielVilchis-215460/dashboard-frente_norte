@@ -19,6 +19,10 @@ Calcula el Índice de Salud del Ecosistema STEM de Ciudad Juárez.
 **Fórmula:**
 `ISE = Cobertura×0.25 + Diversidad×0.20 + Inclusión×0.20 + Alcance×0.20 + Madurez×0.15`
 
+**Justificación de pesos:**
+Los pesos fueron definidos para priorizar el impacto territorial y la diversidad de la oferta educativa, 
+asegurando un equilibrio entre la presencia física en colonias y la calidad de los programas ofrecidos en la ciudad.
+
 **Niveles:**
 - EXCELENTE: ≥ 75
 - BUENO: ≥ 50

@@ -1,0 +1,127 @@
+.wrapper {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-height: 300px;
+  height: 100%;
+
+  /* Mismo glassmorphism que las Card */
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+/* Título flotante sobre el mapa */
+.title {
+  position: absolute;
+  top: var(--space-4);
+  left: var(--space-4);
+  z-index: 500;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-100);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  pointer-events: none;
+}
+
+/* El mapa ocupa TODO el contenedor */
+.map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Pines */
+:global(.leaflet-div-icon) {
+  background: transparent;
+  border: none;
+}
+
+.pin {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-a);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 8px var(--accent-a);
+  transition: transform var(--transition-fast);
+}
+
+.pin:hover {
+  transform: scale(1.4);
+  cursor: pointer;
+}
+
+/* Hint flotante */
+.hint {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 500;
+  font-size: var(--text-xs);
+  color: var(--text-60);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* Tooltip con logo */
+.tooltipContent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tooltipLogo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.tooltipText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tooltipText strong {
+  font-size: 12px;
+  color: rgba(255,255,255,1);
+}
+
+.tooltipText span {
+  font-size: 11px;
+  color: rgba(255,255,255,0.6);
+}
+
+/* Tooltip Leaflet */
+:global(.leaflet-tooltip) {
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.20) !important;
+  color: rgba(255, 255, 255, 1) !important;
+  font-family: var(--font-body) !important;
+  font-size: 12px !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--glass-shadow) !important;
+  padding: 6px 10px !important;
+}
+
+:global(.leaflet-tooltip-top::before) {
+  border-top-color: rgba(255, 255, 255, 0.20) !important;
+}

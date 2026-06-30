@@ -7,6 +7,7 @@ class ModalidadProgramas(BaseModel):
     value: int # Cantidad de programas (ej. 15)
 
 class OrganizacionProgramas(BaseModel):
+    logo_url: Optional[str] = None
     organizacion: str
     enfoque_principal: Optional[str] = "No especificado"
     tipo_organizacion: Optional[str] = "No especificado"

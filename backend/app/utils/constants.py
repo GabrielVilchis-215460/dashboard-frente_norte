@@ -64,9 +64,9 @@ ISE_PESOS: dict[str, float] = {
 }
 
 # Referencias para normalizar cada dimensión a escala 0-100
-TOTAL_COLONIAS_JUAREZ = 600  
+#TOTAL_COLONIAS_JUAREZ = 600  
 TOTAL_AREAS_STEM = 8           # Áreas STEM posibles en el ecosistema
-META_BENEFICIARIOS_SEMESTRE = 5_000  
+META_BENEFICIARIOS_SEMESTRE = 6600  # Dato sacado del calculo que se realiza en el dashboard
 
 # Umbrales para determinar el nivel del ISE
 ISE_UMBRALES: list[tuple[float, str]] = [

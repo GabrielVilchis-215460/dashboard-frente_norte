@@ -20,7 +20,9 @@ class PanoramaGeneral(BaseModel):
     total_programas_activos: int
     beneficiarios_semestre: int  # suma de volumen_mid de todos los programas
     colonias_impactadas: int
+    pct_mujeres_beneficiarias: float
+    pct_programas_enfoque_integral: float
     organizaciones_por_tipo: Dict[str, int]   # {ONG: 5, Gobierno: 1, ...}
-    areas_stem_representadas: List[str]
+    areas_stem_representadas: Dict[str, int]
     top_organizaciones: List[TopOrganizacion] # top 5 instituciones con mas programas (rodadora top 1)
     preview_mapa: List[MapaPreview]

@@ -39,9 +39,11 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
         nombre_org = p.organizacion.nombre if p.organizacion else "Organización Desconocida"
         enfoque_org = p.organizacion.enfoque_principal if p.organizacion and p.organizacion.enfoque_principal else "No especificado"
         tipo_org = p.organizacion.tipo if p.organizacion and p.organizacion.tipo else "No especificado"
+        logo_org = p.organizacion.logo_url if p.organizacion and p.organizacion.logo_url else None
 
         if nombre_org not in orgs_programas:
             orgs_programas[nombre_org] = {
+                "logo_url": logo_org,
                 "enfoque_principal": enfoque_org,
                 "tipo_organizacion": tipo_org,
                 "programas": []
@@ -52,6 +54,7 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
 
     lista_orgs_programas = [
         OrganizacionProgramas(
+            logo_url=datos["logo_url"],
             organizacion=nombre, 
             enfoque_principal=datos["enfoque_principal"],
             tipo_organizacion=datos["tipo_organizacion"],
