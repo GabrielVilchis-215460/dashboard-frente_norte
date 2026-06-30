@@ -10,7 +10,7 @@ interface Props {
   pins: PinMapa[];
   mode: 'pins' | 'heatmap';
   selectedId: number | null;
-  onPinClick: (id: number, lat: number, lng: number) => void;
+  onPinClick: (id: number) => void;
 }
 
 // Genera el SVG de un pin circular con el color del tipo
@@ -84,7 +84,6 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
       const pinsConCoords = pins.filter((p) => p.latitud && p.longitud);
 
       if (mode === 'heatmap') {
-        // Heatmap: un punto por pin con peso = total_programas
         const heatData = pinsConCoords.map((p) => [
           p.latitud!,
           p.longitud!,
@@ -92,13 +91,14 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
         ]);
 
         import('leaflet.heat').then(() => {
+          if (!mapRef.current) return; // guarda: componente desmontado durante import
           const L_any = L as any;
           heatLayerRef.current = L_any.heatLayer(heatData, {
             radius: 30,
             blur: 20,
             maxZoom: 14,
             gradient: { 0.2: '#38bdf8', 0.5: '#2dd4bf', 0.8: '#34d399', 1.0: '#fbbf24' },
-          }).addTo(mapRef.current!);
+          }).addTo(mapRef.current);
         });
         return;
       }
@@ -117,7 +117,7 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
         });
 
         const marker = L.marker([pin.latitud!, pin.longitud!], { icon });
-        marker.on('click', () => onPinClick(pin.id, pin.latitud!, pin.longitud!));
+        marker.on('click', () => onPinClick(pin.id));
         markerLayerRef.current!.addLayer(marker);
         markersRef.current.set(pin.id, marker);
       });
@@ -131,7 +131,6 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
     if (!marker) return;
 
     const latlng = marker.getLatLng();
-    // Desplaza hacia arriba para que el pin quede sobre la ficha
     mapRef.current.flyTo(
       [latlng.lat + 0.008, latlng.lng],
       13,

@@ -1,24 +1,23 @@
 // -- Gráfica de dona --
 
-import { useRef, useState, useEffect } from 'react';
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
 } from 'recharts';
 import { Skeleton } from '../ui';
 import styles from './DonutChart.module.css';
 
-const FALLBACK = ['#60a5fa', '#34d399', '#a78bfa', '#f472b6'];
-
-function readThemeColors(node: HTMLElement | null): string[] {
-  const el = node ?? document.documentElement;
-  const style = getComputedStyle(el);
-  return [
-    style.getPropertyValue('--accent-a').trim() || FALLBACK[0],
-    style.getPropertyValue('--accent-b').trim() || FALLBACK[1],
-    style.getPropertyValue('--accent-c').trim() || FALLBACK[2],
-    style.getPropertyValue('--accent-d').trim() || FALLBACK[3],
-  ];
-}
+// Paleta combinada de los 3 temas del sistema: navy, teal y cyan
+// Garantiza contraste visual independientemente del tema activo
+const CHART_PALETTE = [
+  '#60a5fa', // navy accent-a   (azul)
+  '#2dd4bf', // teal accent-a   (verde agua)
+  '#38bdf8', // cyan accent-a   (celeste)
+  '#93c5fd', // navy accent-b   (azul claro)
+  '#5eead4', // teal accent-b   (menta)
+  '#818cf8', // acento complementario (morado)
+  '#34d399', // acento complementario (esmeralda)
+  '#3b82f6', // navy accent-c   (azul saturado)
+];
 
 interface DataPoint { name: string; value: number; }
 interface Props { data: DataPoint[]; loading?: boolean; }
@@ -34,18 +33,11 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function DonutChart({ data, loading = false }: Props) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [colors, setColors] = useState<string[]>(FALLBACK);
-
-  useEffect(() => {
-    setColors(readThemeColors(wrapperRef.current));
-  }, [loading, data]);
-
   if (loading) return <Skeleton width="100%" height="220px" borderRadius="12px" />;
   if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
   return (
-    <div className={styles.wrapper} ref={wrapperRef}>
+    <div className={styles.wrapper}>
       <ResponsiveContainer width="100%" height={220}>
         <PieChart>
           <Pie
@@ -60,7 +52,7 @@ export function DonutChart({ data, loading = false }: Props) {
             animationDuration={600}
           >
             {data.map((_, i) => (
-              <Cell key={i} fill={colors[i % colors.length]} stroke="transparent" />
+              <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} stroke="transparent" />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
