@@ -42,7 +42,7 @@ def listar_organizaciones(
     if area_stem: q = q.filter(Organizacion.areas_stem.any(area_stem))
     return q.order_by(Organizacion.nombre).offset(skip).limit(limit).all()
 
-@router.get("/organizaciones/mapa", response_model=List[OrganizacionMapPin])
+@router.get("/organizaciones/mapa/pines", response_model=List[OrganizacionMapPin])
 def pines_mapa(
     tipo:      Optional[str] = None,
     area_stem: Optional[str] = None,

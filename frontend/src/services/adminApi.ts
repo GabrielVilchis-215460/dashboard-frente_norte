@@ -100,7 +100,9 @@ adminClient.interceptors.response.use(
       window.location.href = '/admin/login';
     }
     const message =
-      error.response?.data?.detail ?? error.message ?? 'Error de conexión';
+      error.code === 'ECONNABORTED'
+        ? 'El servidor tardó demasiado en responder. Intenta de nuevo.'
+        : error.response?.data?.detail ?? error.message ?? 'Error de conexión';
     return Promise.reject(new Error(message));
   }
 );
