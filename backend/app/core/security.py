@@ -16,14 +16,17 @@ from app.core.config import settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _truncate(password: str) -> str:
+    # bcrypt tiene un límite de 72 bytes
+    return password.encode()[:72].decode(errors="ignore")
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Compara una contraseña en texto plano contra su hash bcrypt."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(_truncate(plain_password), hashed_password)
 
 
 def hash_password(password: str) -> str:
-    """Genera el hash bcrypt de una contraseña. Usar solo en scripts de setup."""
-    return pwd_context.hash(password)
+    return pwd_context.hash(_truncate(password))
 
 
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
