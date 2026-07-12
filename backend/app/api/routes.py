@@ -10,6 +10,7 @@ from app.api.health_index.routes import router as indice_router
 from app.api.admin_panel.routes import router as admin_router
 from app.api.auth.routes import router as auth_router
 from app.api.export.routes import router as export_router
+from app.api.events.routes import router as events_router
 
 api_router = APIRouter(prefix="/api")
 
@@ -31,3 +32,5 @@ api_router.include_router(admin_router)
 
 # Exportación de datos (requiere JWT) 
 api_router.include_router(export_router)
+
+api_router.include_router(events_router)
