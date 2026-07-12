@@ -62,3 +62,4 @@ class Organizacion(Base):
 
     # Relación
     programas = relationship("Programa", back_populates="organizacion",cascade="all, delete-orphan")
+    eventos = relationship("Evento", back_populates="organizacion", cascade="all, delete-orphan")
