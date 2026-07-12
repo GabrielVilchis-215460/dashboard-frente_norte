@@ -53,6 +53,9 @@ class Organizacion(Base):
     zona = Column(String(50))   # Urbana | Rural | Ambas
     colonias = Column(ARRAY(String), default=[])
 
+    # Feed de RSS
+    rss_url = Column(String(500), nullable=True)
+    
     # Metadatos
     activo = Column(Boolean, default=True)
     fuente = Column(String(100))  # encuesta | investigacion_documental
