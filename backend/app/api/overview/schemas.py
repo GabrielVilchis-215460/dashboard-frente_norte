@@ -18,6 +18,7 @@ class TopOrganizacion(BaseModel):
 class PanoramaGeneral(BaseModel):
     total_organizaciones: int
     total_programas_activos: int
+    total_eventos_activos: int
     beneficiarios_semestre: int  # suma de volumen_mid de todos los programas
     colonias_impactadas: int
     pct_mujeres_beneficiarias: float
