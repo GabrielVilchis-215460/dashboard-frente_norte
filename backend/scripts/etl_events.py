@@ -37,7 +37,12 @@ def extract_events_data(text_post: str, org_name: str) -> dict:
     La fecha actual del sistema es {date_today}.
     
     Tu tarea es determinar si el texto anuncia un evento, taller o actividad futura.
-    Si es un evento, extrae los datos. Si usa fechas relativas ("este viernes"), calcúlala basándote en la fecha actual.
+    
+    REGLA CRÍTICA DE UBICACIÓN: 
+    Solo debes considerar como evento válido (es_evento: true) si la actividad se llevará a cabo en Ciudad Juárez, Chihuahua, o si es un evento 100% ONLINE/VIRTUAL. 
+    Si el evento es presencial en OTRA ciudad (por ejemplo: Chihuahua Capital, El Paso, CDMX, etc.), debes marcar "es_evento": false.
+    
+    Si es un evento válido, extrae los datos. Si usa fechas relativas ("este viernes"), calcúlala basándote en la fecha actual.
     
     Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:
     {{
