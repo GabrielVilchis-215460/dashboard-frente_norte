@@ -1,4 +1,4 @@
-import json, time
+import json, time, requests
 from datetime import date, datetime
 from google import genai
 from google.genai import types
@@ -45,33 +45,26 @@ def extract_events_data(text_post: str, org_name: str) -> dict:
         print(f"Error procesando post con Gemini: {e}")
         return {"is_event": False}
     
-def process_feed_rss(input_json_route: str):
-    print(f"Abriendo archivo de feed: {input_json_route}")
-
+def process_feed_rss(org: Organizacion):
+    print(f"Procesando organizacion: {org.nombre}")
+    print(f"Descargando feed desde: {org.rss_url}")
+    
     try:
-        with open(input_json_route, 'r', encoding='utf-8') as f:
-            feed_data = json.load(f)
-    except FileNotFoundError:
-        print(f"Error: No se encontró el archivo {input_json_route}")
+        # descargo directamente el JSON diramente de internet
+        response = requests.get(org.rss_url)
+        response.raise_for_status()
+        feed_data = response.json()
+    except Exception as e:
+        print(f"Error al descargar feed de la organizacion: {e}")
         return
     
-    # extraigo el nombre de la organizacion dinamicamente del propio feed de RSS
-    org_name = feed_data.get('title', 'Organización Desconocida')
-    print(f"Organizacion detectada en el feed: '{org_name}'")
-    # inicio de sesion con la BD
+    posts = feed_data.get('items', []) or feed_data.get('entries', [])
+    print(f"Se encontraron {len(posts)} posts. Iniciando análisis...\n")
+
     db = SessionLocal()
+    events_added = 0
 
     try:
-        # Validar que la organización exista en la base de datos
-        organizacion_db = db.query(Organizacion).filter(Organizacion.nombre == org_name).first()
-        if not organizacion_db:
-            print(f"La organizacion {org_name} no está registrada en la BD")
-            return
-        
-        posts = feed_data.get('items', []) or feed_data.get('entries', [])
-        print(f"Se encontraron {len(posts)} posts. Iniciando análisis...\n")
-
-        events_added = 0
         for i, post in enumerate(posts, 1):
             texto_post = post.get('content_text') or post.get('summary') or post.get('title', '')
             url_post = post.get('url', 'Sin URL disponible')
@@ -81,7 +74,7 @@ def process_feed_rss(input_json_route: str):
 
             print(f"[{i}/{len(posts)}] Analizando post...")
 
-            datos = extract_events_data(texto_post, org_name)
+            datos = extract_events_data(texto_post, org.nombre)
             datos["url_original"] = url_post
 
             print("  -> Respuesta JSON cruda de Gemini:")
@@ -103,7 +96,7 @@ def process_feed_rss(input_json_route: str):
                 # Evitar duplicados consultando si ya existe en la BD
                 evento_existente = db.query(Evento).filter(
                     Evento.nombre == datos["nombre"],
-                    Evento.organizacion_id == organizacion_db.id,
+                    Evento.organizacion_id == org.id,
                     Evento.fecha == fecha_evento
                 ).first()
 
@@ -114,7 +107,7 @@ def process_feed_rss(input_json_route: str):
                         ubicacion=datos["ubicacion"],
                         fecha=fecha_evento,
                         url_original=datos["url_original"],
-                        organizacion_id=organizacion_db.id,
+                        organizacion_id=org.id,
                         activo=True
                     )
                     db.add(nuevo_evento)
@@ -139,6 +132,23 @@ def process_feed_rss(input_json_route: str):
         db.close()
 
 if __name__ == "__main__":
-    # ruta pendiente
-    RUTA_ARCHIVO_JSON = "../data/raw/feed_real.json" 
-    process_feed_rss(RUTA_ARCHIVO_JSON)
+    print("\n Iniciando extracción de eventos...")
+
+    db_main = SessionLocal()
+
+    try:
+        orgs_with_feed = db_main.query(Organizacion).filter(Organizacion.rss_url.isnot(None)).all()
+
+        if not orgs_with_feed:
+            print("No hay organizaciones con 'rss_url' configurado en la base de datos.")
+        else:
+            print(f"Se encontraron {len(orgs_with_feed)} organizaviones con feeds activos \n")
+
+        for org in orgs_with_feed:
+            process_feed_rss(org)
+            print("\n Pausa de seguridad (10s) para cuidar la cuota de la API...")
+            time.sleep(10)
+        
+        print("\n Extracción finalizada con exito!")
+    finally:
+        db_main.close()
