@@ -3,7 +3,7 @@ from datetime import date, datetime
 from google import genai
 from google.genai import types
 from app.db.session import SessionLocal
-from app.models.eventos import Eventos
+from app.models.eventos import Evento
 from app.models.organizacion import Organizacion
 from app.core.config import settings
 
@@ -101,15 +101,15 @@ def process_feed_rss(input_json_route: str):
                     continue
 
                 # Evitar duplicados consultando si ya existe en la BD
-                evento_existente = db.query(Eventos).filter(
-                    Eventos.nombre == datos["nombre"],
-                    Eventos.organizacion_id == organizacion_db.id,
-                    Eventos.fecha == fecha_evento
+                evento_existente = db.query(Evento).filter(
+                    Evento.nombre == datos["nombre"],
+                    Evento.organizacion_id == organizacion_db.id,
+                    Evento.fecha == fecha_evento
                 ).first()
 
                 if not evento_existente:
                     # Crear la instancia del modelo SQLAlchemy
-                    nuevo_evento = Eventos(
+                    nuevo_evento = Evento(
                         nombre=datos["nombre"],
                         ubicacion=datos["ubicacion"],
                         fecha=fecha_evento,
