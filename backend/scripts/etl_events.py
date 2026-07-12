@@ -1,3 +1,22 @@
+"""
+Script ETL (Extract, Transform, Load) para la automatización de eventos.
+
+Descripción:
+    Este script se conecta de manera dinámica a la base de datos de PostgreSQL (Supabase por el momento)
+    para obtener las organizaciones que tienen un feed de RSS (proveniente de RSS.app) configurado.
+    Descarga el contenido JSON de cada feed, procesa los posts utilizando el modelo de IA 
+    'gemini-3.1-flash-lite' para determinar si anuncian un evento futuro y, de ser así, 
+    extrae de forma estructurada sus datos (nombre, ubicación, fecha y URL original) 
+    para finalmente insertarlos de forma segura (evitando duplicados) en la base de datos.
+
+Instrucciones de uso:
+    Para correr el script: 
+        python -m scripts.etl_eventos
+
+Frecuencia recomendada:
+    Se recomienda correr una vez por semana, preferiblemente cada lunes.
+"""
+
 import json, time, requests
 from datetime import date, datetime
 from google import genai
@@ -111,7 +130,7 @@ def process_feed_rss(org: Organizacion):
                         activo=True
                     )
                     db.add(nuevo_evento)
-                    eventos_agregados += 1
+                    events_added += 1
                     print("  -> Evento preparado para guardar en BD.")
                 else:
                     print("  -> El evento ya estaba registrado previamente.")
@@ -123,7 +142,7 @@ def process_feed_rss(org: Organizacion):
 
         # Confirmar todos los guardados en PostgreSQL
         db.commit()
-        print(f"\nProceso terminado! Se insertaron {eventos_agregados} eventos nuevos en la base de datos.")
+        print(f"\nProceso terminado! Se insertaron {events_added} eventos nuevos en la base de datos.")
 
     except Exception as e:
         db.rollback()
