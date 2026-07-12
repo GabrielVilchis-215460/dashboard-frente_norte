@@ -11,5 +11,5 @@ httpx
 pytest
 pytest-asyncio
 python-jose[cryptography]
-passlib[bcrypt]
+bcrypt
 slowapi
