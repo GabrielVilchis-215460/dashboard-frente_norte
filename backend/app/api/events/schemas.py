@@ -13,7 +13,10 @@ class EventoResponse(BaseModel):
     nombre: str
     ubicacion: Optional[str] = None
     fecha: date
+    enfoque: Optional[str] = None
+    tipo: Optional[str] = None
     url_original: Optional[str] = None
+    imagen_url: Optional[str] = None
     organizacion: OrganizacionBasica  
 
     class Config:

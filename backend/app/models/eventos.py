@@ -10,7 +10,10 @@ class Evento(Base):
     nombre = Column(String(255), nullable=False, index=True)
     ubicacion = Column(String(255), nullable=True) # esto puede cambiar a false maybe
     fecha = Column(Date, nullable=False, index=True) # para poder filtrar por los dias
+    enfoque = Column(String(50), nullable=True) 
+    tipo = Column(String(50), nullable=True)    
     url_original = Column(String(500), nullable=True)
+    imagen_url = Column(String(500), nullable=True)
     organizacion_id = Column(Integer, ForeignKey("organizaciones.id"))
     activo = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
