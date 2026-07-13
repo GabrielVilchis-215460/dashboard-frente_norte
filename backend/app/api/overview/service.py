@@ -6,6 +6,7 @@ from app.utils.helpers import count_by_field, mid_volume, mid_pct
 import logging
 from sqlalchemy import func
 from app.models.eventos import Evento
+from app.api.events.service import contar_eventos_activos
 
 logger = logging.getLogger("stem_api.panorama_general")
 
@@ -31,7 +32,7 @@ def get_panorama(db: Session) -> PanoramaGeneral:
     orgs = db.query(Organizacion).filter(Organizacion.activo == True).all()
     programas = db.query(Programa).filter(Programa.activo == True).all()
     # Contador para mostrar el total de eventos activos
-    total_eventos = db.query(func.count(Evento.id)).filter(Evento.activo == True).scalar()
+    total_eventos = contar_eventos_activos(db)
 
     top_orgs = (
         db.query(

@@ -19,7 +19,7 @@ Retorna los 8 KPIs principales del ecosistema STEM de Ciudad Juárez.
 Alimenta el **Módulo 1 — Panorama General** del dashboard.
 
 Incluye:
-- Total de organizaciones y programas activos
+- Total de organizaciones, programas y eventos activos
 - Beneficiarios estimados en el semestre
 - Porcentaje de beneficiarias mujeres
 - Porcentaje de programas con enfoque integral
