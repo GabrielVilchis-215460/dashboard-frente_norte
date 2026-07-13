@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Date, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.session import Base
@@ -12,8 +12,8 @@ class Evento(Base):
     fecha = Column(Date, nullable=False, index=True) # para poder filtrar por los dias
     enfoque = Column(String(50), nullable=True) 
     tipo = Column(String(50), nullable=True)    
-    url_original = Column(String(500), nullable=True)
-    imagen_url = Column(String(500), nullable=True)
+    url_original = Column(Text, nullable=True)
+    imagen_url = Column(Text, nullable=True)
     organizacion_id = Column(Integer, ForeignKey("organizaciones.id"))
     activo = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
