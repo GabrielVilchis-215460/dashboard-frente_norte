@@ -1,12 +1,13 @@
 from sqlalchemy.orm import Session
 from app.models.organizacion import Organizacion
 from app.models.programa import Programa
-from app.api.overview.schemas import PanoramaGeneral, MapaPreview, TopOrganizacion
+from app.api.overview.schemas import PanoramaGeneral, MapaPreview, TopOrganizacion, DistribucionItem, HistoricoTrimestralItem
 from app.utils.helpers import count_by_field, mid_volume, mid_pct
 import logging
 from sqlalchemy import func
 from app.models.eventos import Evento
 from app.api.events.service import contar_eventos_activos
+from datetime import date
 
 logger = logging.getLogger("stem_api.panorama_general")
 
@@ -31,8 +32,70 @@ def get_panorama(db: Session) -> PanoramaGeneral:
 
     orgs = db.query(Organizacion).filter(Organizacion.activo == True).all()
     programas = db.query(Programa).filter(Programa.activo == True).all()
+
+    fecha_hoy = date.today()
     # Contador para mostrar el total de eventos activos
-    total_eventos = contar_eventos_activos(db)
+    #total_eventos = contar_eventos_activos(db)
+    total_eventos = db.query(Evento).filter(Evento.fecha >= fecha_hoy, Evento.activo == True).count()
+    
+    orgs_con_eventos = (
+        db.query(Evento.organizacion_id)
+        .filter(Evento.fecha >= fecha_hoy, Evento.activo == True)
+        .distinct()
+        .count()
+    )
+
+    # Distribución de Enfoque (%) para Gráfica de Pastel
+    total_enfoques = db.query(Evento).filter(Evento.enfoque.isnot(None), Evento.activo == True).count()
+    eventos_por_enfoque = []
+    
+    if total_enfoques > 0:
+        res_enfoque = (
+            db.query(Evento.enfoque, func.count(Evento.id))
+            .filter(Evento.enfoque.isnot(None), Evento.activo == True)
+            .group_by(Evento.enfoque).all()
+        )
+        eventos_por_enfoque = [
+            DistribucionItem(label=row[0], count=row[1], porcentaje=round((row[1] / total_enfoques) * 100, 1))
+            for row in res_enfoque
+        ]
+
+    # Distribución de Tipo (%) para Gráfica de Pastel
+    total_tipos = db.query(Evento).filter(Evento.tipo.isnot(None), Evento.activo == True).count()
+    eventos_por_tipo = []
+
+    if total_tipos > 0:
+        res_tipo = (
+            db.query(Evento.tipo, func.count(Evento.id))
+            .filter(Evento.tipo.isnot(None), Evento.activo == True)
+            .group_by(Evento.tipo).all()
+        )
+        eventos_por_tipo = [
+            DistribucionItem(label=row[0], count=row[1], porcentaje=round((row[1] / total_tipos) * 100, 1))
+            for row in res_tipo
+        ]
+
+    # Histórico de 4 Trimestres para Gráfica de Línea
+    historico_linea = []
+    trimestres_aux = []
+
+    for i in range(4):
+        mes_calc = fecha_hoy.month - (3 * i)
+        anio_calc = fecha_hoy.year
+        while mes_calc <= 0:
+            mes_calc += 12
+            anio_calc -= 1
+        q_num = (mes_calc - 1) // 3 + 1
+        
+        start_date = date(anio_calc, (q_num - 1) * 3 + 1, 1)
+        end_date = date(anio_calc + 1, 1, 1) if q_num == 4 else date(anio_calc, q_num * 3 + 1, 1)
+        
+        trimestres_aux.append({"label": f"Q{q_num} {anio_calc}", "start": start_date, "end": end_date})
+    
+    trimestres_aux.reverse() # Ordenar cronológicamente en el eje X
+    for q in trimestres_aux:
+        cant = db.query(Evento).filter(Evento.fecha >= q["start"], Evento.fecha < q["end"], Evento.activo == True).count()
+        historico_linea.append(HistoricoTrimestralItem(trimestre=q["label"], eventos=cant))
 
     top_orgs = (
         db.query(
@@ -115,6 +178,7 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         total_organizaciones=len(orgs),
         total_programas_activos=len(programas),
         total_eventos_activos=total_eventos,
+        organizaciones_con_eventos_activos=orgs_con_eventos,
         beneficiarios_semestre=beneficiarios,
         colonias_impactadas=len(colonias),
         pct_mujeres_beneficiarias=pct_mujeres, 
@@ -122,5 +186,8 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         organizaciones_por_tipo=tipos_count,
         areas_stem_representadas=dict(sorted(areas_conteo.items(), key=lambda x: x[1], reverse=True)), # MODIFICADO
         top_organizaciones=top_organizaciones,
+        distribucion_eventos_enfoque=eventos_por_enfoque, 
+        distribucion_eventos_tipo=eventos_por_tipo,       
+        historico_eventos_trimestral=historico_linea,
         preview_mapa=preview_marcadores
     )
