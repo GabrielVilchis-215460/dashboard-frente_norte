@@ -10,7 +10,7 @@ Descripción:
     para finalmente insertarlos de forma segura (evitando duplicados) en la base de datos.
 
 Instrucciones de uso:
-    Para correr el script: 
+    Para correr el script, primero se deberá estar en la carpeta de backend y al mismo nivel del directorio, correr sl siguiente comando: 
         python -m scripts.etl_eventos
 
 Frecuencia recomendada:
