@@ -22,7 +22,7 @@ from datetime import date, datetime
 from google import genai
 from google.genai import types
 from app.db.session import SessionLocal
-from app.models.eventos import Evento
+from app.models.eventos import Evento 
 from app.models.organizacion import Organizacion
 from app.core.config import settings
 
@@ -30,7 +30,7 @@ api_key = settings.GEMINI_API_KEY
 # Inicializo el cliente de Google Gemini
 client = genai.Client(api_key=api_key)
 
-def extract_events_data(text_post: str, org_name: str) -> dict:
+def extract_events_data(text_post: str, org_name: str) -> tuple[dict, int]:
     date_today = date.today().isoformat()
     prompt = f"""
     Eres un analizador de datos experto. Analiza el siguiente texto extraído de las redes sociales de la organización '{org_name}'.
@@ -66,7 +66,7 @@ def extract_events_data(text_post: str, org_name: str) -> dict:
         "ubicacion": "Lugar mencionado (o null si no se menciona)",
         "fecha": "YYYY-MM-DD",
         "enfoque": "Una de las opciones permitidas o null",
-        "tipo": "Una de las opciones permitidas o null"
+        "tipo": "Una de las opciones permitidas o null",
         "imagen_url": "URL completa de la imagen encontrada en el texto o null"
     }}
     
@@ -90,14 +90,14 @@ def extract_events_data(text_post: str, org_name: str) -> dict:
             print(f"  [Tokens] Entrada: {usage.prompt_token_count} | Salida: {usage.candidates_token_count} | Total: {usage.total_token_count}")
             tokens_used = usage.total_token_count
 
-        return json.loads(response.text)
+        return json.loads(response.text), tokens_used
     
     except Exception as e:
         print(f"Error procesando post con Gemini: {e}")
-        return {"is_event": False}
+        return {"es_evento": False}, 0
     
-def process_feed_rss(org: Organizacion):
-    print(f"Procesando organizacion: {org.nombre}")
+def process_feed_rss(org: Organizacion) -> int:
+    print(f"\nProcesando organizacion: {org.nombre}")
     print(f"Descargando feed desde: {org.rss_url}")
     
     try:
@@ -108,7 +108,7 @@ def process_feed_rss(org: Organizacion):
 
     except Exception as e:
         print(f"Error al descargar feed de la organizacion: {e}")
-        return
+        return 0
     
     posts = feed_data.get('items', []) or feed_data.get('entries', [])
     print(f"Se encontraron {len(posts)} posts. Iniciando análisis...\n")
@@ -196,13 +196,14 @@ def process_feed_rss(org: Organizacion):
             # Pausa obligatoria para cuidar la cuota de la API
             time.sleep(4)
 
-        # Confirmar todos los guardados en PostgreSQL
         db.commit()
         print(f"\nProceso terminado! Se insertaron {events_added} eventos nuevos en la base de datos.")
+        return total_tokens
 
     except Exception as e:
         db.rollback()
         print(f"Ocurrió un error en la base de datos: {e}")
+        return total_tokens
     finally:
         db.close()
 
@@ -219,7 +220,7 @@ if __name__ == "__main__":
         if not orgs_with_feed:
             print("No hay organizaciones con 'rss_url' configurado en la base de datos.")
         else:
-            print(f"Se encontraron {len(orgs_with_feed)} organizaviones con feeds activos \n")
+            print(f"Se encontraron {len(orgs_with_feed)} organizaciones con feeds activos \n")
 
         for org in orgs_with_feed:
             tokens_org = process_feed_rss(org)
