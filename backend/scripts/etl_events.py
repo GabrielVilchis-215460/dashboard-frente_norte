@@ -82,7 +82,16 @@ def extract_events_data(text_post: str, org_name: str) -> dict:
                 response_mime_type="application/json"
             )
         )
+
+        tokens_used = 0
+        usage = response.usage_metadata
+
+        if usage:
+            print(f"  [Tokens] Entrada: {usage.prompt_token_count} | Salida: {usage.candidates_token_count} | Total: {usage.total_token_count}")
+            tokens_used = usage.total_token_count
+
         return json.loads(response.text)
+    
     except Exception as e:
         print(f"Error procesando post con Gemini: {e}")
         return {"is_event": False}
@@ -96,6 +105,7 @@ def process_feed_rss(org: Organizacion):
         response = requests.get(org.rss_url)
         response.raise_for_status()
         feed_data = response.json()
+
     except Exception as e:
         print(f"Error al descargar feed de la organizacion: {e}")
         return
@@ -105,6 +115,7 @@ def process_feed_rss(org: Organizacion):
 
     db = SessionLocal()
     events_added = 0
+    total_tokens = 0
 
     try:
         for i, post in enumerate(posts, 1):
@@ -124,7 +135,8 @@ def process_feed_rss(org: Organizacion):
 
             print(f"[{i}/{len(posts)}] Analizando post...")
 
-            datos = extract_events_data(texto_post, org.nombre)
+            datos, tokens_post = extract_events_data(texto_post, org.nombre)
+            total_tokens += tokens_post
             datos["url_original"] = url_post
 
             print("  -> Respuesta JSON cruda de Gemini:")
@@ -196,6 +208,8 @@ def process_feed_rss(org: Organizacion):
 
 if __name__ == "__main__":
     print("\n Iniciando extracción de eventos...")
+
+    total_tokens_consumed = 0
 
     db_main = SessionLocal()
 
