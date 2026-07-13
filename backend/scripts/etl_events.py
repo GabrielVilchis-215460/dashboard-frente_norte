@@ -222,10 +222,11 @@ if __name__ == "__main__":
             print(f"Se encontraron {len(orgs_with_feed)} organizaviones con feeds activos \n")
 
         for org in orgs_with_feed:
-            process_feed_rss(org)
-            print("\n Pausa de seguridad (10s) para cuidar la cuota de la API...")
+            tokens_org = process_feed_rss(org)
+            total_tokens_consumed += tokens_org 
             time.sleep(10)
         
         print("\n Extracción finalizada con exito!")
+        print(f"Total de tokens consumidos: {total_tokens_consumed}")
     finally:
         db_main.close()
