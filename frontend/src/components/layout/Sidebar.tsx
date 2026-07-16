@@ -10,6 +10,7 @@ import {
   IconMap,
   IconActivity,
   IconSettings,
+  IconCalendarEvent,
 } from '@tabler/icons-react';
 import { NAV_ITEMS } from '../../constants/navigation';
 import { ROUTES } from '../../constants/routes';
@@ -26,6 +27,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconMap,
   IconActivity,
   IconSettings,
+  IconCalendarEvent,
 };
 
 function NavIcon({ name, size = 18 }: { name: string; size?: number }) {

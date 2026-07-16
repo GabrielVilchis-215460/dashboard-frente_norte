@@ -158,4 +158,26 @@ export const adminApi = {
     a.click();
     URL.revokeObjectURL(url);
   },
+
+  // Eventos
+  getEventosAdmin: (params?: { solo_activos?: boolean; organizacion_id?: number }) =>
+    adminClient.get<import('../types').Evento[]>('/api/eventos/admin/todos', { params }).then((r) => r.data),
+
+  createEvento: (data: import('../types').EventoCreate) =>
+    adminClient.post<import('../types').Evento>('/api/eventos/admin', data).then((r) => r.data),
+
+  updateEvento: (id: number, data: import('../types').EventoUpdate) =>
+    adminClient.put<import('../types').Evento>(`/api/eventos/admin/${id}`, data).then((r) => r.data),
+
+  toggleEvento: (id: number) =>
+    adminClient.patch<import('../types').Evento>(`/api/eventos/admin/${id}/toggle`).then((r) => r.data),
+
+  uploadImagenEvento: async (file: File): Promise<string> => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await adminClient.post<{ url: string }>('/api/eventos/admin/upload-imagen', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data.url;
+  },
 };

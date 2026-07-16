@@ -8,9 +8,10 @@ import type { Organizacion, Programa } from '../../services/adminApi';
 import { Modal } from './Modal';
 import { OrgForm, defaultOrg, orgToForm } from './OrgForm';
 import { ProgramaForm, defaultPrograma, programaToForm } from './ProgramaForm';
+import { EventosTable } from './EventosTable';
 import styles from './Admin.module.css';
 
-type Tab = 'organizaciones' | 'programas';
+type Tab = 'organizaciones' | 'programas' | 'eventos';
 
 // ── Tabla de Organizaciones ───────────────────────────────────────────────────
 
@@ -383,9 +384,14 @@ export function Admin() {
         <button className={`${styles.tab} ${tab === 'programas' ? styles.tabActive : ''}`} onClick={() => setTab('programas')}>
           Programas
         </button>
+        <button className={`${styles.tab} ${tab === 'eventos' ? styles.tabActive : ''}`} onClick={() => setTab('eventos')}>
+          Eventos
+        </button>
       </div>
 
-      {tab === 'organizaciones' ? <OrgsTable /> : <ProgramasTable />}
+      {tab === 'organizaciones' && <OrgsTable />}
+      {tab === 'programas' && <ProgramasTable />}
+      {tab === 'eventos' && <EventosTable />}
     </div>
   );
 }

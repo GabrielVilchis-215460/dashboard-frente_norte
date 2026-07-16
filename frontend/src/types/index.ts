@@ -210,3 +210,56 @@ export interface KPICard {
   icon: string;
   trend?: number;
 }
+
+// ── Eventos ──────────────────────────────────────────────────────────────────
+
+export interface OrganizacionBasicaEvento {
+  id: number;
+  nombre: string;
+  latitud?: number | null;
+  longitud?: number | null;
+  logo_url?: string | null;
+}
+
+export interface Evento {
+  id: number;
+  nombre: string;
+  descripcion?: string | null;
+  ubicacion?: string | null;
+  fecha: string;           // "YYYY-MM-DD"
+  fecha_fin?: string | null;
+  hora_inicio?: string | null;  // "HH:MM:SS"
+  hora_fin?: string | null;
+  enfoque?: string | null;
+  tipo?: string | null;
+  imagen_url?: string | null;
+  url_original?: string | null;
+  activo: boolean;
+  organizacion?: OrganizacionBasicaEvento | null;
+}
+
+export interface EventoCreate {
+  nombre: string;
+  descripcion?: string;
+  ubicacion?: string;
+  fecha: string;
+  fecha_fin?: string;
+  hora_inicio?: string;
+  hora_fin?: string;
+  enfoque?: string;
+  tipo?: string;
+  imagen_url?: string;
+  url_original?: string;
+  organizacion_id?: number;
+}
+
+export interface EventoUpdate extends Partial<EventoCreate> {}
+
+export interface EventoMapPoint {
+  organizacion_id: number;
+  organizacion_nombre: string;
+  latitud: number;
+  longitud: number;
+  total_eventos: number;
+  eventos: Evento[];
+}

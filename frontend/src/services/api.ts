@@ -85,4 +85,20 @@ export const api = {
       .get<IndiceSaludResponse>('/api/indice_salud/indice-salud')
       .then((r) => r.data),
 
+  // --- Eventos ---
+  getEventosProximos: (fecha?: string) =>
+    client
+      .get<import('../types').Evento[]>('/api/eventos/proximos', { params: fecha ? { fecha } : {} })
+      .then((r) => r.data),
+
+  getEventosHistorial: (params?: { skip?: number; limit?: number; organizacion_id?: number; tipo?: string; enfoque?: string }) =>
+    client
+      .get<import('../types').Evento[]>('/api/eventos/historial', { params })
+      .then((r) => r.data),
+
+  getEventosMapa: () =>
+    client
+      .get<import('../types').EventoMapPoint[]>('/api/eventos/mapa')
+      .then((r) => r.data),
+
 };

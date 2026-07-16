@@ -8,6 +8,7 @@ export const ROUTES = {
   MATURITY:       '/madurez',
   MAP:            '/mapa',
   HEALTH:         '/salud',
+  EVENTS:         '/eventos',
   ADMIN:          '/admin',
 } as const;
 
