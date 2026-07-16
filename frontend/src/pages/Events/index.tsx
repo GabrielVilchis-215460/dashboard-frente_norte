@@ -1,4 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  IconCalendar,
+  IconClock,
+  IconMapPin,
+  IconBuilding,
+  IconTarget,
+  IconTag,
+  IconExternalLink,
+} from '@tabler/icons-react';
 import { PageHeader } from '../../components/layout';
 import { Skeleton } from '../../components/ui';
 import { useApi } from '../../hooks/useApi';
@@ -110,11 +119,11 @@ function EventCard({
       <div className={styles.eventCardBody}>
         <p className={styles.eventCardTitle}>{evento.nombre}</p>
         <div className={styles.eventCardMeta}>
-          <span>📅 {formatFechaEvento(evento.fecha, evento.fecha_fin)}</span>
-          {(evento.hora_inicio) && (
-            <span>🕐 {formatHorario(evento.hora_inicio, evento.hora_fin)}</span>
+          <span><IconCalendar size={12} stroke={1.5} /> {formatFechaEvento(evento.fecha, evento.fecha_fin)}</span>
+          {evento.hora_inicio && (
+            <span><IconClock size={12} stroke={1.5} /> {formatHorario(evento.hora_inicio, evento.hora_fin)}</span>
           )}
-          {evento.ubicacion && <span>📍 {evento.ubicacion}</span>}
+          {evento.ubicacion && <span><IconMapPin size={12} stroke={1.5} /> {evento.ubicacion}</span>}
         </div>
         {evento.organizacion && (
           <p className={styles.eventCardOrg}>{evento.organizacion.nombre}</p>
@@ -131,20 +140,24 @@ function EventModal({ evento, onClose }: { evento: Evento; onClose: () => void }
   return (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalImg}>
+        <div
+          className={styles.modalImg}
+          style={evento.imagen_url ? { backgroundImage: `url(${evento.imagen_url})` } : undefined}
+        >
+          {evento.imagen_url && <div className={styles.modalImgBlur} />}
           {evento.imagen_url ? <img src={evento.imagen_url} alt={evento.nombre} /> : '📅'}
         </div>
         <div className={styles.modalBody}>
           <h2 className={styles.modalTitle}>{evento.nombre}</h2>
           <div className={styles.modalMeta}>
-            <span>📅 {formatFechaEvento(evento.fecha, evento.fecha_fin)}</span>
+            <span><IconCalendar size={15} stroke={1.5} /> {formatFechaEvento(evento.fecha, evento.fecha_fin)}</span>
             {evento.hora_inicio && (
-              <span>🕐 {formatHorario(evento.hora_inicio, evento.hora_fin)}</span>
+              <span><IconClock size={15} stroke={1.5} /> {formatHorario(evento.hora_inicio, evento.hora_fin)}</span>
             )}
-            {evento.ubicacion && <span>📍 {evento.ubicacion}</span>}
-            {evento.organizacion && <span>🏢 {evento.organizacion.nombre}</span>}
-            {evento.enfoque && <span>🎯 {evento.enfoque}</span>}
-            {evento.tipo && <span>🏷️ {evento.tipo}</span>}
+            {evento.ubicacion && <span><IconMapPin size={15} stroke={1.5} /> {evento.ubicacion}</span>}
+            {evento.organizacion && <span><IconBuilding size={15} stroke={1.5} /> {evento.organizacion.nombre}</span>}
+            {evento.enfoque && <span><IconTarget size={15} stroke={1.5} /> {evento.enfoque}</span>}
+            {evento.tipo && <span><IconTag size={15} stroke={1.5} /> {evento.tipo}</span>}
           </div>
           {evento.descripcion && (
             <p className={styles.modalDesc}>{evento.descripcion}</p>
@@ -157,7 +170,8 @@ function EventModal({ evento, onClose }: { evento: Evento; onClose: () => void }
                 rel="noopener noreferrer"
                 className={styles.linkBtn}
               >
-                Ver publicación →
+                <IconExternalLink size={15} stroke={2} style={{ marginRight: 6 }} />
+                Ver publicación
               </a>
             )}
             <button className={styles.closeBtn} onClick={onClose}>

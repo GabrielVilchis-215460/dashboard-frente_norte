@@ -53,8 +53,8 @@ class ProgramaOut(ProgramaBase):
 
 class OrganizacionBase(BaseModel):
     nombre: str
-    tipo: str
-    areas_stem: List[str] = []
+    tipo: Optional[str] = None
+    areas_stem: Optional[List[str]] = []
     enfoque_principal: Optional[str] = None
     descripcion: Optional[str] = None
     logo_url: Optional[str] = None
@@ -66,8 +66,8 @@ class OrganizacionBase(BaseModel):
     longitud: Optional[float] = None
     direccion: Optional[str] = None
     zona: Optional[str] = None
-    colonias: List[str] = []
-    activo: bool = True
+    colonias: Optional[List[str]] = []
+    activo: Optional[bool] = True
     fuente: Optional[str] = None
 
 
