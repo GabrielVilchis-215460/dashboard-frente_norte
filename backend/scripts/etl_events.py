@@ -17,7 +17,7 @@ Frecuencia recomendada:
     Se recomienda correr una vez por semana, preferiblemente cada lunes.
 """
 
-import json, time, requests
+import json, time, requests, os
 from datetime import date, datetime
 from google import genai
 from google.genai import types
@@ -29,6 +29,10 @@ from app.core.config import settings
 api_key = settings.GEMINI_API_KEY
 # Inicializo el cliente de Google Gemini
 client = genai.Client(api_key=api_key)
+
+# consatnte temporal del bundle con orgs de rss
+BUNDLE_URL = "https://rss.app/feeds/v1.1/_UpQy63lSsA33QMEV.json"
+FALLBACK_JSON_PATH = os.path.join("data", "raw", "stem_ecosystem.json") # Ruta del bundle de las orgs rss
 
 def extract_events_data(text_post: str, org_name: str) -> tuple[dict, int]:
     date_today = date.today().isoformat()
@@ -95,8 +99,110 @@ def extract_events_data(text_post: str, org_name: str) -> tuple[dict, int]:
     except Exception as e:
         print(f"Error procesando post con Gemini: {e}")
         return {"es_evento": False}, 0
+
+# Funcion auxiliar
+def get_org_from_post(post: dict, db, org: Organizacion = None):
+    if org:
+        return org.nombre, org.id
     
-def process_feed_rss(org: Organizacion) -> int:
+    # Todo este bloque funciona SOLO para el procesamiento de los bundles
+    authors = post.get('authors', [])
+    if authors and isinstance(authors, list):
+        author_name = authors[0].get('name')
+        if author_name:
+            org_db = db.query(Organizacion).filter(
+                Organizacion.nombre == author_name,
+                Organizacion.activo == True
+            ).first()
+            
+            if org_db:
+                return org_db.nombre, org_db.id
+            else:
+                return author_name, None
+                
+    return "Organizacion Desconocida", None
+
+# Esta funcion contiene toda la logica para extrear los eventos
+def process_posts(posts: list, db, org: Organizacion = None):
+    events_added = 0
+    total_tokens = 0
+
+    for i, post in enumerate(posts, 1):
+        text_post = post.get('content_text') or post.get('summary') or post.get('title', '')
+        url_post = post.get('url', 'Sin URL disponible')
+        media_attachments = post.get('attachments', [])
+
+        org_name, org_id = get_org_from_post(post, db, org)
+
+        if not org_id:
+            print(f"[{i}/{len(posts)}] Saltando post: Organizacion '{org_name}' no se encuentra activa en la BD.")
+            continue
+
+        image_url = None
+        if media_attachments and isinstance(media_attachments, list):
+            image_url = media_attachments[0].get('url')
+
+        if not image_url:
+            image_url = post.get('image') or post.get('thumbnail')
+        
+        if not text_post.strip():
+            continue
+
+        print(f"[{i}/{len(posts)}] Analizando post para '{org_name}'...")
+
+        datos, tokens_post = extract_events_data(text_post, org_name)
+        total_tokens += tokens_post
+        datos["url_original"] = url_post
+
+        print("  -> Respuesta JSON cruda de Gemini:")
+        print(json.dumps(datos, indent=4, ensure_ascii=False))
+
+        if datos.get("es_evento"):
+            print(f"  -> EVENTO DETECTADO: {datos.get('nombre')}")
+            datos.pop("es_evento", None)
+            
+            try:
+                # Convertir el string YYYY-MM-DD a un objeto Date de Python
+                fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
+            except (ValueError, TypeError):
+                print(f"  -> Fecha invalida devuelta por la IA: {datos.get('fecha')}")
+                time.sleep(4)
+                continue
+
+            final_image = datos.get("imagen_url") or image_url
+
+            evento_existente = db.query(Evento).filter(
+                Evento.nombre == datos["nombre"],
+                Evento.organizacion_id == org_id,
+                Evento.fecha == fecha_evento
+            ).first()
+
+            if not evento_existente:
+                nuevo_evento = Evento(
+                    nombre=datos["nombre"],
+                    ubicacion=datos["ubicacion"],
+                    fecha=fecha_evento,
+                    enfoque=datos.get("enfoque"),
+                    tipo=datos.get("tipo"),
+                    url_original=datos["url_original"],
+                    imagen_url=final_image,
+                    organizacion_id=org_id,
+                    activo=True
+                )
+                db.add(nuevo_evento)
+                events_added += 1
+                print("  -> Evento preparado para guardar en BD.")
+            else:
+                print("  -> El evento ya estaba registrado previamente.")
+        else:
+            print("  -> No es un evento.")
+        
+        time.sleep(4)
+
+    return events_added, total_tokens
+    
+# Esta funcion solo funciona con las columnas de rss_url de la tabla de las organizaciones
+def process_feed_rss(org: Organizacion, db) -> int:
     print(f"\nProcesando organizacion: {org.nombre}")
     print(f"Descargando feed desde: {org.rss_url}")
     
@@ -113,99 +219,47 @@ def process_feed_rss(org: Organizacion) -> int:
     posts = feed_data.get('items', []) or feed_data.get('entries', [])
     print(f"Se encontraron {len(posts)} posts. Iniciando análisis...\n")
 
-    db = SessionLocal()
-    events_added = 0
-    total_tokens = 0
+    events_added, total_tokens = process_posts(posts, db, org)
+    db.commit()
 
+    print(f"\nProceso terminado para {org.nombre}! Se insertaron {events_added} eventos nuevos.")
+    return total_tokens
+
+# Esta funcion solo funciona con los bundles con orgs de RSS
+def process_bundle(db):
+    print(f"\nIniciando procesamiento de Bundle mediante URL...")
+    feed_data = None
+
+    # primero trata de acceder mediante un request al url
     try:
-        for i, post in enumerate(posts, 1):
-            texto_post = post.get('content_text') or post.get('summary') or post.get('title', '')
-            url_post = post.get('url', 'Sin URL disponible')
-            media_attachments = post.get('attachments', [])
-            imagen_url = None
-            
-            if media_attachments and isinstance(media_attachments, list):
-                imagen_url = media_attachments[0].get('url')
-
-            if not imagen_url:
-                imagen_url = post.get('image') or post.get('thumbnail')
-            
-            if not texto_post.strip():
-                continue
-
-            print(f"[{i}/{len(posts)}] Analizando post...")
-
-            datos, tokens_post = extract_events_data(texto_post, org.nombre)
-            total_tokens += tokens_post
-            datos["url_original"] = url_post
-
-            print("  -> Respuesta JSON cruda de Gemini:")
-            print(json.dumps(datos, indent=4, ensure_ascii=False))
-            
-            if datos.get("es_evento"):
-                print(f"  -> ¡EVENTO DETECTADO!: {datos.get('nombre')}")
-
-                datos.pop("es_evento", None)
-                
-                try:
-                    # Convertir el string YYYY-MM-DD a un objeto Date de Python
-                    fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
-                except (ValueError, TypeError):
-                    print(f"  -> Fecha inválida devuelta por la IA: {datos.get('fecha')}")
-                    time.sleep(4)
-                    continue
-
-                imagen_final = datos.get("imagen_url")
-                if not imagen_final:
-                    media_attachments = post.get('attachments', [])
-
-                    if media_attachments and isinstance(media_attachments, list):
-                        imagen_final = media_attachments[0].get('url')
-
-                    if not imagen_final:
-                        imagen_final = post.get('image') or post.get('thumbnail')
-
-                # Evitar duplicados consultando si ya existe en la BD
-                evento_existente = db.query(Evento).filter(
-                    Evento.nombre == datos["nombre"],
-                    Evento.organizacion_id == org.id,
-                    Evento.fecha == fecha_evento
-                ).first()
-
-                if not evento_existente:
-                    # Crear la instancia del modelo SQLAlchemy
-                    nuevo_evento = Evento(
-                        nombre=datos["nombre"],
-                        ubicacion=datos["ubicacion"],
-                        fecha=fecha_evento,
-                        enfoque=datos.get("enfoque"),
-                        tipo=datos.get("tipo"),
-                        url_original=datos["url_original"],
-                        imagen_url=imagen_final,
-                        organizacion_id=org.id,
-                        activo=True
-                    )
-                    db.add(nuevo_evento)
-                    events_added += 1
-                    print("  -> Evento preparado para guardar en BD.")
-                else:
-                    print("  -> El evento ya estaba registrado previamente.")
-            else:
-                print("  -> No es un evento.")
-            
-            # Pausa obligatoria para cuidar la cuota de la API
-            time.sleep(4)
-
-        db.commit()
-        print(f"\nProceso terminado! Se insertaron {events_added} eventos nuevos en la base de datos.")
-        return total_tokens
-
+        print(f"Intentando descargar Bundle en linea desde: {BUNDLE_URL}")
+        response = requests.get(BUNDLE_URL, timeout=10)
+        response.raise_for_status()
+        feed_data = response.json()
+        print("Bundle descargado correctamente desde internet.")
+    # si no puede acceder, entonces tomara en cuenta el json que esta en el directorio del proyecto
+    # NOTA: dicho bundle se deberá actualizar cada lunes tambien
     except Exception as e:
-        db.rollback()
-        print(f"Ocurrió un error en la base de datos: {e}")
+        print(f"No se pudo acceder al Bundle en linea ({e}). Iniciando Fallback local...")
+        if os.path.exists(FALLBACK_JSON_PATH):
+            print(f"Cargando archivo local de respaldo: {FALLBACK_JSON_PATH}")
+            with open(FALLBACK_JSON_PATH, "r", encoding="utf-8") as file:
+                feed_data = json.load(file)
+        else:
+            print(f"Error critico: Tampoco se encontro el archivo local en {FALLBACK_JSON_PATH}")
+            return 0
+        
+    if feed_data:
+        posts = feed_data.get('items', []) or feed_data.get('entries', [])
+        print(f"Se encontraron {len(posts)} posts en el Bundle. Iniciando analisis...\n")
+        
+        events_added, total_tokens = process_posts(posts, db, org=None)
+        db.commit()
+
+        print(f"\nProceso del Bundle terminado! Se insertaron {events_added} eventos nuevos.")
         return total_tokens
-    finally:
-        db.close()
+    
+    return 0
 
 if __name__ == "__main__":
     print("\n Iniciando extracción de eventos...")
@@ -215,19 +269,26 @@ if __name__ == "__main__":
     db_main = SessionLocal()
 
     try:
+        # primero procesa orgs en la BD
         orgs_with_feed = db_main.query(Organizacion).filter(Organizacion.rss_url.isnot(None)).all()
 
         if not orgs_with_feed:
             print("No hay organizaciones con 'rss_url' configurado en la base de datos.")
         else:
-            print(f"Se encontraron {len(orgs_with_feed)} organizaciones con feeds activos \n")
-
-        for org in orgs_with_feed:
-            tokens_org = process_feed_rss(org)
-            total_tokens_consumed += tokens_org 
-            time.sleep(10)
+            print(f"\n--- FASE 1: Procesando {len(orgs_with_feed)} feeds individuales ---")
+            for org in orgs_with_feed:
+                tokens_org = process_feed_rss(org)
+                total_tokens_consumed += tokens_org 
+                time.sleep(10)
+        # luego procesa los bundles
+        print("\n--- FASE 2: Procesando Bundle Unificado ---")
+        tokens_bundle = process_bundle(db_main)
+        total_tokens_consumed += tokens_bundle
         
         print("\n Extracción finalizada con exito!")
-        print(f"Total de tokens consumidos: {total_tokens_consumed}")
+        print(f" Total de tokens consumidos (Fase 1 + Fase 2): {total_tokens_consumed}")
+    except Exception as e:
+        db_main.rollback()
+        print(f"Ocurrio un error critico en la ejecucion general: {e}")
     finally:
         db_main.close()
