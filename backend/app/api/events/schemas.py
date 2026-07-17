@@ -1,7 +1,22 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import date, time
 from typing import Optional, List
 
+class DistribucionItem(BaseModel):
+    label: str
+    count: int
+    porcentaje: float
+
+class HistoricoTrimestralItem(BaseModel):
+    trimestre: str
+    eventos: int
+
+class MetricasEventos(BaseModel):
+    total_eventos_activos: int
+    organizaciones_con_eventos_activos: int
+    distribucion_eventos_enfoque: List[DistribucionItem]
+    distribucion_eventos_tipo: List[DistribucionItem]
+    historico_eventos_trimestral: List[HistoricoTrimestralItem]
 
 class OrganizacionBasica(BaseModel):
     id: int
@@ -10,8 +25,8 @@ class OrganizacionBasica(BaseModel):
     longitud: Optional[float] = None
     logo_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    # Actualización a Pydantic V2
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventoResponse(BaseModel):
@@ -30,8 +45,8 @@ class EventoResponse(BaseModel):
     activo: bool
     organizacion: Optional[OrganizacionBasica] = None
 
-    class Config:
-        from_attributes = True
+    # Actualización a Pydantic V2
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventoCreate(BaseModel):

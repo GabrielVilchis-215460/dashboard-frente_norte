@@ -19,7 +19,6 @@ def obtener_eventos_proximos(db: Session, fecha_filtro: date) -> List[Evento]:
         .all()
     )
 
-
 def obtener_historial_eventos(
     db: Session,
     skip: int = 0,
@@ -41,7 +40,6 @@ def obtener_historial_eventos(
     if enfoque:
         q = q.filter(Evento.enfoque == enfoque)
     return q.order_by(Evento.fecha.desc()).offset(skip).limit(limit).all()
-
 
 def obtener_eventos_mapa(db: Session) -> List[EventoMapPoint]:
     """Agrupa eventos próximos activos por organización (con coordenadas)."""
@@ -77,9 +75,18 @@ def obtener_eventos_mapa(db: Session) -> List[EventoMapPoint]:
 
     return list(grupos.values())
 
+def obtener_metricas_eventos(db: Session) -> dict:
+    """Agrupa los KPIs específicos del módulo de Eventos"""
+    return {
+        "total_eventos_activos": contar_eventos_activos(db),
+        "organizaciones_con_eventos_activos": contar_organizaciones_con_eventos_activos(db),
+        "distribucion_eventos_enfoque": obtener_distribucion(db, Evento.enfoque),
+        "distribucion_eventos_tipo": obtener_distribucion(db, Evento.tipo),
+        "historico_eventos_trimestral": obtener_historico_trimestral(db),
+    }
+
 
 # ── CRUD administrativo ───────────────────────────────────────────────────────
-
 def crear_evento(db: Session, data: EventoCreate) -> Evento:
     evento = Evento(**data.model_dump())
     db.add(evento)
@@ -134,7 +141,7 @@ def listar_todos_eventos_admin(
     return q.order_by(Evento.fecha.desc()).offset(skip).limit(limit).all()
 
 
-# ── Auxiliares (usados por overview) ─────────────────────────────────────────
+# ── Auxiliares (usados internamente para las métricas) ─────────────────────────
 
 def contar_eventos_activos(db: Session) -> int:
     fecha_hoy = date.today()
@@ -152,7 +159,6 @@ def contar_organizaciones_con_eventos_activos(db: Session) -> int:
         .count()
     )
 
-
 def obtener_distribucion(db: Session, columna_modelo):
     total = db.query(Evento).filter(
         columna_modelo.isnot(None), Evento.activo == True
@@ -166,7 +172,6 @@ def obtener_distribucion(db: Session, columna_modelo):
         {"label": nombre, "count": cnt, "porcentaje": round(cnt / total * 100, 2)}
         for nombre, cnt in resultados
     ]
-
 
 def obtener_historico_trimestral(db: Session):
     hoy = date.today()

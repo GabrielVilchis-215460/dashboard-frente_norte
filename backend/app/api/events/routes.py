@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.auth.service import get_current_admin
 from app.api.events import service
-from app.api.events.schemas import EventoResponse, EventoCreate, EventoUpdate, EventoMapPoint
+# Importante: Agregamos MetricasEventos a la importación
+from app.api.events.schemas import EventoResponse, EventoCreate, EventoUpdate, EventoMapPoint, MetricasEventos
 from app.core.config import settings
 
 logger = logging.getLogger("stem_api.eventos")
@@ -18,6 +19,12 @@ router = APIRouter(prefix="/eventos", tags=["Eventos"])
 
 
 # ── Endpoints públicos ────────────────────────────────────────────────────────
+
+@router.get("/metricas", response_model=MetricasEventos)
+def metricas_eventos(db: Session = Depends(get_db)):
+    """Retorna los KPIs específicos del módulo de Eventos"""
+    return service.obtener_metricas_eventos(db)
+
 
 @router.get("/proximos", response_model=List[EventoResponse])
 def listar_proximos(
