@@ -1,0 +1,178 @@
+.carousel {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.counter {
+  position: absolute;
+  top: -36px;
+  right: 0;
+  font-size: var(--text-sm);
+  color: var(--text-60);
+}
+
+.body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.navBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  color: var(--text-80);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  align-self: center;
+}
+
+.navBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text-100);
+}
+
+.navBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.card {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+/* Imagen — ocupa el ancho completo de la card */
+.imgWrapper {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Contenido bajo la imagen */
+.content {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-100);
+  line-height: 1.3;
+  margin: 0;
+}
+
+.titleLink {
+  color: var(--text-100);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 6px;
+  transition: color var(--transition-fast);
+}
+
+.titleLink:hover {
+  color: var(--accent-a);
+}
+
+.extIcon {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--text-60);
+}
+
+.titleLink:hover .extIcon {
+  color: var(--accent-a);
+}
+
+.org {
+  font-size: var(--text-sm);
+  color: var(--text-60);
+  font-weight: 400;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-xs);
+  color: var(--text-60);
+}
+
+.metaRow svg {
+  color: var(--accent-a);
+  flex-shrink: 0;
+}
+
+/* Descripción truncada a 3 líneas */
+.desc {
+  font-size: var(--text-sm);
+  color: var(--text-60);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+/* Estados de carga y vacío */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.empty {
+  font-size: var(--text-sm);
+  color: var(--text-60);
+  text-align: center;
+  padding: var(--space-8) 0;
+}

@@ -237,24 +237,26 @@ export interface Evento {
   activo: boolean;
   organizacion?: OrganizacionBasicaEvento | null;
 }
-
-export interface EventoCreate {
-  nombre: string;
-  descripcion?: string;
-  ubicacion?: string;
-  fecha: string;
-  fecha_fin?: string;
-  hora_inicio?: string;
-  hora_fin?: string;
-  enfoque?: string;
-  tipo?: string;
-  imagen_url?: string;
-  url_original?: string;
-  organizacion_id?: number;
+ 
+export interface DistribucionItem {
+  label: string;
+  count: number;
+  porcentaje: number;
 }
-
-export interface EventoUpdate extends Partial<EventoCreate> {}
-
+ 
+export interface HistoricoTrimestralItem {
+  trimestre: string;
+  eventos: number;
+}
+ 
+export interface MetricasEventos {
+  total_eventos_activos: number;
+  organizaciones_con_eventos_activos: number;
+  distribucion_eventos_enfoque: DistribucionItem[];
+  distribucion_eventos_tipo: DistribucionItem[];
+  historico_eventos_trimestral: HistoricoTrimestralItem[];
+}
+ 
 export interface EventoMapPoint {
   organizacion_id: number;
   organizacion_nombre: string;

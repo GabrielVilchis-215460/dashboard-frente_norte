@@ -11,6 +11,9 @@ import type {
   FichaActor,
   MapFilters,
   IndiceSaludResponse,
+  MetricasEventos,
+  Evento,
+  EventoMapPoint,
 } from '../types';
 
 const client = axios.create({
@@ -78,27 +81,31 @@ export const api = {
     client
       .get<FichaActor>(`/api/mapa_ecosistema/actor/${orgId}`)
       .then((r) => r.data),
-  
-  // --- Índice de Salud del Ecosistema ---
+
+    // --- Índice de Salud del Ecosistema ---
   getIndiceSalud: () =>
     client
       .get<IndiceSaludResponse>('/api/indice_salud/indice-salud')
       .then((r) => r.data),
-
+      
   // --- Eventos ---
-  getEventosProximos: (fecha?: string) =>
+  getEventosMetricas: () =>
     client
-      .get<import('../types').Evento[]>('/api/eventos/proximos', { params: fecha ? { fecha } : {} })
+      .get<MetricasEventos>('/api/eventos/metricas')
       .then((r) => r.data),
 
-  getEventosHistorial: (params?: { skip?: number; limit?: number; organizacion_id?: number; tipo?: string; enfoque?: string }) =>
+  getEventosProximos: () =>
     client
-      .get<import('../types').Evento[]>('/api/eventos/historial', { params })
+      .get<Evento[]>('/api/eventos/proximos')
+      .then((r) => r.data),
+
+  getEventosHistorial: (params?: { skip?: number; limit?: number }) =>
+    client
+      .get<Evento[]>('/api/eventos/historial', { params })
       .then((r) => r.data),
 
   getEventosMapa: () =>
     client
-      .get<import('../types').EventoMapPoint[]>('/api/eventos/mapa')
+      .get<EventoMapPoint[]>('/api/eventos/mapa')
       .then((r) => r.data),
-
 };
