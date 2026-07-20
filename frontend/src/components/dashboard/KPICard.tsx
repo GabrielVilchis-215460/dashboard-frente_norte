@@ -4,12 +4,18 @@ import React from 'react';
 import { SkeletonKPI } from '../ui/Skeleton';
 import styles from './KPICard.module.css';
 
+interface BadgeProps {
+  value: number;
+  positive: boolean;
+}
+
 interface KPICardProps {
   label: string;
   value: string | number;
   icon?: React.ReactNode;
   loading?: boolean;
   animationDelay?: number;
+  badge?: BadgeProps;
 }
 
 export function KPICard({
@@ -18,6 +24,7 @@ export function KPICard({
   icon,
   loading = false,
   animationDelay = 0,
+  badge,
 }: KPICardProps) {
   if (loading) {
     return (
@@ -34,7 +41,14 @@ export function KPICard({
     >
       <div className={styles.inner}>
         <div className={styles.textGroup}>
-          <span className={styles.value}>{value}</span>
+          <div className={styles.valueRow}>
+            <span className={styles.value}>{value}</span>
+            {badge && (
+              <span className={`${styles.badge} ${badge.positive ? styles.badgePos : styles.badgeNeg}`}>
+                {badge.positive ? `▲ ${badge.value}` : `▼ ${Math.abs(badge.value)}`}
+              </span>
+            )}
+          </div>
           <span className={styles.label}>{label}</span>
         </div>
         {icon && (

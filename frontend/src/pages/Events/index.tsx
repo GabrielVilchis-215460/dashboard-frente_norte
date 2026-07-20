@@ -1,7 +1,3 @@
-import {
-  IconCalendarEvent,
-  IconBuildingCommunity,
-} from '@tabler/icons-react';
 import { Card } from '../../components/ui';
 import { KPICard } from '../../components/dashboard';
 import { DonutChart } from '../../components/charts';
@@ -45,35 +41,23 @@ export function Events() {
 
       {/* Fila 1: 2 KPIs + 2 Donuts */}
       <section className={`${styles.topGrid} stagger-children`}>
-        {/* KPI Eventos este trimestre */}
-        <Card className={styles.kpiCard}>
-          <div className={styles.kpiInner}>
-            <div className={styles.kpiTop}>
-              <span className={styles.kpiBig}>
-                {loadingM ? '—' : eventosTrimestre}
-              </span>
-              {delta !== null && !loadingM && (
-                <span
-                  className={`${styles.delta} ${delta >= 0 ? styles.deltaPos : styles.deltaNeg}`}
-                >
-                  {delta >= 0 ? `▲ ${delta}` : `▼ ${Math.abs(delta)}`}
-                </span>
-              )}
-            </div>
-            <div className={styles.kpiMeta}>
-              <IconCalendarEvent size={20} stroke={1.5} className={styles.kpiIcon} />
-              <span className={styles.kpiLabel}>Eventos este trimestre</span>
-            </div>
-          </div>
-        </Card>
-
-        {/* KPI Organizaciones con eventos activos */}
-        <KPICard
-          label="Organizaciones con eventos activos"
-          value={loadingM ? '—' : (metricas?.organizaciones_con_eventos_activos ?? 0)}
-          icon={<IconBuildingCommunity size={28} stroke={1.2} />}
-          loading={loadingM}
-        />
+        <div className={styles.kpiColumn}>
+          <KPICard
+            label="Eventos este trimestre"
+            value={loadingM ? '—' : eventosTrimestre}
+            loading={loadingM}
+            badge={
+              delta !== null && !loadingM
+                ? { value: delta, positive: delta >= 0 }
+                : undefined
+            }
+          />
+          <KPICard
+            label="Organizaciones con eventos activos"
+            value={loadingM ? '—' : (metricas?.organizaciones_con_eventos_activos ?? 0)}
+            loading={loadingM}
+          />
+        </div>
 
         {/* Donut tipo */}
         <Card title="Porcentaje de eventos por tipo" className={styles.donutCard}>

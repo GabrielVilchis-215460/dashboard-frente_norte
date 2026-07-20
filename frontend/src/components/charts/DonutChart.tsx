@@ -1,5 +1,6 @@
 // -- Gráfica de dona --
 
+import { useRef } from 'react';
 import {
   PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
 } from 'recharts';
@@ -33,19 +34,21 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function DonutChart({ data, loading = false }: Props) {
-  if (loading) return <Skeleton width="100%" height="220px" borderRadius="12px" />;
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  if (loading) return <Skeleton width="100%" height="200px" borderRadius="12px" />;
   if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
   return (
-    <div className={styles.wrapper}>
-      <ResponsiveContainer width="100%" height={220}>
+    <div className={styles.wrapper} ref={wrapperRef}>
+      {/* contenedor responsive evita que el SVG se corte en diferentes breakpoints */}
+      <ResponsiveContainer width="100%" aspect={2} minHeight={160}>
         <PieChart>
           <Pie
             data={data}
-            cx="35%"
+            cx="38%"
             cy="50%"
-            innerRadius={60}
-            outerRadius={90}
+            innerRadius="45%"
+            outerRadius="68%"
             paddingAngle={3}
             dataKey="value"
             animationBegin={0}

@@ -10,89 +10,31 @@
 /* Fila 1 */
 .topGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.4fr 1.4fr;
+  grid-template-columns: 0.7fr 1.4fr 1.4fr;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
   align-items: stretch;
 }
 
-.kpiCard {
-  min-height: 140px;
-}
-
-.kpiInner {
-  padding: var(--space-5) var(--space-6);
+.kpiColumn {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  height: 100%;
+  gap: var(--space-4);
 }
 
-.kpiTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-
-.kpiBig {
-  font-family: var(--font-display);
-  font-size: var(--text-4xl);
-  font-weight: 700;
-  color: var(--text-100);
-  letter-spacing: -0.03em;
-  line-height: 1;
-}
-
-.delta {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-}
-
-.deltaPos {
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.12);
-}
-
-.deltaNeg {
-  color: #f87171;
-  background: rgba(248, 113, 113, 0.12);
-}
-
-.kpiMeta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: auto;
-}
-
-.kpiIcon {
-  color: var(--text-60);
-  flex-shrink: 0;
-}
-
-.kpiLabel {
-  font-size: var(--text-sm);
-  color: var(--text-80);
-}
-
-.donutCard {
-  min-height: 260px;
-}
+.kpiCard { flex: 1; }
+.donutCard { min-height: 240px; }
 
 /*  Fila 2 */
 .bottomGrid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--space-4);
 }
 
-.chartCard {
-  min-height: 300px;
-}
-
+.chartCard,
 .carouselCard {
+  min-width: 0;
   min-height: 300px;
 }
 
@@ -101,13 +43,15 @@
   .topGrid {
     grid-template-columns: 1fr 1fr;
   }
+  .kpiColumn {
+    flex-direction: row;
+    grid-column: 1 / -1;  }
 }
 
-@media (max-width: 900px) {
-  .topGrid {
-    grid-template-columns: 1fr;
-  }
-  .bottomGrid {
-    grid-template-columns: 1fr;
+@media (max-width: 800px) {
+  .topGrid { grid-template-columns: 1fr; }
+  .kpiColumn {
+    flex-direction: column;
+    grid-column: auto;
   }
 }

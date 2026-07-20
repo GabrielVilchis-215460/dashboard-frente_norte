@@ -25,11 +25,10 @@ export function EventCarousel({ eventos, loading }: Props) {
 
   if (loading) {
     return (
-      <div className={styles.skeleton}>
+      <div className={styles.skeletonWrap}>
         <Skeleton width="100%" height="180px" borderRadius="12px" />
         <Skeleton width="70%" height="20px" />
         <Skeleton width="40%" height="14px" />
-        <Skeleton width="100%" height="48px" />
       </div>
     );
   }
@@ -60,45 +59,28 @@ export function EventCarousel({ eventos, loading }: Props) {
           <IconChevronLeft size={18} stroke={1.5} />
         </button>
 
+        {/* Card: info izquierda + imagen derecha */}
         <div className={`${styles.card} animate-fade-in`} key={ev.id}>
-          {/* Imagen — se omite completamente si no hay o falla */}
-          {hasImage && (
-            <div className={styles.imgWrapper}>
-              <img
-                src={ev.imagen_url!}
-                alt={ev.nombre}
-                className={styles.img}
-                onError={() => setImgFailed(true)}
-              />
-            </div>
-          )}
-
+          {/* Contenido textual — siempre visible, ocupa el espacio disponible */}
           <div className={styles.content}>
-            {/* Nombre + link externo */}
-            <div className={styles.titleRow}>
-              <h4 className={styles.title}>
-                {ev.url_original ? (
-                  <a
-                    href={ev.url_original}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.titleLink}
-                  >
-                    {ev.nombre}
-                    <IconExternalLink size={13} stroke={1.5} className={styles.extIcon} />
-                  </a>
-                ) : (
-                  ev.nombre
-                )}
-              </h4>
-            </div>
+            <h4 className={styles.title}>
+              {ev.url_original ? (
+                <a
+                  href={ev.url_original}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.titleLink}
+                >
+                  {ev.nombre}
+                  <IconExternalLink size={13} stroke={1.5} className={styles.extIcon} />
+                </a>
+              ) : ev.nombre}
+            </h4>
 
-            {/* Organización */}
             {ev.organizacion && (
               <span className={styles.org}>{ev.organizacion.nombre}</span>
             )}
 
-            {/* Meta */}
             <div className={styles.meta}>
               <span className={styles.metaRow}>
                 <IconCalendar size={12} stroke={1.5} />
@@ -113,17 +95,28 @@ export function EventCarousel({ eventos, loading }: Props) {
               )}
             </div>
 
-            {/* Descripción truncada */}
             {ev.descripcion && (
               <p className={styles.desc}>{ev.descripcion}</p>
             )}
 
-            {/* Tags */}
             {(ev.tipo || ev.enfoque) && (
               <div className={styles.tags}>
                 {ev.tipo && <EventTag label={ev.tipo} variant="tipo" />}
                 {ev.enfoque && <EventTag label={ev.enfoque} variant="enfoque" />}
               </div>
+            )}
+          </div>
+
+          {/* Imagen — derecha, misma altura que el contenido
+              Si no existe o falla → el espacio queda vacío pero la altura no cambia */}
+          <div className={styles.imgSlot}>
+            {hasImage && (
+              <img
+                src={ev.imagen_url!}
+                alt={ev.nombre}
+                className={styles.img}
+                onError={() => setImgFailed(true)}
+              />
             )}
           </div>
         </div>
