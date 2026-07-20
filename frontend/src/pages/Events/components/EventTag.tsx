@@ -7,7 +7,7 @@ import {
 import { TIPO_ICON, ENFOQUE_ICON } from './eventConfig';
 import styles from './EventTag.module.css';
 
-const ICON_MAP: Record<string, React.ComponentType<{ size?: number; stroke?: number }>> = {
+const ICON_MAP: Record<string, React.ComponentType<{ size?: number | string; stroke?: number | string }>> = {
   IconTools, IconBook, IconTent, IconCode, IconMicrophone, IconCalendarEvent,
   IconFlask, IconCpu, IconTool, IconMath, IconRobot, IconBrain,
   IconLeaf, IconCoin, IconRocket, IconTag,

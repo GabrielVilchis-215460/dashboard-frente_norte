@@ -238,6 +238,23 @@ export interface Evento {
   organizacion?: OrganizacionBasicaEvento | null;
 }
  
+export interface EventoCreate {
+  nombre: string;
+  descripcion?: string;
+  ubicacion?: string;
+  fecha: string;
+  fecha_fin?: string;
+  hora_inicio?: string;
+  hora_fin?: string;
+  enfoque?: string;
+  tipo?: string;
+  imagen_url?: string;
+  url_original?: string;
+  organizacion_id?: number;
+}
+
+export interface EventoUpdate extends Partial<EventoCreate> {}
+
 export interface DistribucionItem {
   label: string;
   count: number;
