@@ -42,9 +42,10 @@ export function formatFechaEvento(
 
 /* Formatea un horario "HH:MM" o rango "HH:MM – HH:MM" */
 export function formatHorario(
-  hora_inicio: string,
+  hora_inicio: string | null | undefined,
   hora_fin?: string | null
 ): string {
+  if (!hora_inicio) return '';
   const trim = (h: string) => h.slice(0, 5);
   if (!hora_fin) return trim(hora_inicio);
   return `${trim(hora_inicio)} – ${trim(hora_fin)}`;
