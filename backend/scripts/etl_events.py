@@ -11,7 +11,7 @@ Descripción:
 
 Instrucciones de uso:
     Para correr el script, primero se deberá estar en la carpeta de backend y al mismo nivel del directorio, correr sl siguiente comando: 
-        python -m scripts.etl_eventos
+        python -m scripts.etl_events
 
 Frecuencia recomendada:
     Se recomienda correr una vez por semana, preferiblemente cada lunes.
@@ -25,13 +25,15 @@ from app.db.session import SessionLocal
 from app.models.eventos import Evento 
 from app.models.organizacion import Organizacion
 from app.core.config import settings
+from sqlalchemy import or_
+from difflib import SequenceMatcher
 
 api_key = settings.GEMINI_API_KEY
 # Inicializo el cliente de Google Gemini
 client = genai.Client(api_key=api_key)
 
 # consatnte temporal del bundle con orgs de rss
-BUNDLE_URL = "https://rss.app/feeds/v1.1/_UpQy63lSsA33QMEV.json"
+BUNDLE_URL = "https://rss.app/feeds/v1.1/_e96R3DNd6AgEXOm1.json"
 FALLBACK_JSON_PATH = os.path.join("data", "raw", "stem_ecosystem.json") # Ruta del bundle de las orgs rss
 
 def extract_events_data(text_post: str, org_name: str) -> tuple[dict, int]:
@@ -44,34 +46,35 @@ def extract_events_data(text_post: str, org_name: str) -> tuple[dict, int]:
     
     REGLA 1: FILTRO DE AUTORÍA ORIGINAL (ANTI-REPOST)
     Analiza si este post es un "repost", "compartido" o una colaboración de un evento ajeno. 
-    Si el texto indica claramente que el evento es organizado por OTRA entidad y '{org_name}' solo lo está promocionando/compartiendo, 
-    debes marcar "es_evento": false. Solo acepta el evento si le pertenece legítimamente a '{org_name}' o si co-organizan activamente.
+    Si el texto indica claramente que el evento es organizado por OTRA entidad, marca "es_evento": false.
     
     REGLA 2: UBICACIÓN
-    Solo debes considerar como evento válido (es_evento: true) si la actividad se llevará a cabo en Ciudad Juárez, Chihuahua, o si es un evento 100% ONLINE/VIRTUAL. 
-    Si es presencial en otra ciudad, marca "es_evento": false.
-
-    REGLA 3: CATEGORIZACIÓN ESTRICTA (ENFOQUE Y TIPO DE EVENTOS)
-    Asigna el 'enfoque' y el 'tipo' eligiendo ÚNICAMENTE UNA opción de las siguientes listas (la que mejor se asemeje al post):
-    - Opciones de ENFOQUE permitidas: "Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica", "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento".
-    - Opciones de TIPO permitidas: "Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos".
-    Si no logras deducirlo, puedes dejar el valor como null.
+    Solo considera como válido (es_evento: true) si es en Ciudad Juárez, Chihuahua, o 100% ONLINE/VIRTUAL.
     
-    Si es un evento válido, extrae los datos. Si usa fechas relativas ("este viernes"), calcúlala basándote en la fecha actual.
+    REGLA 3: CATEGORIZACIÓN
+    - ENFOQUE permitidas: "Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica", "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento".
+    - TIPO permitidas: "Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos".
     
-    REGLA 4: EXTRACCIÓN DE LA URL DE LA IMAGEN
-    Analiza minuciosamente el texto del post adjunto en busca de cualquier enlace, etiqueta HTML (como <img src="...">) o URL directa que apunte a la imagen, flyer, banner o foto 
-    promocional de este evento específico. Si encuentras dicha URL, extraela. Si no hay ninguna URL de imagen explícita en el texto, pon null.
+    REGLA 4: FECHAS Y HORARIOS (MUY IMPORTANTE)
+    - Si el evento dura un solo día, "fecha" es ese día y "fecha_fin" es null.
+    - Si el texto menciona un RANGO de fechas (ej. 'del 11 de julio al 15 de agosto'), pon el inicio en "fecha" y el final en "fecha_fin". Ambas en formato "YYYY-MM-DD".
+    - Extrae la "hora_inicio" y "hora_fin" si se mencionan. Deben estar estrictamente en formato militar "HH:MM" (ej. "14:30"). Si no se mencionan, pon null.
     
-    Responde ÚNICAMENTE con un objeto JSON válido con la siguiente estructura:
+    REGLA 5: IMAGEN
+    Extrae la URL de la imagen promocional si existe explícitamente en el texto, si no, null.
+    
+    Responde ÚNICAMENTE con un objeto JSON válido:
     {{
         "es_evento": true/false,
-        "nombre": "Nombre inferido del evento",
-        "ubicacion": "Lugar mencionado (o null si no se menciona)",
+        "nombre": "Nombre inferido",
+        "ubicacion": "Lugar mencionado",
         "fecha": "YYYY-MM-DD",
-        "enfoque": "Una de las opciones permitidas o null",
-        "tipo": "Una de las opciones permitidas o null",
-        "imagen_url": "URL completa de la imagen encontrada en el texto o null"
+        "fecha_fin": "YYYY-MM-DD o null",
+        "hora_inicio": "HH:MM o null",
+        "hora_fin": "HH:MM o null",
+        "enfoque": "Opcion permitida",
+        "tipo": "Opcion permitida",
+        "imagen_url": "URL o null"
     }}
     
     Texto del post:
@@ -111,7 +114,7 @@ def get_org_from_post(post: dict, db, org: Organizacion = None):
         author_name = authors[0].get('name')
         if author_name:
             org_db = db.query(Organizacion).filter(
-                Organizacion.nombre == author_name,
+                or_(Organizacion.nombre == author_name, Organizacion.rss_alias == author_name),
                 Organizacion.activo == True
             ).first()
             
@@ -164,24 +167,57 @@ def process_posts(posts: list, db, org: Organizacion = None):
             try:
                 # Convertir el string YYYY-MM-DD a un objeto Date de Python
                 fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
-            except (ValueError, TypeError):
-                print(f"  -> Fecha invalida devuelta por la IA: {datos.get('fecha')}")
+                
+                # Procesar variables nuevas en inglés (con soporte para nulos)
+                end_date = None
+                if datos.get("fecha_fin"):
+                    end_date = datetime.strptime(datos["fecha_fin"], "%Y-%m-%d").date()
+                
+                start_time = None
+                if datos.get("hora_inicio"):
+                    start_time = datetime.strptime(datos["hora_inicio"], "%H:%M").time()
+                    
+                end_time = None
+                if datos.get("hora_fin"):
+                    end_time = datetime.strptime(datos["hora_fin"], "%H:%M").time()
+
+            except (ValueError, TypeError) as e:
+                print(f"  -> Formato de fecha u hora inválido devuelto por la IA: {e}")
                 time.sleep(4)
                 continue
 
             final_image = datos.get("imagen_url") or image_url
 
-            evento_existente = db.query(Evento).filter(
-                Evento.nombre == datos["nombre"],
+            #evento_existente = db.query(Evento).filter(
+            #    Evento.nombre == datos["nombre"],
+            #    Evento.organizacion_id == org_id,
+            #    Evento.fecha == fecha_evento
+            #).first()
+            eventos_mismo_dia = db.query(Evento).filter(
                 Evento.organizacion_id == org_id,
                 Evento.fecha == fecha_evento
-            ).first()
+            ).all()
 
-            if not evento_existente:
+            es_duplicado = False
+            for ev in eventos_mismo_dia:
+                nombre_bd = ev.nombre.lower()
+                nombre_nuevo = datos["nombre"].lower()
+                
+                # Compara qué tanto se parecen los textos
+                similitud = SequenceMatcher(None, nombre_bd, nombre_nuevo).ratio()
+                
+                if similitud > 0.65 or nombre_bd in nombre_nuevo or nombre_nuevo in nombre_bd:
+                    es_duplicado = True
+                    break
+
+            if not es_duplicado:
                 nuevo_evento = Evento(
                     nombre=datos["nombre"],
                     ubicacion=datos["ubicacion"],
                     fecha=fecha_evento,
+                    fecha_fin=end_date,          
+                    hora_inicio=start_time,      
+                    hora_fin=end_time,          
                     enfoque=datos.get("enfoque"),
                     tipo=datos.get("tipo"),
                     url_original=datos["url_original"],
@@ -277,7 +313,7 @@ if __name__ == "__main__":
         else:
             print(f"\n--- FASE 1: Procesando {len(orgs_with_feed)} feeds individuales ---")
             for org in orgs_with_feed:
-                tokens_org = process_feed_rss(org)
+                tokens_org = process_feed_rss(org, db_main)
                 total_tokens_consumed += tokens_org 
                 time.sleep(10)
         # luego procesa los bundles

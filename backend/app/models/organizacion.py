@@ -55,6 +55,8 @@ class Organizacion(Base):
 
     # Feed de RSS
     rss_url = Column(String(500), nullable=True)
+    # Valor Author del JSON de una org proveniente de un bundle de RSS
+    rss_alias = Column(String(500), nullable=True)
     
     # Metadatos
     activo = Column(Boolean, default=True)
