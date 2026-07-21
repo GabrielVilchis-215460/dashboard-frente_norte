@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, and_
 from datetime import date
 from typing import Optional, List
 
@@ -14,7 +14,14 @@ def obtener_eventos_proximos(db: Session, fecha_filtro: date) -> List[Evento]:
     return (
         db.query(Evento)
         .options(joinedload(Evento.organizacion))
-        .filter(Evento.fecha >= fecha_filtro, Evento.activo == True)
+        #.filter(Evento.fecha >= fecha_filtro, Evento.activo == True)
+        .filter(
+            Evento.activo == True,
+            or_(
+                Evento.fecha >= fecha_filtro,
+                and_(Evento.fecha_fin.isnot(None), Evento.fecha_fin >= fecha_filtro)
+            )
+        )
         .order_by(Evento.fecha.asc())
         .all()
     )
