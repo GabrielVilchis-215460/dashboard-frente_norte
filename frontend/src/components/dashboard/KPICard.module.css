@@ -1,3 +1,5 @@
+/* KPICard — Glassmorphism + hover lift + badge delta */
+
 .card {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
@@ -38,6 +40,14 @@
   margin-top: auto;
 }
 
+/* Fila del valor + badge delta */
+.valueRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .value {
   font-family: var(--font-display);
   font-size: var(--text-3xl);
@@ -45,6 +55,24 @@
   color: var(--text-100);
   letter-spacing: -0.03em;
   line-height: 1.1;
+}
+
+.badge {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.badgePos {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.badgeNeg {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
 }
 
 .label {

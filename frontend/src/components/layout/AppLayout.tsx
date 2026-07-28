@@ -11,6 +11,7 @@ const ROUTE_THEME: Record<string, string> = {
   [ROUTES.HEALTH]:          'theme-navy',
   [ROUTES.BENEFICIARIES]: 'theme-teal',
   [ROUTES.MATURITY]:      'theme-teal',
+  [ROUTES.EVENTS]:        'theme-teal',
   [ROUTES.INCLUSION]:     'theme-cyan',
   [ROUTES.MAP]:           'theme-cyan',
   [ROUTES.ADMIN]:         'theme-cyan',

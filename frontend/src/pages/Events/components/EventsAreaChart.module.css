@@ -1,0 +1,22 @@
+.wrapper { width: 100%; }
+
+.tooltip {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tooltipLabel { font-size: var(--text-xs); color: var(--text-60); }
+.tooltipValue { font-size: var(--text-base); font-weight: 600; color: var(--text-100); }
+
+.empty {
+  font-size: var(--text-sm);
+  color: var(--text-60);
+  text-align: center;
+  padding: var(--space-8) 0;
+}
