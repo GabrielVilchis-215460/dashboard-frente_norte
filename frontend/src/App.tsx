@@ -17,6 +17,7 @@ const MapPage       = lazy(() => import('./pages/Map').then(m => ({ default: m.M
 const Health        = lazy(() => import('./pages/Health').then(m => ({ default: m.Health })));
 const Admin         = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 const AdminLogin    = lazy(() => import('./pages/Admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
+const EventsPage    = lazy(() => import('./pages/Events').then(m => ({ default: m.Events })));
 
 function PageLoader() {
   return (
@@ -100,6 +101,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <Health />
+              </Suspense>
+            }
+          />
+          <Route
+            path={ROUTES.EVENTS}
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EventsPage />
               </Suspense>
             }
           />

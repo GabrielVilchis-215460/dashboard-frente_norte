@@ -53,6 +53,11 @@ class Organizacion(Base):
     zona = Column(String(50))   # Urbana | Rural | Ambas
     colonias = Column(ARRAY(String), default=[])
 
+    # Feed de RSS
+    rss_url = Column(String(500), nullable=True)
+    # Valor Author del JSON de una org proveniente de un bundle de RSS
+    rss_alias = Column(String(500), nullable=True)
+    
     # Metadatos
     activo = Column(Boolean, default=True)
     fuente = Column(String(100))  # encuesta | investigacion_documental
@@ -62,3 +67,4 @@ class Organizacion(Base):
 
     # Relación
     programas = relationship("Programa", back_populates="organizacion",cascade="all, delete-orphan")
+    eventos = relationship("Evento", back_populates="organizacion", cascade="all, delete-orphan")

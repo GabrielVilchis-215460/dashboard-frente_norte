@@ -97,15 +97,15 @@ MADUREZ_ORDEN: dict[str, int] = {
 # Direcciones de las instituciones para el archivo seed/ETL
 DATOS_GEOGRAFICOS_INSTITUCIONES = {
     "SE SIPINNA Estatal": {
-        "direccion": "Bustamante #2504, Altavista, 31200 Chihuahua, Chih., Mexico",
-        "latitud": 28.6529623,
-        "longitud": -106.081874,
+        "direccion": "Calle Costa Rica 1428, Col. Partido Romero, Ciudad Juárez",
+        "latitud": 31.7559988180722,
+        "longitud": -106.463423930356,
         "sitio_web": "https://sipinna.chihuahua.gob.mx/"
     },
     "PAUTA": {
-        "direccion": None,
-        "latitud": None,
-        "longitud": None,
+        "direccion": "Av. Adolfo López Mateos 924, Alfa, 32317 Juárez, Chih",
+        "latitud": 31.744766,
+        "longitud": -106.448337,
         "sitio_web": "https://pauta.org.mx"
     },
     "CENTRO DE ESTUDIOS INDUSTRIA 4.0": {
@@ -133,9 +133,9 @@ DATOS_GEOGRAFICOS_INSTITUCIONES = {
         "sitio_web": "http://www.larodadora.org/"
     },
     "Tecnológico de Monterrey": {
-        "direccion": "Bulevar Tomás Fernández 8945, Parques Industriales, 32470 Juárez, Chih., Mexico",
-        "latitud": 31.7160341,
-        "longitud": -106.3951052,
+        "direccion": "Parcelas Ejido Jesús Carranza, 32470 Juárez, Chih.",
+        "latitud": 31.715672393883,
+        "longitud": -106.39474581922,
         "sitio_web": "https://tec.mx/es/ciudad-juarez"
     }
 }

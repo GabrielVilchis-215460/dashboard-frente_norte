@@ -52,6 +52,12 @@ export const NAV_ITEMS: NavItem[] = [
     path: ROUTES.HEALTH,
     icon: 'IconActivity',
   },
+  {
+    key: 'events',
+    label: 'Eventos',
+    path: ROUTES.EVENTS,
+    icon: 'IconCalendarEvent',
+  },
 ];
 
 export const ADMIN_NAV_ITEM: NavItem = {

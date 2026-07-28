@@ -1,16 +1,19 @@
 // Mapa interactivo principal con Leaflet
 
 import { useEffect, useRef } from 'react';
-import type { PinMapa } from '../../../types';
+import type { PinMapa, EventoMapPoint } from '../../../types';
 import { getTipoConfig } from './mapConfig';
 import { JUAREZ_CENTER, DEFAULT_ZOOM } from './mapConfig';
 import styles from './EcosystemMap.module.css';
 
+export type MapMode = 'pins' | 'heatmap' | 'events';
+
 interface Props {
   pins: PinMapa[];
-  mode: 'pins' | 'heatmap';
+  eventPoints?: EventoMapPoint[];
+  mode: MapMode;
   selectedId: number | null;
-  onPinClick: (id: number) => void;
+  onPinClick: (id: number, lat: number, lng: number) => void;
 }
 
 // Genera el SVG de un pin circular con el color del tipo
@@ -25,11 +28,22 @@ function pinSvg(color: string, animated: boolean, dimmed: boolean): string {
         stroke="rgba(255,255,255,0.5)" stroke-width="1.5">
         ${anim}
       </circle>
-    </svg>
-  `;
+    </svg>`;
 }
 
-export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
+function eventPinSvg(count: number): string {
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+      <circle cx="11" cy="11" r="9" fill="#38bdf8"
+        stroke="rgba(255,255,255,0.5)" stroke-width="1.5">
+        <animate attributeName="opacity" values="1;0.55;1" dur="2.4s" repeatCount="indefinite"/>
+      </circle>
+      <text x="11" y="15" text-anchor="middle"
+        font-size="9" font-weight="700" fill="#0c2340">${count}</text>
+    </svg>`;
+}
+
+export function EcosystemMap({ pins, eventPoints = [], mode, selectedId, onPinClick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const markersRef = useRef<Map<number, import('leaflet').Marker>>(new Map());
@@ -46,6 +60,8 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
         zoom: DEFAULT_ZOOM,
         zoomControl: true,
         attributionControl: false,
+        // Deshabilitar zoom por doble click
+        doubleClickZoom: false,
       });
 
       L.tileLayer(
@@ -81,30 +97,48 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
         heatLayerRef.current = null;
       }
 
-      const pinsConCoords = pins.filter((p) => p.latitud && p.longitud);
-
+      // ── Modo heatmap ──
       if (mode === 'heatmap') {
+        const pinsConCoords = pins.filter((p) => p.latitud && p.longitud);
         const heatData = pinsConCoords.map((p) => [
-          p.latitud!,
-          p.longitud!,
-          Math.max(1, p.total_programas),
+          p.latitud!, p.longitud!, Math.max(1, p.total_programas),
         ]);
-
         import('leaflet.heat').then(() => {
-          if (!mapRef.current) return; // guarda: componente desmontado durante import
-          const Linst = (L as any).default ?? L;
-          heatLayerRef.current = Linst.heatLayer(heatData, {
-            radius: 30,
-            blur: 20,
-            maxZoom: 14,
+          const L_any = L as any;
+          heatLayerRef.current = L_any.heatLayer(heatData, {
+            radius: 30, blur: 20, maxZoom: 14,
             gradient: { 0.2: '#38bdf8', 0.5: '#2dd4bf', 0.8: '#34d399', 1.0: '#fbbf24' },
-          }).addTo(mapRef.current);
+          }).addTo(mapRef.current!);
         });
         return;
       }
 
-      // Modo pines
-      pinsConCoords.forEach((pin) => {
+      // ── Modo eventos ──
+      if (mode === 'events') {
+        eventPoints.forEach((punto) => {
+          const icon = L.divIcon({
+            className: '',
+            html: eventPinSvg(punto.total_eventos),
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+          });
+          const preview = punto.eventos.slice(0, 3)
+            .map((ev) => `<li>${ev.nombre}</li>`).join('');
+          const mas = punto.total_eventos > 3
+            ? `<li style="opacity:0.6">+${punto.total_eventos - 3} más</li>` : '';
+          L.marker([punto.latitud, punto.longitud], { icon })
+            .bindTooltip(
+              `<strong>${punto.organizacion_nombre}</strong>
+               <ul style="margin:4px 0 0;padding-left:14px;font-size:11px">${preview}${mas}</ul>`,
+              { direction: 'top' }
+            )
+            .addTo(markerLayerRef.current!);
+        });
+        return;
+      }
+
+      // ── Modo pines ──
+      pins.filter((p) => p.latitud && p.longitud).forEach((pin) => {
         const { color } = getTipoConfig(pin.tipo);
         const dimmed = selectedId !== null && selectedId !== pin.id;
         const animated = selectedId === null || selectedId === pin.id;
@@ -117,12 +151,12 @@ export function EcosystemMap({ pins, mode, selectedId, onPinClick }: Props) {
         });
 
         const marker = L.marker([pin.latitud!, pin.longitud!], { icon });
-        marker.on('click', () => onPinClick(pin.id));
+        marker.on('click', () => onPinClick(pin.id, pin.latitud!, pin.longitud!));
         markerLayerRef.current!.addLayer(marker);
         markersRef.current.set(pin.id, marker);
       });
     });
-  }, [pins, mode, selectedId, onPinClick]);
+  }, [pins, eventPoints, mode, selectedId, onPinClick]);
 
   // Centrar mapa cuando se selecciona un pin
   useEffect(() => {

@@ -5,6 +5,8 @@ from app.api.overview.schemas import PanoramaGeneral, MapaPreview, TopOrganizaci
 from app.utils.helpers import count_by_field, mid_volume, mid_pct
 import logging
 from sqlalchemy import func
+from app.models.eventos import Evento
+from datetime import date
 
 logger = logging.getLogger("stem_api.panorama_general")
 
@@ -30,6 +32,8 @@ def get_panorama(db: Session) -> PanoramaGeneral:
     orgs = db.query(Organizacion).filter(Organizacion.activo == True).all()
     programas = db.query(Programa).filter(Programa.activo == True).all()
 
+    fecha_hoy = date.today()
+ 
     top_orgs = (
         db.query(
             Organizacion.nombre,
@@ -110,6 +114,8 @@ def get_panorama(db: Session) -> PanoramaGeneral:
     return PanoramaGeneral(
         total_organizaciones=len(orgs),
         total_programas_activos=len(programas),
+        #total_eventos_activos=total_eventos,
+        #organizaciones_con_eventos_activos=orgs_con_eventos,
         beneficiarios_semestre=beneficiarios,
         colonias_impactadas=len(colonias),
         pct_mujeres_beneficiarias=pct_mujeres, 
@@ -117,5 +123,8 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         organizaciones_por_tipo=tipos_count,
         areas_stem_representadas=dict(sorted(areas_conteo.items(), key=lambda x: x[1], reverse=True)), # MODIFICADO
         top_organizaciones=top_organizaciones,
+        #distribucion_eventos_enfoque=eventos_por_enfoque, 
+        #distribucion_eventos_tipo=eventos_por_tipo,       
+        #historico_eventos_trimestral=historico_linea,
         preview_mapa=preview_marcadores
     )
