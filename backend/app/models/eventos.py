@@ -28,6 +28,9 @@ class Evento(Base):
     imagen_url = Column(Text, nullable=True)
     url_original = Column(Text, nullable=True)
 
+    # Popularidad (página pública de eventos)
+    vistas = Column(Integer, nullable=False, default=0, server_default="0")
+
     # Relación con organización
     organizacion_id = Column(Integer, ForeignKey("organizaciones.id"), nullable=True)
 
