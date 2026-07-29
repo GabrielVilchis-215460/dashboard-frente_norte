@@ -1,0 +1,11 @@
+.wrapper {
+  width: 100%;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.wrapper :global(.leaflet-container) {
+  width: 100%;
+  height: 100%;
+}

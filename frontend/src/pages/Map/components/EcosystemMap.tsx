@@ -52,10 +52,16 @@ export function EcosystemMap({ pins, eventPoints = [], mode, selectedId, onPinCl
 
   // Inicializar el mapa
   useEffect(() => {
-    if (!containerRef.current || mapRef.current) return;
+    if (!containerRef.current) return;
+
+    // circular import fix for public use of map
+    let cancelado = false;
 
     import('leaflet').then((L) => {
-      const map = L.map(containerRef.current!, {
+      if (cancelado || !containerRef.current) return;
+      if ((containerRef.current as any)._leaflet_id) return;
+
+      const map = L.map(containerRef.current, {
         center: JUAREZ_CENTER,
         zoom: DEFAULT_ZOOM,
         zoomControl: true,
@@ -76,8 +82,10 @@ export function EcosystemMap({ pins, eventPoints = [], mode, selectedId, onPinCl
     });
 
     return () => {
+      cancelado = true;
       mapRef.current?.remove();
       mapRef.current = null;
+      markerLayerRef.current = null;
       markersRef.current.clear();
     };
   }, []);
