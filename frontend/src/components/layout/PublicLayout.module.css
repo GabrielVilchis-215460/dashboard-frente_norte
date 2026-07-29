@@ -1,0 +1,88 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-8, 48px);
+  gap: var(--space-6);
+}
+
+.navLink {
+  color: black;
+  text-decoration: none;
+  font-size: var(--text-base);
+  transition: color var(--transition-fast);
+}
+.navLink:hover {
+  color: var(--text-100);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.logoImg {
+  height: 32px;
+  width: auto;
+}
+
+.main {
+  flex: 1;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-8, 48px);
+  border-top: 1px solid var(--glass-border);
+}
+
+.footerBrand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.footerLogoImg {
+  height: 20px;
+  width: auto;
+}
+.footerTitle {
+  color: black;
+  font-weight: 600;
+  font-size: var(--text-sm);
+}
+.footerSubtitle {
+  color: black;
+  font-size: var(--text-xs);
+}
+
+.footerLinks {
+  display: flex;
+  gap: var(--space-6);
+}
+.footerLinks a {
+  color: black;
+  text-decoration: none;
+  font-size: var(--text-sm);
+  transition: color var(--transition-fast);
+}
+.footerLinks a:hover {
+  color: black;
+}
+
+/* Mobile: nav y footer colapsan */
+@media (max-width: 700px) {
+  .nav, .footer {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-4);
+    text-align: center;
+  }
+}

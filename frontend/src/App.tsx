@@ -3,11 +3,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 import { AppLayout } from './components/layout';
+import { PublicLayout } from './components/layout/PublicLayout';
 import { ROUTES } from './constants/routes';
 import { Skeleton } from './components/ui';
-import { RequireAuth } from './pages/Admin/RequireAuth';
+import { RequireRole } from './pages/Admin/RequireRole';
 
-// Lazy loading
+// Lazy loading — dashboard (protegido)
 const Overview      = lazy(() => import('./pages/Overview').then(m => ({ default: m.Overview })));
 const Beneficiaries = lazy(() => import('./pages/Beneficiaries').then(m => ({ default: m.Beneficiaries })));
 const Inclusion     = lazy(() => import('./pages/Inclusion').then(m => ({ default: m.Inclusion })));
@@ -17,7 +18,13 @@ const MapPage       = lazy(() => import('./pages/Map').then(m => ({ default: m.M
 const Health        = lazy(() => import('./pages/Health').then(m => ({ default: m.Health })));
 const Admin         = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 const AdminLogin    = lazy(() => import('./pages/Admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
-const EventsPage    = lazy(() => import('./pages/Events').then(m => ({ default: m.Events })));
+const EventsTab     = lazy(() => import('./pages/Events').then(m => ({ default: m.Events })));
+
+// Lazy loading — público
+const Home         = lazy(() => import('./pages/Public/Home').then(m => ({ default: m.Home })));
+const EventList    = lazy(() => import('./pages/Public/EventList').then(m => ({ default: m.EventList })));
+const EventDetail  = lazy(() => import('./pages/Public/EventDetail').then(m => ({ default: m.EventDetail })));
+const About        = lazy(() => import('./pages/Public/About').then(m => ({ default: m.About })));
 
 function PageLoader() {
   return (
@@ -37,9 +44,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ruta de login — fuera del AppLayout (sin sidebar) */}
+        {/* Ruta de login — fuera de ambos layouts */}
         <Route
-          path="/admin/login"
+          path={ROUTES.LOGIN}
           element={
             <Suspense fallback={<PageLoader />}>
               <AdminLogin />
@@ -47,7 +54,50 @@ export default function App() {
           }
         />
 
-        <Route element={<AppLayout />}>
+        {/* ── Público — sin auth ──────────────────────────────────────── */}
+        <Route element={<PublicLayout />}>
+          <Route
+            path={ROUTES.HOME}
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <Home />
+              </Suspense>
+            }
+          />
+          <Route
+            path={ROUTES.EVENTS}
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EventList />
+              </Suspense>
+            }
+          />
+          <Route
+            path={ROUTES.EVENT_DETAIL}
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <EventDetail />
+              </Suspense>
+            }
+          />
+          <Route
+            path={ROUTES.ABOUT}
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <About />
+              </Suspense>
+            }
+          />
+        </Route>
+
+        {/* Dashboard — requiere sesión (viewer o admin) */}
+        <Route
+          element={
+            <RequireRole roles={['viewer', 'admin']}>
+              <AppLayout />
+            </RequireRole>
+          }
+        >
           <Route
             path={ROUTES.OVERVIEW}
             element={
@@ -105,26 +155,29 @@ export default function App() {
             }
           />
           <Route
-            path={ROUTES.EVENTS}
+            path={ROUTES.EVENTS_TAB}
             element={
               <Suspense fallback={<PageLoader />}>
-                <EventsPage />
+                <EventsTab />
               </Suspense>
             }
           />
+
+          {/* Solo admin: CRUD */}
           <Route
             path={ROUTES.ADMIN}
             element={
-              <Suspense fallback={<PageLoader />}>
-                <RequireAuth>
+              <RequireRole roles={['admin']}>
+                <Suspense fallback={<PageLoader />}>
                   <Admin />
-                </RequireAuth>
-              </Suspense>
+                </Suspense>
+              </RequireRole>
             }
           />
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to={ROUTES.OVERVIEW} replace />} />
         </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
       </Routes>
     </BrowserRouter>
   );
