@@ -14,6 +14,9 @@ interface Props {
   mode: MapMode;
   selectedId: number | null;
   onPinClick: (id: number, lat: number, lng: number) => void;
+  center?: [number, number];
+  zoom?: number;
+  showEventCount?: boolean;
 }
 
 // Genera el SVG de un pin circular con el color del tipo
@@ -31,7 +34,16 @@ function pinSvg(color: string, animated: boolean, dimmed: boolean): string {
     </svg>`;
 }
 
-function eventPinSvg(count: number): string {
+function eventPinSvg(count: number, showCount: boolean): string {
+  if (!showCount) {
+    return `
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+        <circle cx="11" cy="11" r="9" fill="#38bdf8"
+          stroke="rgba(255,255,255,0.5)" stroke-width="1.5">
+          <animate attributeName="opacity" values="1;0.55;1" dur="2.4s" repeatCount="indefinite"/>
+        </circle>
+      </svg>`;
+  }
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
       <circle cx="11" cy="11" r="9" fill="#38bdf8"
@@ -43,7 +55,16 @@ function eventPinSvg(count: number): string {
     </svg>`;
 }
 
-export function EcosystemMap({ pins, eventPoints = [], mode, selectedId, onPinClick }: Props) {
+export function EcosystemMap({
+  pins,
+  eventPoints = [],
+  mode,
+  selectedId,
+  onPinClick,
+  center,
+  zoom,
+  showEventCount = true,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const markersRef = useRef<Map<number, import('leaflet').Marker>>(new Map());
@@ -62,8 +83,8 @@ export function EcosystemMap({ pins, eventPoints = [], mode, selectedId, onPinCl
       if ((containerRef.current as any)._leaflet_id) return;
 
       const map = L.map(containerRef.current, {
-        center: JUAREZ_CENTER,
-        zoom: DEFAULT_ZOOM,
+        center: center ?? JUAREZ_CENTER,
+        zoom: zoom ?? DEFAULT_ZOOM,
         zoomControl: true,
         attributionControl: false,
         // Deshabilitar zoom por doble click
@@ -126,7 +147,7 @@ export function EcosystemMap({ pins, eventPoints = [], mode, selectedId, onPinCl
         eventPoints.forEach((punto) => {
           const icon = L.divIcon({
             className: '',
-            html: eventPinSvg(punto.total_eventos),
+            html: eventPinSvg(punto.total_eventos, showEventCount),
             iconSize: [22, 22],
             iconAnchor: [11, 11],
           });
@@ -164,7 +185,7 @@ export function EcosystemMap({ pins, eventPoints = [], mode, selectedId, onPinCl
         markersRef.current.set(pin.id, marker);
       });
     });
-  }, [pins, eventPoints, mode, selectedId, onPinClick]);
+  }, [pins, eventPoints, mode, selectedId, onPinClick, showEventCount]);
 
   // Centrar mapa cuando se selecciona un pin
   useEffect(() => {
