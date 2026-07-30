@@ -215,7 +215,13 @@ def contar_organizaciones_con_eventos_activos(db: Session) -> int:
     fecha_hoy = date.today()
     return (
         db.query(Evento.organizacion_id)
-        .filter(Evento.fecha >= fecha_hoy, Evento.activo == True)
+        .filter(
+            Evento.activo == True,
+            or_(
+                Evento.fecha >= fecha_hoy,
+                and_(Evento.fecha_fin.isnot(None), Evento.fecha_fin >= fecha_hoy)
+            )
+        )
         .distinct()
         .count()
     )
