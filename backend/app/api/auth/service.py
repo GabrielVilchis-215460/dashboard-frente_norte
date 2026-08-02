@@ -1,54 +1,49 @@
 """
-Servicio de autenticación y dependencia de FastAPI para proteger rutas.
+Servicio de autenticación y dependencias de FastAPI para proteger rutas.
 
-La dependencia `get_current_admin` debe usarse en cualquier endpoint que
-requiera acceso autenticado. Extrae y valida el JWT del header Authorization.
+- `get_current_user`: valida el JWT y devuelve (username, rol).
+- `get_current_admin`: exige rol == "admin".
+- `get_current_viewer_or_admin`: acepta cualquier rol autenticado (viewer o
+  admin).
 """
+from typing import Tuple
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from app.core.config import settings
+from sqlalchemy.orm import Session
 from app.core.security import decode_access_token, verify_password
 
+from app.db.session import get_db
+from app.models.usuario import Usuario
 # HTTPBearer extrae automáticamente el token del header Authorization: Bearer <token>
 # y lo expone como un campo "Authorize" limpio en Swagger UI
 bearer_scheme = HTTPBearer()
 
 
-def authenticate_admin(username: str, password: str) -> bool:
+def authenticate_user(db: Session, username: str, password: str) -> Usuario | None:
     """
-    Valida credenciales contra los valores configurados en .env.
+    Valida credenciales contra la tabla `usuarios`.
 
     Returns:
-        True si username y password son correctos, False en caso contrario.
-
-    Raises:
-        HTTPException 503 si ADMIN_PASSWORD_HASH no está configurado en producción.
+        La instancia de Usuario si las credenciales son correctas y el
+        usuario está activo, None en caso contrario.
     """
-    if not settings.ADMIN_PASSWORD_HASH:
-        if settings.ENVIRONMENT == "production":
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="El sistema de autenticación no está configurado correctamente.",
-            )
-        # En desarrollo, permite login sin hash para facilitar el setup inicial
-        return username == settings.ADMIN_USERNAME and password == "dev-password"
-
-    if username != settings.ADMIN_USERNAME:
-        return False
-
-    return verify_password(password, settings.ADMIN_PASSWORD_HASH)
+    usuario = db.query(Usuario).filter(Usuario.username == username).first()
+    if not usuario or not usuario.activo:
+        return None
+    if not verify_password(password, usuario.password_hash):
+        return None
+    return usuario
 
 
-def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> str:
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+) -> Tuple[str, str]:
     """
-    Dependencia de FastAPI que valida el JWT en el header Authorization.
-
-    Inyectar esta dependencia en cualquier endpoint del panel admin:
-        @router.get("/ruta", dependencies=[Depends(get_current_admin)])
+    Dependencia base de FastAPI: valida el JWT en el header Authorization.
 
     Returns:
-        El username del administrador autenticado.
+        Tupla (username, rol) del usuario autenticado.
 
     Raises:
         HTTPException 401 si el token es inválido o ha expirado.
@@ -58,9 +53,43 @@ def get_current_admin(credentials: HTTPAuthorizationCredentials = Depends(bearer
         detail="Token inválido o expirado. Por favor inicia sesión nuevamente.",
         headers={"WWW-Authenticate": "Bearer"},
     )
-
-    username = decode_access_token(credentials.credentials)
-    if username is None:
+    payload = decode_access_token(credentials.credentials)
+    if payload is None:
         raise credentials_exception
+    return payload["username"], payload["rol"]
 
+
+def get_current_admin(user: Tuple[str, str] = Depends(get_current_user)) -> str:
+    """
+    Dependencia de FastAPI que exige rol == "admin".
+
+    Inyectar en cualquier endpoint del panel admin / CRUD:
+        @router.get("/ruta", dependencies=[Depends(get_current_admin)])
+
+    Returns:
+        El username del administrador autenticado.
+
+    Raises:
+        HTTPException 403 si el usuario autenticado no es admin.
+    """
+    username, rol = user
+    if rol != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos suficientes para esta acción.",
+        )
+    return username
+
+
+def get_current_viewer_or_admin(user: Tuple[str, str] = Depends(get_current_user)) -> str:
+    """
+    Dependencia de FastAPI que acepta cualquier rol autenticado (viewer o admin).
+
+    Inyectar en los endpoints de solo-lectura del dashboard:
+        @router.get("/ruta", dependencies=[Depends(get_current_viewer_or_admin)])
+
+    Returns:
+        El username del usuario autenticado.
+    """
+    username, _rol = user
     return username

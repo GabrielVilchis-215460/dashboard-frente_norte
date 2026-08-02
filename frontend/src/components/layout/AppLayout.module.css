@@ -3,7 +3,8 @@
   gap: 16px;
   padding: 16px;
   min-height: 100vh;
-  background: var(--bg-gradient);
+  background-image: var(--noise), var(--bg-gradient);
+  background-blend-mode: overlay;
   background-attachment: fixed;
   transition: background 500ms ease;
 }

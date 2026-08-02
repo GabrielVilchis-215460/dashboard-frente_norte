@@ -11,6 +11,7 @@ export interface TokenResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
+  rol: 'admin' | 'viewer';
 }
 
 export interface Organizacion {
@@ -71,11 +72,21 @@ export interface Programa {
 export interface ProgramaCreate extends Omit<Programa, 'id' | 'created_at' | 'updated_at'> {}
 
 const TOKEN_KEY = 'admin_token';
+const ROL_KEY = 'admin_rol';
 
 export const authStorage = {
   getToken: () => sessionStorage.getItem(TOKEN_KEY),
   setToken: (token: string) => sessionStorage.setItem(TOKEN_KEY, token),
   clearToken: () => sessionStorage.removeItem(TOKEN_KEY),
+ 
+  getRol: () => sessionStorage.getItem(ROL_KEY) as 'admin' | 'viewer' | null,
+  setRol: (rol: string) => sessionStorage.setItem(ROL_KEY, rol),
+  clearRol: () => sessionStorage.removeItem(ROL_KEY),
+ 
+  clearAll: () => {
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(ROL_KEY);
+  },
 };
 
 const adminClient = axios.create({
@@ -96,8 +107,8 @@ adminClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      authStorage.clearToken();
-      window.location.href = '/admin/login';
+      authStorage.clearAll();
+      window.location.href = '/login';
     }
     const message =
       error.code === 'ECONNABORTED'

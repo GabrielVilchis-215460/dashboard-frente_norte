@@ -94,3 +94,8 @@ class EventoMapPoint(BaseModel):
     longitud: float
     total_eventos: int
     eventos: List[EventoResponse]
+
+
+class EventosPublicoResponse(BaseModel):
+    total: int
+    items: List[EventoResponse]
