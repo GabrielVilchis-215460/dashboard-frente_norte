@@ -71,6 +71,12 @@
 }
 @media (max-width: 800px) {
   .contentGrid { grid-template-columns: 1fr; }
+  .heroImgWrap { aspect-ratio: 16 / 9; }
+}
+
+@media (max-width: 600px) {
+  .page { padding: var(--space-5); }
+  .title { font-size: var(--text-2xl); }
 }
 
 .sectionTitle {

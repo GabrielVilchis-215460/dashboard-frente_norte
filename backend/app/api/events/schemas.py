@@ -110,3 +110,5 @@ class ETLStatusResponse(BaseModel):
     errores: List[str] = []
     error: Optional[str] = None
     rss_no_disponible: bool = False
+    phase: str = ""
+    phase_detail: Optional[float] = None

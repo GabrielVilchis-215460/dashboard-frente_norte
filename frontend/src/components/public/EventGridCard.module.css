@@ -30,9 +30,15 @@
 .imgPlaceholder {
   width: 100%;
   height: 100%;
-  background:
-    repeating-conic-gradient(rgba(255,255,255,0.05) 0% 25%, transparent 0% 50%)
-    0 0 / 20px 20px;
+  background: linear-gradient(135deg, #0c2340 0%, #163e63 60%, #1e5688 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imgPlaceholderIcon {
+  font-size: 32px;
+  color: rgba(56, 189, 248, 0.4);
 }
 
 .body {

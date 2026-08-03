@@ -16,6 +16,7 @@ Frecuencia recomendada:
 """
 
 import json
+import re
 import time
 import logging
 import os
@@ -61,13 +62,41 @@ def _coords_validas(lat: float | None, lng: float | None) -> bool:
 
 # ── Gemini ────────────────────────────────────────────────────────────────────
 
+class GeminiQuotaExceeded(Exception):
+    """Se lanza cuando Gemini sigue con 429 tras el retry — señal para detener el lote."""
+
+
+def _parse_retry_delay(error_str: str) -> float:
+    """Extrae el número de segundos del retryDelay incluido en el mensaje de error 429."""
+    # Formato SDK: 'retryDelay': '58s'  o  Please retry in 58.54s
+    m = re.search(r"retryDelay['\"]?\s*:\s*['\"]?(\d+(?:\.\d+)?)s", error_str)
+    if m:
+        return float(m.group(1))
+    m = re.search(r"retry in (\d+(?:\.\d+)?)s", error_str, re.IGNORECASE)
+    if m:
+        return float(m.group(1))
+    return 65.0  # fallback conservador si no se puede parsear
+
+
+def _is_429(e: Exception) -> bool:
+    return "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
+
+
+def _call_gemini(prompt: str, client: genai.Client) -> object:
+    return client.models.generate_content(
+        model="gemini-3.1-flash-lite",
+        contents=prompt,
+        config=types.GenerateContentConfig(response_mime_type="application/json"),
+    )
+
+
 def _get_gemini_client() -> genai.Client:
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY no está configurada.")
     return genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
-def extract_events_data(text_post: str, org_name: str, client: genai.Client) -> tuple[dict, int]:
+def extract_events_data(text_post: str, org_name: str, client: genai.Client, phase_callback=None) -> tuple[dict, int]:
     """
     Envía el texto del post a Gemini y devuelve el JSON extraído junto con
     el total de tokens consumidos. Devuelve {"es_evento": False} en caso de error.
@@ -128,27 +157,44 @@ Texto del post:
 "{text_post}"
 """
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
-            contents=prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json"),
-        )
+    for attempt in range(2):  # intento 0 = primera llamada, intento 1 = retry tras 429
+        try:
+            response = _call_gemini(prompt, client)
 
-        tokens_used = 0
-        if response.usage_metadata:
-            m = response.usage_metadata
-            logger.info(
-                "  [Tokens] Entrada: %s | Salida: %s | Total: %s",
-                m.prompt_token_count, m.candidates_token_count, m.total_token_count,
-            )
-            tokens_used = m.total_token_count
+            tokens_used = 0
+            if response.usage_metadata:
+                m = response.usage_metadata
+                logger.info(
+                    "  [Tokens] Entrada: %s | Salida: %s | Total: %s",
+                    m.prompt_token_count, m.candidates_token_count, m.total_token_count,
+                )
+                tokens_used = m.total_token_count
 
-        return json.loads(response.text), tokens_used
+            return json.loads(response.text), tokens_used
 
-    except Exception as e:
-        logger.error("Error al procesar post con Gemini: %s", e)
-        return {"es_evento": False}, 0
+        except Exception as e:
+            if _is_429(e):
+                delay = _parse_retry_delay(str(e))
+                if attempt == 0:
+                    logger.warning(
+                        "  -> 429 cuota Gemini. Esperando %.0fs antes de reintentar...", delay
+                    )
+                    if phase_callback:
+                        phase_callback("waiting_quota", delay + 2)
+                    time.sleep(delay + 2)
+                    if phase_callback:
+                        phase_callback("", None)
+                    continue  # retry
+                else:
+                    # Segundo 429 consecutivo — detenemos el lote completo
+                    logger.error(
+                        "  -> 429 cuota Gemini tras reintento. Deteniendo procesamiento del lote."
+                    )
+                    raise GeminiQuotaExceeded() from e
+            logger.error("Error al procesar post con Gemini: %s", e)
+            return {"es_evento": False}, 0
+
+    return {"es_evento": False}, 0  # no debería llegar aquí
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -195,7 +241,7 @@ def _es_duplicado(db, org_id: int, fecha_evento: date, nombre_nuevo: str) -> boo
 
 # ── Procesamiento de posts ────────────────────────────────────────────────────
 
-def process_posts(posts: list, db, client: genai.Client, org: Organizacion | None = None) -> tuple[int, int]:
+def process_posts(posts: list, db, client: genai.Client, org: Organizacion | None = None, phase_callback=None) -> tuple[int, int]:
     """
     Procesa una lista de posts, extrae eventos y los inserta en BD.
     Devuelve (eventos_añadidos, tokens_consumidos).
@@ -232,7 +278,13 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
 
         logger.info("[%d/%d] Analizando post para '%s'...", i, len(posts), org_name)
 
-        datos, tokens = extract_events_data(text_post, org_name, client)
+        try:
+            datos, tokens = extract_events_data(text_post, org_name, client, phase_callback=phase_callback)
+        except GeminiQuotaExceeded:
+            logger.warning("  -> Cuota agotada. Se detiene el análisis de los posts restantes.")
+            if phase_callback:
+                phase_callback("", None)  # limpiar fase al salir
+            break
         total_tokens += tokens
         datos["url_original"] = url_post
 
@@ -316,7 +368,7 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
 _RSS_PLAN_NO_PAGADO = False  # Se activa globalmente si cualquier feed devuelve 402
 
 
-def process_feed_rss(org: Organizacion, db, client: genai.Client) -> int:
+def process_feed_rss(org: Organizacion, db, client: genai.Client, phase_callback=None) -> int:
     global _RSS_PLAN_NO_PAGADO
     logger.info("\nProcesando organización: %s", org.nombre)
     logger.info("Descargando feed desde: %s", org.rss_url)
@@ -339,7 +391,7 @@ def process_feed_rss(org: Organizacion, db, client: genai.Client) -> int:
     posts = feed_data.get("items", []) or feed_data.get("entries", [])
     logger.info("Se encontraron %d posts. Iniciando análisis...", len(posts))
 
-    events_added, total_tokens = process_posts(posts, db, client, org)
+    events_added, total_tokens = process_posts(posts, db, client, org, phase_callback=phase_callback)
     db.commit()
 
     logger.info("Proceso terminado para %s. Eventos nuevos: %d", org.nombre, events_added)
@@ -348,7 +400,7 @@ def process_feed_rss(org: Organizacion, db, client: genai.Client) -> int:
 
 # ── Procesamiento del bundle unificado ────────────────────────────────────────
 
-def process_bundle(db, client: genai.Client) -> tuple[int, bool]:
+def process_bundle(db, client: genai.Client, phase_callback=None) -> tuple[int, bool]:
     """Devuelve (tokens_consumidos, rss_no_disponible)."""
     global _RSS_PLAN_NO_PAGADO
     logger.info("\nIniciando procesamiento del Bundle...")
@@ -386,7 +438,7 @@ def process_bundle(db, client: genai.Client) -> tuple[int, bool]:
     posts = feed_data.get("items", []) or feed_data.get("entries", [])
     logger.info("Se encontraron %d posts en el Bundle.", len(posts))
 
-    events_added, total_tokens = process_posts(posts, db, client, org=None)
+    events_added, total_tokens = process_posts(posts, db, client, org=None, phase_callback=phase_callback)
     db.commit()
 
     logger.info("Bundle procesado. Eventos nuevos: %d", events_added)
@@ -395,7 +447,7 @@ def process_bundle(db, client: genai.Client) -> tuple[int, bool]:
 
 # ── Punto de entrada ──────────────────────────────────────────────────────────
 
-def run_etl() -> dict:
+def run_etl(phase_callback=None) -> dict:
     """
     Ejecuta el ETL completo (Fase 1: feeds individuales, Fase 2: bundle).
     Devuelve un resumen con el resultado.
@@ -423,7 +475,7 @@ def run_etl() -> dict:
             logger.info("\n--- FASE 1: %d feeds individuales ---", len(orgs))
             for org in orgs:
                 try:
-                    tokens = process_feed_rss(org, db, client)
+                    tokens = process_feed_rss(org, db, client, phase_callback=phase_callback)
                     total_tokens += tokens
                     if tokens > 0:
                         time.sleep(10)  # Solo esperar si se procesaron posts reales
@@ -438,7 +490,7 @@ def run_etl() -> dict:
         # Fase 2: bundle unificado
         logger.info("\n--- FASE 2: Bundle unificado ---")
         try:
-            tokens, _ = process_bundle(db, client)
+            tokens, _ = process_bundle(db, client, phase_callback=phase_callback)
             total_tokens += tokens
         except Exception as e:
             msg = f"Error procesando bundle: {e}"

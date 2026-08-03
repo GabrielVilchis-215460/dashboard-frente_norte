@@ -116,6 +116,11 @@
   --accent-d: #a7f3dd;
 }
 
+/* Aurora @property — requerido para animar conic-gradient */
+@property --a1 { syntax: '<angle>'; initial-value: 0deg;   inherits: false }
+@property --a2 { syntax: '<angle>'; initial-value: 60deg;  inherits: false }
+@property --a3 { syntax: '<angle>'; initial-value: 120deg; inherits: false }
+
 /* Reset & Base */
 
 *, *::before, *::after {

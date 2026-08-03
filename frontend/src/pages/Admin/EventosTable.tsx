@@ -340,12 +340,14 @@ function ETLPanel({ onComplete }: { onComplete: () => void }) {
 
       {/* Barra de progreso animada cuando está corriendo */}
       {isRunning && (
-        <div style={{ background: 'rgba(245,158,11,0.15)', borderRadius: 4, overflow: 'hidden', height: 4 }}>
+        <div style={{ background: etl?.phase === 'waiting_quota' ? 'rgba(139,92,246,0.15)' : 'rgba(245,158,11,0.15)', borderRadius: 4, overflow: 'hidden', height: 4 }}>
           <div style={{
             height: '100%',
-            background: '#f59e0b',
+            background: etl?.phase === 'waiting_quota' ? '#8b5cf6' : '#f59e0b',
             borderRadius: 4,
-            animation: 'etlProgress 2s ease-in-out infinite',
+            animation: etl?.phase === 'waiting_quota' ? 'none' : 'etlProgress 2s ease-in-out infinite',
+            width: etl?.phase === 'waiting_quota' ? '100%' : undefined,
+            opacity: etl?.phase === 'waiting_quota' ? 0.7 : 1,
           }} />
         </div>
       )}
@@ -363,11 +365,14 @@ function ETLPanel({ onComplete }: { onComplete: () => void }) {
           flexDirection: 'column',
           gap: 4,
         }}>
-          <span style={{ fontWeight: 600, fontSize: 13, color: etlStatusColor[etl.status], display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontWeight: 600, fontSize: 13, color: etl.status === 'running' && etl.phase === 'waiting_quota' ? '#8b5cf6' : etlStatusColor[etl.status], display: 'flex', alignItems: 'center', gap: 6 }}>
             {etl.status === 'completed' && <IconCircleCheck size={15} />}
             {etl.status === 'failed' && <IconCircleX size={15} />}
-            {etl.status === 'running' && <IconLoader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />}
-            {etlStatusLabel[etl.status]}
+            {etl.status === 'running' && etl.phase !== 'waiting_quota' && <IconLoader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />}
+            {etl.status === 'running' && etl.phase === 'waiting_quota' && <IconAlertTriangle size={15} />}
+            {etl.status === 'running' && etl.phase === 'waiting_quota'
+              ? `Cuota Gemini alcanzada — esperando ${etl.phase_detail ? `~${Math.round(etl.phase_detail)}s` : '…'}`
+              : etlStatusLabel[etl.status]}
           </span>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-60)' }}>
             {etl.started_at && <span>Inicio: {new Date(etl.started_at).toLocaleString('es-MX')}</span>}

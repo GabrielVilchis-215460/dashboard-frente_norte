@@ -30,6 +30,8 @@ _state: dict = {
     "errores": [],
     "error": None,
     "rss_no_disponible": False,
+    "phase": "",          # fase detallada durante RUNNING (ej. "waiting_quota")
+    "phase_detail": None, # segundos restantes u otro dato extra
 }
 
 
@@ -60,11 +62,18 @@ def run_etl_background() -> None:
         _state["errores"] = []
         _state["error"] = None
         _state["rss_no_disponible"] = False
+        _state["phase"] = ""
+        _state["phase_detail"] = None
 
     logger.info("ETL iniciado en background.")
 
+    def _phase_callback(phase: str, detail=None):
+        with _lock:
+            _state["phase"] = phase
+            _state["phase_detail"] = detail
+
     try:
-        resultado = run_etl()
+        resultado = run_etl(phase_callback=_phase_callback)
 
         with _lock:
             if resultado.get("ok"):
@@ -72,6 +81,8 @@ def run_etl_background() -> None:
                 _state["tokens"] = resultado.get("tokens", 0)
                 _state["errores"] = resultado.get("errores", [])
                 _state["rss_no_disponible"] = resultado.get("rss_no_disponible", False)
+                _state["phase"] = ""
+                _state["phase_detail"] = None
             else:
                 _state["status"] = ETLStatus.FAILED
                 _state["error"] = resultado.get("error", "Error desconocido")

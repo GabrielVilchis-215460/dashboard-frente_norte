@@ -250,6 +250,8 @@ export interface ETLStatus {
   errores: string[];
   error: string | null;
   rss_no_disponible: boolean;
+  phase: string;
+  phase_detail: number | null;
 }
 
 export interface EventoCreate {

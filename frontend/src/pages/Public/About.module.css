@@ -4,9 +4,17 @@
   padding: var(--space-10) var(--space-8) var(--space-12);
 }
 
+.glass {
+  background: rgba(8, 16, 40, 0.60);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-8);
+}
+
 .hero {
   text-align: center;
-  margin-bottom: var(--space-10);
 }
 .eyebrow {
   display: inline-block;
@@ -29,8 +37,15 @@
   line-height: 1.7;
 }
 
+.divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: var(--space-8) 0;
+}
+
 .section {
-  margin-bottom: var(--space-8);
+  border-left: 2px solid rgba(45, 212, 168, 0.35);
+  padding-left: var(--space-6);
 }
 .sectionTitle {
   font-family: var(--font-display);
@@ -53,7 +68,7 @@
   justify-content: center;
   gap: var(--space-2);
   width: fit-content;
-  margin: var(--space-6) auto 0;
+  margin: 0 auto;
   padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-md);
   background: rgba(45, 212, 168, 0.10);
@@ -67,4 +82,9 @@
 .siteBtn:hover {
   background: rgba(45, 212, 168, 0.18);
   border-color: var(--accent-a);
+}
+
+@media (max-width: 600px) {
+  .glass { padding: var(--space-6) var(--space-5); }
+  .page  { padding: var(--space-8) var(--space-5) var(--space-10); }
 }
