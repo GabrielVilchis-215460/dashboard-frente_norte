@@ -2,10 +2,9 @@
 Script ETL (Extract, Transform, Load) para la automatización de eventos.
 
 Descripción:
-    Conecta con la BD para obtener organizaciones con feed RSS configurado.
-    Descarga el JSON de cada feed y procesa los posts con Gemini para detectar
-    eventos futuros, extrayendo: nombre, descripción, ubicación, coordenadas,
-    fecha, horario, categoría e imagen.
+    Descarga el Bundle unificado de RSS.app y procesa los posts con Gemini
+    para detectar eventos futuros, extrayendo: nombre, descripción,
+    ubicación, coordenadas, fecha, horario, categoría e imagen.
 
 Instrucciones de uso:
     Desde la carpeta backend:
@@ -15,13 +14,7 @@ Frecuencia recomendada:
     Una vez por semana, preferiblemente cada lunes.
 """
 
-import json
-import re
-import time
-import unicodedata
-import logging
-import os
-import requests
+import json, re, time, unicodedata, logging, os, requests
 from requests.exceptions import HTTPError
 
 from datetime import date, datetime
@@ -39,9 +32,7 @@ from app.core.config import settings
 logger = logging.getLogger("etl_events")
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 
-# ── Constantes ────────────────────────────────────────────────────────────────
-
-# URL del bundle obtenida de la variable de entorno (nunca hardcodeada)
+# Constantes
 BUNDLE_URL: str = settings.ETL_BUNDLE_URL
 FALLBACK_JSON_PATH: str = os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "stem_ecosystem.json")
 
@@ -50,6 +41,11 @@ FALLBACK_JSON_PATH: str = os.path.join(os.path.dirname(__file__), "..", "..", "d
 _JUAREZ_LAT_MIN, _JUAREZ_LAT_MAX = 31.55, 31.85
 _JUAREZ_LNG_MIN, _JUAREZ_LNG_MAX = -106.65, -106.25
 
+# Intervalo mínimo entre llamadas a Gemini (segundos).
+# Límite real observado en AI Studio: 15 RPM -> 60/15 = 4s exactos.
+# Usamos 6s para dejar margen de seguridad (~10 RPM efectivos).
+_GEMINI_MIN_INTERVAL: float = 6.0
+_RSS_PLAN_NO_PAGADO = False  # Se activa si el bundle devuelve 402
 
 def _coords_validas(lat: float | None, lng: float | None) -> bool:
     """Devuelve True solo si las coords caen dentro del bounding box de Juárez."""
@@ -60,12 +56,37 @@ def _coords_validas(lat: float | None, lng: float | None) -> bool:
         and _JUAREZ_LNG_MIN <= lng <= _JUAREZ_LNG_MAX
     )
 
+# Rate limiter para Gemini 
+class _GeminiRateLimiter:
+    """
+    Esta clase garantiza un intervalo mínimo real entre llamadas a Gemini usando
+    time.monotonic() (no afectado por cambios de reloj del sistema).
 
-# ── Gemini ────────────────────────────────────────────────────────────────────
+    A diferencia de un time.sleep() fijo después de cada post, este
+    limiter mide cuánto tiempo *realmente* pasó desde la última llamada
+    (incluyendo el tiempo que tardó Gemini en responder) y solo espera
+    la diferencia que falte. Así nunca esperamos de más si una llamada
+    fue lenta, pero tampoco excedemos el RPM si todas son rápidas.
+    """
 
+    def __init__(self, min_interval: float):
+        self.min_interval = min_interval
+        self._last_call_at: float | None = None
+
+    def wait(self) -> None:
+        if self._last_call_at is not None:
+            elapsed = time.monotonic() - self._last_call_at
+            faltante = self.min_interval - elapsed
+            if faltante > 0:
+                time.sleep(faltante)
+        self._last_call_at = time.monotonic()
+
+_gemini_rate_limiter = _GeminiRateLimiter(_GEMINI_MIN_INTERVAL)
+
+
+# Gemini 
 class GeminiQuotaExceeded(Exception):
     """Se lanza cuando Gemini sigue con 429 tras el retry — señal para detener el lote."""
-
 
 def _parse_retry_delay(error_str: str) -> float:
     """Extrae el número de segundos del retryDelay incluido en el mensaje de error 429."""
@@ -78,24 +99,23 @@ def _parse_retry_delay(error_str: str) -> float:
         return float(m.group(1))
     return 65.0  # fallback conservador si no se puede parsear
 
-
 def _is_429(e: Exception) -> bool:
     return "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
 
-
 def _call_gemini(prompt: str, client: genai.Client) -> object:
+    # El rate limiter espera lo necesario ANTES de cada llamada real a la API,
+    # sin importar si es primer intento o retry.
+    _gemini_rate_limiter.wait()
     return client.models.generate_content(
         model="gemini-3.1-flash-lite",
         contents=prompt,
         config=types.GenerateContentConfig(response_mime_type="application/json"),
     )
 
-
 def _get_gemini_client() -> genai.Client:
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY no está configurada.")
     return genai.Client(api_key=settings.GEMINI_API_KEY)
-
 
 def extract_events_data(text_post: str, org_name: str, client: genai.Client, phase_callback=None) -> tuple[dict, int]:
     """
@@ -198,8 +218,7 @@ Texto del post:
     return {"es_evento": False}, 0  # no debería llegar aquí
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
+# Funciones auxilares
 def _normalizar(texto: str) -> str:
     """Minúsculas, sin tildes, sin espacios extras — para comparaciones tolerantes."""
     texto = texto.lower().strip()
@@ -207,20 +226,15 @@ def _normalizar(texto: str) -> str:
     texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
     return " ".join(texto.split())
 
-
 def _similitud(a: str, b: str) -> float:
     return SequenceMatcher(None, _normalizar(a), _normalizar(b)).ratio()
 
-
-def _get_org_from_post(post: dict, db, org: Organizacion | None = None) -> tuple[str, int | None]:
+def _get_org_from_post(post: dict, db) -> tuple[str, int | None]:
     """
-    Devuelve (nombre_org, org_id).
+    Devuelve (nombre_org, org_id) a partir del autor del post en el Bundle.
     Primero intenta match exacto (nombre / rss_alias), luego fuzzy normalizado.
     org_id es None si no encuentra nada en BD.
     """
-    if org:
-        return org.nombre, org.id
-
     authors = post.get("authors", [])
     if not (authors and isinstance(authors, list)):
         return "Organización Desconocida", None
@@ -229,7 +243,7 @@ def _get_org_from_post(post: dict, db, org: Organizacion | None = None) -> tuple
     if not author_name:
         return "Organización Desconocida", None
 
-    # 1. Match exacto contra nombre o rss_alias
+    # Match exacto contra nombre o rss_alias
     org_db = (
         db.query(Organizacion)
         .filter(
@@ -241,7 +255,7 @@ def _get_org_from_post(post: dict, db, org: Organizacion | None = None) -> tuple
     if org_db:
         return org_db.nombre, org_db.id
 
-    # 2. Match fuzzy normalizado contra todas las orgs activas
+    # Match fuzzy normalizado contra todas las orgs activas
     todas = db.query(Organizacion).filter(Organizacion.activo == True).all()
     mejor_sim, mejor_org = 0.0, None
     for o in todas:
@@ -262,7 +276,6 @@ def _get_org_from_post(post: dict, db, org: Organizacion | None = None) -> tuple
     logger.warning("  [Org] '%s' no encontrada en BD (mejor match %.0f%%). Saltando.", author_name, mejor_sim * 100)
     return author_name, None
 
-
 def _es_duplicado(eventos_bd: list, fecha_evento: date, nombre_nuevo: str) -> bool:
     """
     Detecta duplicados por nombre similar en la misma fecha en toda la BD.
@@ -282,12 +295,10 @@ def _es_duplicado(eventos_bd: list, fecha_evento: date, nombre_nuevo: str) -> bo
             return True
     return False
 
-
-# ── Procesamiento de posts ────────────────────────────────────────────────────
-
-def process_posts(posts: list, db, client: genai.Client, org: Organizacion | None = None, phase_callback=None) -> tuple[int, int]:
+# Procesamiento de posts
+def process_posts(posts: list, db, client: genai.Client, phase_callback=None) -> tuple[int, int]:
     """
-    Procesa una lista de posts, extrae eventos y los inserta en BD.
+    Procesa una lista de posts del Bundle, extrae eventos y los inserta en BD.
     Devuelve (eventos_añadidos, tokens_consumidos).
     No llama a db.commit() — el caller es responsable del commit.
     """
@@ -302,7 +313,7 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
         url_post = post.get("url", "")
         attachments = post.get("attachments", [])
 
-        org_name, org_id = _get_org_from_post(post, db, org)
+        org_name, org_id = _get_org_from_post(post, db)
 
         if not org_id:
             logger.info("[%d/%d] Saltando: org '%s' no encontrada en BD.", i, len(posts), org_name)
@@ -351,13 +362,12 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
 
         if not datos.get("es_evento"):
             logger.info("  -> No es un evento.")
-            time.sleep(2)
             continue
 
         logger.info("  -> EVENTO DETECTADO: %s", datos.get("nombre"))
         datos.pop("es_evento", None)
 
-        # ── Parsear fechas y horas ─────────────────────────────────────────────
+        # Parsear fechas y horas 
         try:
             fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
 
@@ -378,21 +388,19 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
 
         except (ValueError, TypeError) as exc:
             logger.warning("  -> Fecha/hora inválida de IA: %s", exc)
-            time.sleep(2)
             continue
 
-        # ── Validar coordenadas ────────────────────────────────────────────────
+        # Validar coordenadas 
         lat = datos.get("latitud")
         lng = datos.get("longitud")
         if not _coords_validas(lat, lng):
             lat, lng = None, None
 
-        # ── Imagen final ───────────────────────────────────────────────────────
+        # Imagen final 
         final_image = datos.get("imagen_url") or attachment_image
 
-        # ── Deduplicación ──────────────────────────────────────────────────────
+        # Deduplicación 
         if _es_duplicado(eventos_bd, fecha_evento, datos["nombre"]):
-            time.sleep(2)
             continue
 
         nuevo_evento = Evento(
@@ -417,48 +425,9 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
         events_added += 1
         logger.info("  -> Evento preparado para guardar.")
 
-        time.sleep(2)
-
     return events_added, total_tokens
 
-
-# ── Procesamiento por feed individual ─────────────────────────────────────────
-
-_RSS_PLAN_NO_PAGADO = False  # Se activa globalmente si cualquier feed devuelve 402
-
-
-def process_feed_rss(org: Organizacion, db, client: genai.Client, phase_callback=None) -> int:
-    global _RSS_PLAN_NO_PAGADO
-    logger.info("\nProcesando organización: %s", org.nombre)
-    logger.info("Descargando feed desde: %s", org.rss_url)
-
-    try:
-        response = requests.get(org.rss_url, timeout=15)
-        response.raise_for_status()
-        feed_data = response.json()
-    except HTTPError as e:
-        if e.response is not None and e.response.status_code == 402:
-            _RSS_PLAN_NO_PAGADO = True
-            logger.warning("RSS.app no disponible (plan no pagado) para '%s'. Saltando.", org.nombre)
-        else:
-            logger.error("Error al descargar feed de '%s': %s", org.nombre, e)
-        return 0
-    except Exception as e:
-        logger.error("Error al descargar feed de '%s': %s", org.nombre, e)
-        return 0
-
-    posts = feed_data.get("items", []) or feed_data.get("entries", [])
-    logger.info("Se encontraron %d posts. Iniciando análisis...", len(posts))
-
-    events_added, total_tokens = process_posts(posts, db, client, org, phase_callback=phase_callback)
-    db.commit()
-
-    logger.info("Proceso terminado para %s. Eventos nuevos: %d", org.nombre, events_added)
-    return total_tokens
-
-
-# ── Procesamiento del bundle unificado ────────────────────────────────────────
-
+# Procesamiento del bundle unificado
 def process_bundle(db, client: genai.Client, phase_callback=None) -> tuple[int, bool]:
     """Devuelve (tokens_consumidos, rss_no_disponible)."""
     global _RSS_PLAN_NO_PAGADO
@@ -497,18 +466,17 @@ def process_bundle(db, client: genai.Client, phase_callback=None) -> tuple[int, 
     posts = feed_data.get("items", []) or feed_data.get("entries", [])
     logger.info("Se encontraron %d posts en el Bundle.", len(posts))
 
-    events_added, total_tokens = process_posts(posts, db, client, org=None, phase_callback=phase_callback)
+    events_added, total_tokens = process_posts(posts, db, client, phase_callback=phase_callback)
     db.commit()
 
     logger.info("Bundle procesado. Eventos nuevos: %d", events_added)
     return total_tokens, rss_no_disponible
 
 
-# ── Punto de entrada ──────────────────────────────────────────────────────────
-
+# Punto de entrada
 def run_etl(phase_callback=None) -> dict:
     """
-    Ejecuta el ETL completo (Fase 1: feeds individuales, Fase 2: bundle).
+    Ejecuta el ETL completo procesando el Bundle unificado.
     Devuelve un resumen con el resultado.
     Puede ser llamado desde CLI o desde el endpoint de administración.
     """
@@ -527,27 +495,7 @@ def run_etl(phase_callback=None) -> dict:
 
     db = SessionLocal()
     try:
-        # Fase 1: feeds individuales por org
-        orgs = db.query(Organizacion).filter(Organizacion.rss_url.isnot(None)).all()
-
-        if orgs:
-            logger.info("\n--- FASE 1: %d feeds individuales ---", len(orgs))
-            for org in orgs:
-                try:
-                    tokens = process_feed_rss(org, db, client, phase_callback=phase_callback)
-                    total_tokens += tokens
-                    if tokens > 0:
-                        time.sleep(10)  # Solo esperar si se procesaron posts reales
-                except Exception as e:
-                    msg = f"Error procesando feed de '{org.nombre}': {e}"
-                    logger.error(msg)
-                    errores.append(msg)
-                    db.rollback()
-        else:
-            logger.info("Sin organizaciones con rss_url en BD.")
-
-        # Fase 2: bundle unificado
-        logger.info("\n--- FASE 2: Bundle unificado ---")
+        logger.info("\n--- Procesando Bundle unificado ---")
         try:
             tokens, _ = process_bundle(db, client, phase_callback=phase_callback)
             total_tokens += tokens
@@ -570,7 +518,6 @@ def run_etl(phase_callback=None) -> dict:
         "errores": errores,
         "rss_no_disponible": _RSS_PLAN_NO_PAGADO,
     }
-
 
 if __name__ == "__main__":
     resultado = run_etl()
