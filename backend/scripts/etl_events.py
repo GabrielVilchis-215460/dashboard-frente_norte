@@ -2,329 +2,466 @@
 Script ETL (Extract, Transform, Load) para la automatización de eventos.
 
 Descripción:
-    Este script se conecta de manera dinámica a la base de datos de PostgreSQL (Supabase por el momento)
-    para obtener las organizaciones que tienen un feed de RSS (proveniente de RSS.app) configurado.
-    Descarga el contenido JSON de cada feed, procesa los posts utilizando el modelo de IA 
-    'gemini-3.1-flash-lite' para determinar si anuncian un evento futuro y, de ser así, 
-    extrae de forma estructurada sus datos (nombre, ubicación, fecha y URL original) 
-    para finalmente insertarlos de forma segura (evitando duplicados) en la base de datos.
+    Conecta con la BD para obtener organizaciones con feed RSS configurado.
+    Descarga el JSON de cada feed y procesa los posts con Gemini para detectar
+    eventos futuros, extrayendo: nombre, descripción, ubicación, coordenadas,
+    fecha, horario, categoría e imagen.
 
 Instrucciones de uso:
-    Para correr el script, primero se deberá estar en la carpeta de backend y al mismo nivel del directorio, correr sl siguiente comando: 
+    Desde la carpeta backend:
         python -m scripts.etl_events
 
 Frecuencia recomendada:
-    Se recomienda correr una vez por semana, preferiblemente cada lunes.
+    Una vez por semana, preferiblemente cada lunes.
 """
 
-import json, time, requests, os
+import json
+import time
+import logging
+import os
+import requests
+from requests.exceptions import HTTPError
+
 from datetime import date, datetime
-from google import genai
-from google.genai import types
-from app.db.session import SessionLocal
-from app.models.eventos import Evento 
-from app.models.organizacion import Organizacion
-from app.core.config import settings
-from sqlalchemy import or_
 from difflib import SequenceMatcher
 
-api_key = settings.GEMINI_API_KEY
-# Inicializo el cliente de Google Gemini
-client = genai.Client(api_key=api_key)
+from google import genai
+from google.genai import types
+from sqlalchemy import or_
 
-# consatnte temporal del bundle con orgs de rss
-BUNDLE_URL = "https://rss.app/feeds/v1.1/_e96R3DNd6AgEXOm1.json"
-FALLBACK_JSON_PATH = os.path.join("data", "raw", "stem_ecosystem.json") # Ruta del bundle de las orgs rss
+from app.db.session import SessionLocal
+from app.models.eventos import Evento
+from app.models.organizacion import Organizacion
+from app.core.config import settings
 
-def extract_events_data(text_post: str, org_name: str) -> tuple[dict, int]:
+logger = logging.getLogger("etl_events")
+logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
+
+# ── Constantes ────────────────────────────────────────────────────────────────
+
+# URL del bundle obtenida de la variable de entorno (nunca hardcodeada)
+BUNDLE_URL: str = settings.ETL_BUNDLE_URL
+FALLBACK_JSON_PATH: str = os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "stem_ecosystem.json")
+
+# Bounding box de Ciudad Juárez para validar coordenadas extraídas por IA
+# Cualquier valor fuera de este rango se descarta (previene alucinaciones)
+_JUAREZ_LAT_MIN, _JUAREZ_LAT_MAX = 31.55, 31.85
+_JUAREZ_LNG_MIN, _JUAREZ_LNG_MAX = -106.65, -106.25
+
+
+def _coords_validas(lat: float | None, lng: float | None) -> bool:
+    """Devuelve True solo si las coords caen dentro del bounding box de Juárez."""
+    if lat is None or lng is None:
+        return False
+    return (
+        _JUAREZ_LAT_MIN <= lat <= _JUAREZ_LAT_MAX
+        and _JUAREZ_LNG_MIN <= lng <= _JUAREZ_LNG_MAX
+    )
+
+
+# ── Gemini ────────────────────────────────────────────────────────────────────
+
+def _get_gemini_client() -> genai.Client:
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY no está configurada.")
+    return genai.Client(api_key=settings.GEMINI_API_KEY)
+
+
+def extract_events_data(text_post: str, org_name: str, client: genai.Client) -> tuple[dict, int]:
+    """
+    Envía el texto del post a Gemini y devuelve el JSON extraído junto con
+    el total de tokens consumidos. Devuelve {"es_evento": False} en caso de error.
+    """
     date_today = date.today().isoformat()
     prompt = f"""
-    Eres un analizador de datos experto. Analiza el siguiente texto extraído de las redes sociales de la organización '{org_name}'.
-    La fecha actual del sistema es {date_today}.
-    
-    Tu tarea es determinar si el texto anuncia un evento, taller o actividad futura.
-    
-    REGLA 1: FILTRO DE AUTORÍA ORIGINAL (ANTI-REPOST)
-    Analiza si este post es un "repost", "compartido" o una colaboración de un evento ajeno. 
-    Si el texto indica claramente que el evento es organizado por OTRA entidad, marca "es_evento": false.
-    
-    REGLA 2: UBICACIÓN
-    Solo considera como válido (es_evento: true) si es en Ciudad Juárez, Chihuahua, o 100% ONLINE/VIRTUAL.
-    
-    REGLA 3: CATEGORIZACIÓN
-    - ENFOQUE permitidas: "Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica", "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento".
-    - TIPO permitidas: "Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos".
-    
-    REGLA 4: FECHAS Y HORARIOS (MUY IMPORTANTE)
-    - Si el evento dura un solo día, "fecha" es ese día y "fecha_fin" es null.
-    - Si el texto menciona un RANGO de fechas (ej. 'del 11 de julio al 15 de agosto'), pon el inicio en "fecha" y el final en "fecha_fin". Ambas en formato "YYYY-MM-DD".
-    - Extrae la "hora_inicio" y "hora_fin" si se mencionan. Deben estar estrictamente en formato militar "HH:MM" (ej. "14:30"). Si no se mencionan, pon null.
-    
-    REGLA 5: IMAGEN
-    Extrae la URL de la imagen promocional si existe explícitamente en el texto, si no, null.
-    
-    Responde ÚNICAMENTE con un objeto JSON válido:
-    {{
-        "es_evento": true/false,
-        "nombre": "Nombre inferido",
-        "ubicacion": "Lugar mencionado",
-        "fecha": "YYYY-MM-DD",
-        "fecha_fin": "YYYY-MM-DD o null",
-        "hora_inicio": "HH:MM o null",
-        "hora_fin": "HH:MM o null",
-        "enfoque": "Opcion permitida",
-        "tipo": "Opcion permitida",
-        "imagen_url": "URL o null"
-    }}
-    
-    Texto del post:
-    "{text_post}"
-    """
+Eres un analizador de datos experto. Analiza el siguiente texto extraído de las redes sociales de la organización '{org_name}'.
+La fecha actual del sistema es {date_today}.
+
+Tu tarea es determinar si el texto anuncia un evento, taller o actividad futura.
+
+REGLA 1: FILTRO DE AUTORÍA ORIGINAL (ANTI-REPOST)
+Si el post es un repost o colaboración de un evento organizado por OTRA entidad, marca "es_evento": false.
+
+REGLA 2: UBICACIÓN GEOGRÁFICA
+Solo considera válido (es_evento: true) si el evento es en Ciudad Juárez, Chihuahua, o es 100% ONLINE/VIRTUAL.
+Extrae el nombre del lugar en "ubicacion" (ej. "T-Hub, Ciudad Juárez").
+Además, si el texto menciona una dirección o lugar específico y conocido de Ciudad Juárez del que puedas
+inferir coordenadas con alta confianza, extrae "latitud" y "longitud" como números decimales.
+Si no puedes determinarlas con certeza, devuelve null en ambos campos.
+IMPORTANTE: Las coordenadas deben estar dentro del rango de Ciudad Juárez
+(lat entre 31.55 y 31.85, lng entre -106.65 y -106.25). Nunca inventes coordenadas.
+
+REGLA 3: CATEGORIZACIÓN
+- ENFOQUE permitido: "Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica", "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento".
+- TIPO permitido: "Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos".
+
+REGLA 4: FECHAS Y HORARIOS
+- Evento de un día: "fecha" = ese día, "fecha_fin" = null.
+- Rango de fechas: "fecha" = inicio, "fecha_fin" = final. Formato "YYYY-MM-DD".
+- "hora_inicio" y "hora_fin" en formato "HH:MM" (24 h). null si no se mencionan.
+
+REGLA 5: DESCRIPCIÓN
+Extrae un resumen breve (máximo 3 oraciones) del evento basado exclusivamente en lo que dice el texto.
+No inventes información. Si no hay suficiente contexto, devuelve null.
+
+REGLA 6: IMAGEN
+Extrae la URL de la imagen promocional si existe explícitamente en el texto. Si no, null.
+
+Responde ÚNICAMENTE con un objeto JSON válido, sin markdown:
+{{
+    "es_evento": true/false,
+    "nombre": "Nombre del evento",
+    "descripcion": "Resumen breve o null",
+    "ubicacion": "Lugar mencionado o null",
+    "latitud": 31.xxxx o null,
+    "longitud": -106.xxxx o null,
+    "fecha": "YYYY-MM-DD",
+    "fecha_fin": "YYYY-MM-DD o null",
+    "hora_inicio": "HH:MM o null",
+    "hora_fin": "HH:MM o null",
+    "enfoque": "Opción permitida o null",
+    "tipo": "Opción permitida o null",
+    "imagen_url": "URL o null"
+}}
+
+Texto del post:
+"{text_post}"
+"""
 
     try:
         response = client.models.generate_content(
-            model='gemini-3.1-flash-lite',
+            model="gemini-3.1-flash-lite",
             contents=prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
 
         tokens_used = 0
-        usage = response.usage_metadata
-
-        if usage:
-            print(f"  [Tokens] Entrada: {usage.prompt_token_count} | Salida: {usage.candidates_token_count} | Total: {usage.total_token_count}")
-            tokens_used = usage.total_token_count
+        if response.usage_metadata:
+            m = response.usage_metadata
+            logger.info(
+                "  [Tokens] Entrada: %s | Salida: %s | Total: %s",
+                m.prompt_token_count, m.candidates_token_count, m.total_token_count,
+            )
+            tokens_used = m.total_token_count
 
         return json.loads(response.text), tokens_used
-    
+
     except Exception as e:
-        print(f"Error procesando post con Gemini: {e}")
+        logger.error("Error al procesar post con Gemini: %s", e)
         return {"es_evento": False}, 0
 
-# Funcion auxiliar
-def get_org_from_post(post: dict, db, org: Organizacion = None):
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _get_org_from_post(post: dict, db, org: Organizacion | None = None) -> tuple[str, int | None]:
+    """Devuelve (nombre_org, org_id). org_id puede ser None si no se encuentra en BD."""
     if org:
         return org.nombre, org.id
-    
-    # Todo este bloque funciona SOLO para el procesamiento de los bundles
-    authors = post.get('authors', [])
+
+    authors = post.get("authors", [])
     if authors and isinstance(authors, list):
-        author_name = authors[0].get('name')
+        author_name = authors[0].get("name")
         if author_name:
-            org_db = db.query(Organizacion).filter(
-                or_(Organizacion.nombre == author_name, Organizacion.rss_alias == author_name),
-                Organizacion.activo == True
-            ).first()
-            
+            org_db = (
+                db.query(Organizacion)
+                .filter(
+                    or_(Organizacion.nombre == author_name, Organizacion.rss_alias == author_name),
+                    Organizacion.activo == True,
+                )
+                .first()
+            )
             if org_db:
                 return org_db.nombre, org_db.id
-            else:
-                return author_name, None
-                
-    return "Organizacion Desconocida", None
+            return author_name, None
 
-# Esta funcion contiene toda la logica para extrear los eventos
-def process_posts(posts: list, db, org: Organizacion = None):
+    return "Organización Desconocida", None
+
+
+def _es_duplicado(db, org_id: int, fecha_evento: date, nombre_nuevo: str) -> bool:
+    """Detecta duplicados por fecha + similitud de nombre (>65 %)."""
+    eventos_mismo_dia = (
+        db.query(Evento)
+        .filter(Evento.organizacion_id == org_id, Evento.fecha == fecha_evento)
+        .all()
+    )
+    nombre_nuevo_l = nombre_nuevo.lower()
+    for ev in eventos_mismo_dia:
+        nombre_bd = ev.nombre.lower()
+        sim = SequenceMatcher(None, nombre_bd, nombre_nuevo_l).ratio()
+        if sim > 0.65 or nombre_bd in nombre_nuevo_l or nombre_nuevo_l in nombre_bd:
+            return True
+    return False
+
+
+# ── Procesamiento de posts ────────────────────────────────────────────────────
+
+def process_posts(posts: list, db, client: genai.Client, org: Organizacion | None = None) -> tuple[int, int]:
+    """
+    Procesa una lista de posts, extrae eventos y los inserta en BD.
+    Devuelve (eventos_añadidos, tokens_consumidos).
+    No llama a db.commit() — el caller es responsable del commit.
+    """
     events_added = 0
     total_tokens = 0
 
     for i, post in enumerate(posts, 1):
-        text_post = post.get('content_text') or post.get('summary') or post.get('title', '')
-        url_post = post.get('url', 'Sin URL disponible')
-        media_attachments = post.get('attachments', [])
+        text_post = post.get("content_text") or post.get("summary") or post.get("title", "")
+        url_post = post.get("url", "")
+        attachments = post.get("attachments", [])
 
-        org_name, org_id = get_org_from_post(post, db, org)
+        org_name, org_id = _get_org_from_post(post, db, org)
 
         if not org_id:
-            print(f"[{i}/{len(posts)}] Saltando post: Organizacion '{org_name}' no se encuentra activa en la BD.")
+            logger.info("[%d/%d] Saltando: org '%s' no encontrada en BD.", i, len(posts), org_name)
             continue
 
-        image_url = None
-        if media_attachments and isinstance(media_attachments, list):
-            image_url = media_attachments[0].get('url')
-
-        if not image_url:
-            image_url = post.get('image') or post.get('thumbnail')
-        
         if not text_post.strip():
             continue
 
-        print(f"[{i}/{len(posts)}] Analizando post para '{org_name}'...")
+        # Verificar si este URL ya fue procesado antes (evita gastar tokens en Gemini)
+        if url_post and db.query(Evento).filter(Evento.url_original == url_post).first():
+            logger.info("[%d/%d] Saltando: URL ya existe en BD.", i, len(posts))
+            continue
 
-        datos, tokens_post = extract_events_data(text_post, org_name)
-        total_tokens += tokens_post
+        # Imagen adjunta tiene prioridad sobre la extraída por IA
+        attachment_image = None
+        if attachments and isinstance(attachments, list):
+            attachment_image = attachments[0].get("url")
+        if not attachment_image:
+            attachment_image = post.get("image") or post.get("thumbnail")
+
+        logger.info("[%d/%d] Analizando post para '%s'...", i, len(posts), org_name)
+
+        datos, tokens = extract_events_data(text_post, org_name, client)
+        total_tokens += tokens
         datos["url_original"] = url_post
 
-        print("  -> Respuesta JSON cruda de Gemini:")
-        print(json.dumps(datos, indent=4, ensure_ascii=False))
+        logger.debug("  -> JSON Gemini: %s", json.dumps(datos, ensure_ascii=False))
 
-        if datos.get("es_evento"):
-            print(f"  -> EVENTO DETECTADO: {datos.get('nombre')}")
-            datos.pop("es_evento", None)
-            
-            try:
-                # Convertir el string YYYY-MM-DD a un objeto Date de Python
-                fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
-                
-                # Procesar variables nuevas en inglés (con soporte para nulos)
-                end_date = None
-                if datos.get("fecha_fin"):
-                    end_date = datetime.strptime(datos["fecha_fin"], "%Y-%m-%d").date()
-                
-                start_time = None
-                if datos.get("hora_inicio"):
-                    start_time = datetime.strptime(datos["hora_inicio"], "%H:%M").time()
-                    
-                end_time = None
-                if datos.get("hora_fin"):
-                    end_time = datetime.strptime(datos["hora_fin"], "%H:%M").time()
+        if not datos.get("es_evento"):
+            logger.info("  -> No es un evento.")
+            time.sleep(2)
+            continue
 
-            except (ValueError, TypeError) as e:
-                print(f"  -> Formato de fecha u hora inválido devuelto por la IA: {e}")
-                time.sleep(4)
-                continue
+        logger.info("  -> EVENTO DETECTADO: %s", datos.get("nombre"))
+        datos.pop("es_evento", None)
 
-            final_image = datos.get("imagen_url") or image_url
+        # ── Parsear fechas y horas ─────────────────────────────────────────────
+        try:
+            fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
 
-            #evento_existente = db.query(Evento).filter(
-            #    Evento.nombre == datos["nombre"],
-            #    Evento.organizacion_id == org_id,
-            #    Evento.fecha == fecha_evento
-            #).first()
-            eventos_mismo_dia = db.query(Evento).filter(
-                Evento.organizacion_id == org_id,
-                Evento.fecha == fecha_evento
-            ).all()
+            end_date = None
+            if datos.get("fecha_fin"):
+                end_date = datetime.strptime(datos["fecha_fin"], "%Y-%m-%d").date()
+                if end_date < fecha_evento:
+                    logger.warning("  -> fecha_fin anterior a fecha; se descarta.")
+                    end_date = None
 
-            es_duplicado = False
-            for ev in eventos_mismo_dia:
-                nombre_bd = ev.nombre.lower()
-                nombre_nuevo = datos["nombre"].lower()
-                
-                # Compara qué tanto se parecen los textos
-                similitud = SequenceMatcher(None, nombre_bd, nombre_nuevo).ratio()
-                
-                if similitud > 0.65 or nombre_bd in nombre_nuevo or nombre_nuevo in nombre_bd:
-                    es_duplicado = True
-                    break
+            start_time = None
+            if datos.get("hora_inicio"):
+                start_time = datetime.strptime(datos["hora_inicio"], "%H:%M").time()
 
-            if not es_duplicado:
-                nuevo_evento = Evento(
-                    nombre=datos["nombre"],
-                    ubicacion=datos["ubicacion"],
-                    fecha=fecha_evento,
-                    fecha_fin=end_date,          
-                    hora_inicio=start_time,      
-                    hora_fin=end_time,          
-                    enfoque=datos.get("enfoque"),
-                    tipo=datos.get("tipo"),
-                    url_original=datos["url_original"],
-                    imagen_url=final_image,
-                    organizacion_id=org_id,
-                    activo=True
-                )
-                db.add(nuevo_evento)
-                events_added += 1
-                print("  -> Evento preparado para guardar en BD.")
-            else:
-                print("  -> El evento ya estaba registrado previamente.")
-        else:
-            print("  -> No es un evento.")
-        
-        time.sleep(4)
+            end_time = None
+            if datos.get("hora_fin"):
+                end_time = datetime.strptime(datos["hora_fin"], "%H:%M").time()
+
+        except (ValueError, TypeError) as exc:
+            logger.warning("  -> Fecha/hora inválida de IA: %s", exc)
+            time.sleep(2)
+            continue
+
+        # ── Validar coordenadas ────────────────────────────────────────────────
+        lat = datos.get("latitud")
+        lng = datos.get("longitud")
+        if not _coords_validas(lat, lng):
+            lat, lng = None, None
+
+        # ── Imagen final ───────────────────────────────────────────────────────
+        final_image = datos.get("imagen_url") or attachment_image
+
+        # ── Deduplicación ──────────────────────────────────────────────────────
+        if _es_duplicado(db, org_id, fecha_evento, datos["nombre"]):
+            logger.info("  -> Duplicado; omitiendo.")
+            time.sleep(2)
+            continue
+
+        nuevo_evento = Evento(
+            nombre=datos["nombre"],
+            descripcion=datos.get("descripcion"),
+            ubicacion=datos.get("ubicacion"),
+            latitud=lat,
+            longitud=lng,
+            fecha=fecha_evento,
+            fecha_fin=end_date,
+            hora_inicio=start_time,
+            hora_fin=end_time,
+            enfoque=datos.get("enfoque"),
+            tipo=datos.get("tipo"),
+            url_original=datos["url_original"],
+            imagen_url=final_image,
+            organizacion_id=org_id,
+            activo=True,
+        )
+        db.add(nuevo_evento)
+        events_added += 1
+        logger.info("  -> Evento preparado para guardar.")
+
+        time.sleep(2)
 
     return events_added, total_tokens
-    
-# Esta funcion solo funciona con las columnas de rss_url de la tabla de las organizaciones
-def process_feed_rss(org: Organizacion, db) -> int:
-    print(f"\nProcesando organizacion: {org.nombre}")
-    print(f"Descargando feed desde: {org.rss_url}")
-    
+
+
+# ── Procesamiento por feed individual ─────────────────────────────────────────
+
+_RSS_PLAN_NO_PAGADO = False  # Se activa globalmente si cualquier feed devuelve 402
+
+
+def process_feed_rss(org: Organizacion, db, client: genai.Client) -> int:
+    global _RSS_PLAN_NO_PAGADO
+    logger.info("\nProcesando organización: %s", org.nombre)
+    logger.info("Descargando feed desde: %s", org.rss_url)
+
     try:
-        # descargo directamente el JSON diramente de internet
-        response = requests.get(org.rss_url)
+        response = requests.get(org.rss_url, timeout=15)
         response.raise_for_status()
         feed_data = response.json()
-
-    except Exception as e:
-        print(f"Error al descargar feed de la organizacion: {e}")
+    except HTTPError as e:
+        if e.response is not None and e.response.status_code == 402:
+            _RSS_PLAN_NO_PAGADO = True
+            logger.warning("RSS.app no disponible (plan no pagado) para '%s'. Saltando.", org.nombre)
+        else:
+            logger.error("Error al descargar feed de '%s': %s", org.nombre, e)
         return 0
-    
-    posts = feed_data.get('items', []) or feed_data.get('entries', [])
-    print(f"Se encontraron {len(posts)} posts. Iniciando análisis...\n")
+    except Exception as e:
+        logger.error("Error al descargar feed de '%s': %s", org.nombre, e)
+        return 0
 
-    events_added, total_tokens = process_posts(posts, db, org)
+    posts = feed_data.get("items", []) or feed_data.get("entries", [])
+    logger.info("Se encontraron %d posts. Iniciando análisis...", len(posts))
+
+    events_added, total_tokens = process_posts(posts, db, client, org)
     db.commit()
 
-    print(f"\nProceso terminado para {org.nombre}! Se insertaron {events_added} eventos nuevos.")
+    logger.info("Proceso terminado para %s. Eventos nuevos: %d", org.nombre, events_added)
     return total_tokens
 
-# Esta funcion solo funciona con los bundles con orgs de RSS
-def process_bundle(db):
-    print(f"\nIniciando procesamiento de Bundle mediante URL...")
+
+# ── Procesamiento del bundle unificado ────────────────────────────────────────
+
+def process_bundle(db, client: genai.Client) -> tuple[int, bool]:
+    """Devuelve (tokens_consumidos, rss_no_disponible)."""
+    global _RSS_PLAN_NO_PAGADO
+    logger.info("\nIniciando procesamiento del Bundle...")
+
     feed_data = None
+    rss_no_disponible = False
 
-    # primero trata de acceder mediante un request al url
-    try:
-        print(f"Intentando descargar Bundle en linea desde: {BUNDLE_URL}")
-        response = requests.get(BUNDLE_URL, timeout=10)
-        response.raise_for_status()
-        feed_data = response.json()
-        print("Bundle descargado correctamente desde internet.")
-    # si no puede acceder, entonces tomara en cuenta el json que esta en el directorio del proyecto
-    # NOTA: dicho bundle se deberá actualizar cada lunes tambien
-    except Exception as e:
-        print(f"No se pudo acceder al Bundle en linea ({e}). Iniciando Fallback local...")
+    if BUNDLE_URL:
+        try:
+            logger.info("Descargando Bundle desde: %s", BUNDLE_URL)
+            response = requests.get(BUNDLE_URL, timeout=15)
+            response.raise_for_status()
+            feed_data = response.json()
+            logger.info("Bundle descargado correctamente.")
+        except HTTPError as e:
+            if e.response is not None and e.response.status_code == 402:
+                rss_no_disponible = True
+                _RSS_PLAN_NO_PAGADO = True
+                logger.warning("RSS.app no disponible (plan no pagado). Sin datos nuevos que procesar.")
+                return 0, rss_no_disponible
+            else:
+                logger.warning("No se pudo descargar el Bundle (%s). Usando respaldo local...", e)
+        except Exception as e:
+            logger.warning("No se pudo descargar el Bundle (%s). Usando respaldo local...", e)
+
+    if feed_data is None:
         if os.path.exists(FALLBACK_JSON_PATH):
-            print(f"Cargando archivo local de respaldo: {FALLBACK_JSON_PATH}")
-            with open(FALLBACK_JSON_PATH, "r", encoding="utf-8") as file:
-                feed_data = json.load(file)
+            logger.info("Cargando respaldo local: %s", FALLBACK_JSON_PATH)
+            with open(FALLBACK_JSON_PATH, "r", encoding="utf-8") as f:
+                feed_data = json.load(f)
         else:
-            print(f"Error critico: Tampoco se encontro el archivo local en {FALLBACK_JSON_PATH}")
-            return 0
-        
-    if feed_data:
-        posts = feed_data.get('items', []) or feed_data.get('entries', [])
-        print(f"Se encontraron {len(posts)} posts en el Bundle. Iniciando analisis...\n")
-        
-        events_added, total_tokens = process_posts(posts, db, org=None)
-        db.commit()
+            logger.error("Error crítico: no hay Bundle URL ni archivo local en %s", FALLBACK_JSON_PATH)
+            return 0, rss_no_disponible
 
-        print(f"\nProceso del Bundle terminado! Se insertaron {events_added} eventos nuevos.")
-        return total_tokens
-    
-    return 0
+    posts = feed_data.get("items", []) or feed_data.get("entries", [])
+    logger.info("Se encontraron %d posts en el Bundle.", len(posts))
+
+    events_added, total_tokens = process_posts(posts, db, client, org=None)
+    db.commit()
+
+    logger.info("Bundle procesado. Eventos nuevos: %d", events_added)
+    return total_tokens, rss_no_disponible
+
+
+# ── Punto de entrada ──────────────────────────────────────────────────────────
+
+def run_etl() -> dict:
+    """
+    Ejecuta el ETL completo (Fase 1: feeds individuales, Fase 2: bundle).
+    Devuelve un resumen con el resultado.
+    Puede ser llamado desde CLI o desde el endpoint de administración.
+    """
+    global _RSS_PLAN_NO_PAGADO
+    _RSS_PLAN_NO_PAGADO = False  # Resetear estado al inicio de cada ejecución
+
+    logger.info("\n=== Iniciando ETL de eventos ===")
+    total_tokens = 0
+    errores: list[str] = []
+
+    try:
+        client = _get_gemini_client()
+    except RuntimeError as e:
+        logger.error(str(e))
+        return {"ok": False, "error": str(e), "tokens": 0, "rss_no_disponible": False}
+
+    db = SessionLocal()
+    try:
+        # Fase 1: feeds individuales por org
+        orgs = db.query(Organizacion).filter(Organizacion.rss_url.isnot(None)).all()
+
+        if orgs:
+            logger.info("\n--- FASE 1: %d feeds individuales ---", len(orgs))
+            for org in orgs:
+                try:
+                    tokens = process_feed_rss(org, db, client)
+                    total_tokens += tokens
+                    if tokens > 0:
+                        time.sleep(10)  # Solo esperar si se procesaron posts reales
+                except Exception as e:
+                    msg = f"Error procesando feed de '{org.nombre}': {e}"
+                    logger.error(msg)
+                    errores.append(msg)
+                    db.rollback()
+        else:
+            logger.info("Sin organizaciones con rss_url en BD.")
+
+        # Fase 2: bundle unificado
+        logger.info("\n--- FASE 2: Bundle unificado ---")
+        try:
+            tokens, _ = process_bundle(db, client)
+            total_tokens += tokens
+        except Exception as e:
+            msg = f"Error procesando bundle: {e}"
+            logger.error(msg)
+            errores.append(msg)
+            db.rollback()
+
+    finally:
+        db.close()
+
+    if _RSS_PLAN_NO_PAGADO:
+        logger.warning("RSS.app no disponible — plan no pagado. Se usaron datos locales de respaldo.")
+
+    logger.info("\n=== ETL finalizado. Tokens totales: %d ===", total_tokens)
+    return {
+        "ok": True,
+        "tokens": total_tokens,
+        "errores": errores,
+        "rss_no_disponible": _RSS_PLAN_NO_PAGADO,
+    }
+
 
 if __name__ == "__main__":
-    print("\n Iniciando extracción de eventos...")
-
-    total_tokens_consumed = 0
-
-    db_main = SessionLocal()
-
-    try:
-        # primero procesa orgs en la BD
-        orgs_with_feed = db_main.query(Organizacion).filter(Organizacion.rss_url.isnot(None)).all()
-
-        if not orgs_with_feed:
-            print("No hay organizaciones con 'rss_url' configurado en la base de datos.")
-        else:
-            print(f"\n--- FASE 1: Procesando {len(orgs_with_feed)} feeds individuales ---")
-            for org in orgs_with_feed:
-                tokens_org = process_feed_rss(org, db_main)
-                total_tokens_consumed += tokens_org 
-                time.sleep(10)
-        # luego procesa los bundles
-        print("\n--- FASE 2: Procesando Bundle Unificado ---")
-        tokens_bundle = process_bundle(db_main)
-        total_tokens_consumed += tokens_bundle
-        
-        print("\n Extracción finalizada con exito!")
-        print(f" Total de tokens consumidos (Fase 1 + Fase 2): {total_tokens_consumed}")
-    except Exception as e:
-        db_main.rollback()
-        print(f"Ocurrio un error critico en la ejecucion general: {e}")
-    finally:
-        db_main.close()
+    resultado = run_etl()
+    if not resultado["ok"]:
+        raise SystemExit(f"ETL falló: {resultado.get('error')}")

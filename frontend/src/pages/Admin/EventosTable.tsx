@@ -1,10 +1,18 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import {
+  IconPlayerPlay,
+  IconLoader2,
+  IconCircleCheck,
+  IconCircleX,
+  IconAlertTriangle,
+  IconX,
+} from '@tabler/icons-react';
 import { Skeleton } from '../../components/ui';
 import { Modal } from './Modal';
 import { useApi } from '../../hooks/useApi';
 import { adminApi } from '../../services/adminApi';
 import type { Organizacion } from '../../services/adminApi';
-import type { Evento, EventoCreate } from '../../types';
+import type { Evento, EventoCreate, ETLStatus } from '../../types';
 import { formatFechaEvento, formatHorario } from '../../utils/format';
 import styles from './Admin.module.css';
 
@@ -209,6 +217,185 @@ const uploadBtn: React.CSSProperties = {
   fontFamily: 'var(--font-body)',
 };
 
+// ── Panel ETL ─────────────────────────────────────────────────────────────────
+
+const ETL_POLL_INTERVAL = 5000; // ms
+
+const etlStatusLabel: Record<string, string> = {
+  idle: 'Sin ejecutar',
+  running: 'Ejecutando…',
+  completed: 'Completado',
+  failed: 'Falló',
+};
+
+const etlStatusColor: Record<string, string> = {
+  idle: 'var(--text-40)',
+  running: '#f59e0b',
+  completed: '#10b981',
+  failed: '#ef4444',
+};
+
+function ETLPanel({ onComplete }: { onComplete: () => void }) {
+  const [etl, setEtl] = useState<ETLStatus | null>(null);
+  const [launching, setLaunching] = useState(false);
+  const [launchError, setLaunchError] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const s = await adminApi.getETLStatus();
+        setEtl(s);
+        if (s.status !== 'running') {
+          stopPolling();
+          if (s.status === 'completed') onComplete();
+        }
+      } catch {
+        stopPolling();
+      }
+    }, ETL_POLL_INTERVAL);
+  }, [stopPolling, onComplete]);
+
+  useEffect(() => {
+    // Carga el estado inicial al montar
+    adminApi.getETLStatus().then(setEtl).catch(() => {});
+    return stopPolling;
+  }, [stopPolling]);
+
+  async function handleRun() {
+    setLaunchError('');
+    setLaunching(true);
+    try {
+      const s = await adminApi.runETL();
+      setEtl(s);
+      startPolling();
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
+        'Error al lanzar el ETL';
+      setLaunchError(msg);
+    } finally {
+      setLaunching(false);
+    }
+  }
+
+  const isRunning = etl?.status === 'running';
+  const isBusy = isRunning || launching;
+
+  return (
+    <div style={{
+      background: isRunning ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.04)',
+      border: `1px solid ${isRunning ? '#f59e0b' : 'var(--glass-border)'}`,
+      borderRadius: 'var(--radius-md)',
+      padding: '16px 20px',
+      marginBottom: 'var(--space-4)',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+      transition: 'border-color 0.3s, background 0.3s',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: 0, fontWeight: 600, fontSize: 14, color: 'var(--text-100)' }}>
+            Extracción automática de eventos (ETL)
+          </p>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--text-60)' }}>
+            Recomendado ejecutar <strong>una vez por semana</strong> (cada lunes). Extrae eventos nuevos desde los feeds RSS de las organizaciones.
+          </p>
+        </div>
+
+        <button
+          onClick={handleRun}
+          disabled={isBusy}
+          style={{
+            background: isBusy ? 'rgba(255,255,255,0.05)' : 'rgba(56,189,248,0.15)',
+            border: `1px solid ${isBusy ? 'var(--glass-border)' : 'var(--accent-a)'}`,
+            color: isBusy ? 'var(--text-40)' : 'var(--accent-a)',
+            borderRadius: 'var(--radius-md)',
+            padding: '8px 20px',
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'var(--font-body)',
+            cursor: isBusy ? 'not-allowed' : 'pointer',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {launching || isRunning
+              ? <IconLoader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+              : <IconPlayerPlay size={14} />}
+            {launching ? 'Iniciando…' : isRunning ? 'Ejecutando…' : 'Ejecutar ETL'}
+          </span>
+        </button>
+      </div>
+
+      {/* Barra de progreso animada cuando está corriendo */}
+      {isRunning && (
+        <div style={{ background: 'rgba(245,158,11,0.15)', borderRadius: 4, overflow: 'hidden', height: 4 }}>
+          <div style={{
+            height: '100%',
+            background: '#f59e0b',
+            borderRadius: 4,
+            animation: 'etlProgress 2s ease-in-out infinite',
+          }} />
+        </div>
+      )}
+
+      {/* Mensaje de estado */}
+      {etl && etl.status !== 'idle' && (
+        <div style={{
+          background: etl.status === 'completed' ? 'rgba(16,185,129,0.1)'
+            : etl.status === 'failed' ? 'rgba(239,68,68,0.1)'
+            : 'rgba(245,158,11,0.1)',
+          border: `1px solid ${etl.status === 'completed' ? '#10b981' : etl.status === 'failed' ? '#ef4444' : '#f59e0b'}`,
+          borderRadius: 'var(--radius-sm)',
+          padding: '10px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4,
+        }}>
+          <span style={{ fontWeight: 600, fontSize: 13, color: etlStatusColor[etl.status], display: 'flex', alignItems: 'center', gap: 6 }}>
+            {etl.status === 'completed' && <IconCircleCheck size={15} />}
+            {etl.status === 'failed' && <IconCircleX size={15} />}
+            {etl.status === 'running' && <IconLoader2 size={15} style={{ animation: 'spin 1s linear infinite' }} />}
+            {etlStatusLabel[etl.status]}
+          </span>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-60)' }}>
+            {etl.started_at && <span>Inicio: {new Date(etl.started_at).toLocaleString('es-MX')}</span>}
+            {etl.finished_at && <span>Fin: {new Date(etl.finished_at).toLocaleString('es-MX')}</span>}
+            {etl.status === 'completed' && <span style={{ color: '#10b981' }}>Tokens: {etl.tokens.toLocaleString()}</span>}
+            {etl.errores.length > 0 && <span style={{ color: '#f59e0b' }}>{etl.errores.length} advertencia(s)</span>}
+          </div>
+          {etl.rss_no_disponible && (
+            <span style={{ fontSize: 12, color: '#f59e0b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <IconAlertTriangle size={13} />
+              RSS.app no disponible (plan no pagado), se usaron datos locales de respaldo.
+            </span>
+          )}
+          {etl.status === 'failed' && etl.error && (
+            <span style={{ fontSize: 12, color: '#ef4444', marginTop: 2 }}>{etl.error}</span>
+          )}
+        </div>
+      )}
+
+      {launchError && (
+        <p style={{ margin: 0, fontSize: 12, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <IconX size={13} />{launchError}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Tabla principal ───────────────────────────────────────────────────────────
 
 export function EventosTable() {
@@ -315,6 +502,8 @@ export function EventosTable() {
 
   return (
     <>
+      <ETLPanel onComplete={refetch} />
+
       {error && <p className={styles.errorBanner}>{error}</p>}
 
       <div className={styles.tableCard}>

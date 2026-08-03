@@ -191,4 +191,11 @@ export const adminApi = {
     });
     return res.data.url;
   },
+
+  // ETL
+  runETL: () =>
+    adminClient.post<import('../types').ETLStatus>('/api/eventos/admin/etl/run').then((r) => r.data),
+
+  getETLStatus: () =>
+    adminClient.get<import('../types').ETLStatus>('/api/eventos/admin/etl/status').then((r) => r.data),
 };

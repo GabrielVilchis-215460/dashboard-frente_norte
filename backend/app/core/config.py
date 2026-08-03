@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # Google Gemini API (opcional en desarrollo, requerida para ETL de eventos RSS)
     GEMINI_API_KEY: str = ""
 
+    # ETL de eventos: URL del bundle RSS unificado de RSS.app
+    # Si no se configura, el ETL usará el archivo local de respaldo.
+    ETL_BUNDLE_URL: str = ""
+
     class Config:
         env_file = ".env"
 
