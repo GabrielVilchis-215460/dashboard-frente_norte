@@ -290,6 +290,21 @@ function ETLPanel({ onComplete }: { onComplete: () => void }) {
   const isRunning = etl?.status === 'running';
   const isBusy = isRunning || launching;
 
+  const actionBtnStyle: React.CSSProperties = {
+    background: isBusy ? 'rgba(255,255,255,0.05)' : 'rgba(56,189,248,0.15)',
+    border: `1px solid ${isBusy ? 'var(--glass-border)' : 'var(--accent-a)'}`,
+    color: isBusy ? 'var(--text-40)' : '#FFFFFF',
+    borderRadius: 'var(--radius-md)',
+    padding: '8px 20px',
+    fontSize: 13,
+    fontWeight: 700,
+    fontFamily: 'var(--font-body)',
+    cursor: isBusy ? 'not-allowed' : 'pointer',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
+    transition: 'all 0.2s ease', 
+  };
+  
   return (
     <div style={{
       background: isRunning ? 'rgba(245,158,11,0.06)' : 'rgba(255,255,255,0.04)',
@@ -315,23 +330,12 @@ function ETLPanel({ onComplete }: { onComplete: () => void }) {
         <button
           onClick={handleRun}
           disabled={isBusy}
-          style={{
-            background: isBusy ? 'rgba(255,255,255,0.05)' : 'rgba(56,189,248,0.15)',
-            border: `1px solid ${isBusy ? 'var(--glass-border)' : 'var(--accent-a)'}`,
-            color: isBusy ? 'var(--text-40)' : 'var(--accent-a)',
-            borderRadius: 'var(--radius-md)',
-            padding: '8px 20px',
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: 'var(--font-body)',
-            cursor: isBusy ? 'not-allowed' : 'pointer',
-            whiteSpace: 'nowrap',
-            flexShrink: 0,
-          }}
+          style={actionBtnStyle} // Aplicando el estilo actualizado
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {launching || isRunning
               ? <IconLoader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+              // El color del icono se ajusta automáticamente al heredar el color del texto (color: #FFFFFF)
               : <IconPlayerPlay size={14} />}
             {launching ? 'Iniciando…' : isRunning ? 'Ejecutando…' : 'Ejecutar ETL'}
           </span>
