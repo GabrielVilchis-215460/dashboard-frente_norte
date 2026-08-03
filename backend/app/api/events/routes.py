@@ -1,5 +1,6 @@
 import uuid
 import logging
+import threading
 from datetime import date
 from typing import List, Optional
 
@@ -8,9 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.api.auth.service import get_current_admin
-from app.api.events import service
-# Importante: Agregamos MetricasEventos a la importación
-from app.api.events.schemas import EventoResponse, EventoCreate, EventoUpdate, EventoMapPoint, MetricasEventos, EventosPublicoResponse
+from app.api.events import service, etl_runner
+from app.api.events.schemas import (
+    EventoResponse, EventoCreate, EventoUpdate, EventoMapPoint,
+    MetricasEventos, EventosPublicoResponse, ETLStatusResponse,
+)
 from app.core.config import settings
 from app.utils.view_dedup import ya_visto_recientemente
 
@@ -139,6 +142,30 @@ def admin_toggle_evento(
     if not ev:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     return ev
+
+
+@router.post("/admin/etl/run", response_model=ETLStatusResponse, status_code=status.HTTP_202_ACCEPTED)
+def admin_run_etl(_: str = Depends(get_current_admin)):
+    """
+    Lanza el ETL de eventos en background.
+    Solo se permite un job a la vez — devuelve 409 si ya hay uno en ejecución.
+    Se recomienda ejecutar una vez por semana (cada lunes).
+    """
+    if etl_runner.is_running():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El ETL ya está en ejecución. Espera a que termine antes de lanzarlo de nuevo.",
+        )
+
+    hilo = threading.Thread(target=etl_runner.run_etl_background, daemon=True)
+    hilo.start()
+    return etl_runner.get_status()
+
+
+@router.get("/admin/etl/status", response_model=ETLStatusResponse)
+def admin_etl_status(_: str = Depends(get_current_admin)):
+    """Devuelve el estado actual del último job ETL."""
+    return etl_runner.get_status()
 
 
 @router.post("/admin/upload-imagen")

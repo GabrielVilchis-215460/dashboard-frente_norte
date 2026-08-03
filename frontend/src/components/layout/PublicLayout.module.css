@@ -5,25 +5,89 @@
   background-image: var(--noise), var(--bg-gradient);
   background-blend-mode: overlay;
   background-attachment: fixed;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  filter: blur(55px);
+  opacity: 0.75;
+  animation: auroraPulse 14s ease-in-out infinite alternate;
+}
+
+.auroraBand {
+  position: absolute;
+  width: 200%;
+  left: -50%;
+  border-radius: 50%;
+  transform-origin: center center;
+}
+
+.auroraBand1 {
+  height: 60vh;
+  top: -15vh;
+  background: conic-gradient(from var(--a1) at 40% 60%,
+    transparent 0%,
+    rgba(45, 212, 168, 0.55) 12%,
+    rgba(56, 189, 248, 0.45) 28%,
+    transparent 42%,
+    rgba(20, 179, 145, 0.35) 58%,
+    transparent 72%
+  );
+  animation: band1Spin 20s linear infinite;
+}
+
+.auroraBand2 {
+  height: 65vh;
+  top: 0vh;
+  background: conic-gradient(from var(--a2) at 60% 35%,
+    transparent 0%,
+    rgba(139, 92, 246, 0.4) 10%,
+    rgba(45, 212, 168, 0.35) 26%,
+    transparent 40%,
+    rgba(56, 189, 248, 0.5) 56%,
+    transparent 70%
+  );
+  animation: band2Spin 28s linear infinite reverse;
+}
+
+.auroraBand3 {
+  height: 55vh;
+  top: -8vh;
+  background: conic-gradient(from var(--a3) at 30% 65%,
+    transparent 0%,
+    rgba(110, 231, 183, 0.4) 18%,
+    transparent 33%,
+    rgba(139, 92, 246, 0.3) 50%,
+    rgba(45, 212, 168, 0.4) 64%,
+    transparent 78%
+  );
+  animation: band3Spin 23s linear infinite;
 }
 
 .nav {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 10;
   gap: 140px;
   max-width: 1320px;
   margin: 0 auto;
   padding: var(--space-5) var(--space-8, 32px);
-  position: relative;
 }
- 
+
 .navSideDesktop {
   display: flex;
   align-items: center;
   gap: var(--space-6);
 }
- 
+
 .navLink {
   color: var(--text-80);
   text-decoration: none;
@@ -34,7 +98,7 @@
 .navLink:hover {
   color: var(--text-100);
 }
- 
+
 .logo {
   display: flex;
   align-items: center;
@@ -45,7 +109,7 @@
   height: 32px;
   width: auto;
 }
- 
+
 .menuBtn {
   display: none;
   align-items: center;
@@ -74,6 +138,8 @@
  
 .main {
   flex: 1;
+  position: relative;
+  z-index: 1;
 }
  
 .footer {
@@ -122,6 +188,23 @@
   color: var(--text-100);
 }
  
+@keyframes auroraPulse {
+  0%   { opacity: 0.6; filter: blur(55px); }
+  50%  { opacity: 0.82; filter: blur(45px); }
+  100% { opacity: 0.65; filter: blur(65px); }
+}
+
+@keyframes band1Spin { to { --a1: 360deg; } }
+@keyframes band2Spin { to { --a2: 420deg; } }
+@keyframes band3Spin { to { --a3: 480deg; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora { animation: none; }
+  .auroraBand1,
+  .auroraBand2,
+  .auroraBand3 { animation: none; }
+}
+
 /* Pantallas medias */
 @media (max-width: 1100px) {
   .nav {

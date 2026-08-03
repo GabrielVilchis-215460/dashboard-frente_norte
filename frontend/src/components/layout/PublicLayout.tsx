@@ -35,6 +35,12 @@ export function PublicLayout() {
 
   return (
     <div className={`${styles.shell} theme-public`}>
+      <div className={styles.aurora} aria-hidden="true">
+        <div className={styles.auroraBand1} />
+        <div className={styles.auroraBand2} />
+        <div className={styles.auroraBand3} />
+      </div>
+
       <header className={styles.nav}>
         <div className={styles.navSideDesktop}>{links}</div>
 

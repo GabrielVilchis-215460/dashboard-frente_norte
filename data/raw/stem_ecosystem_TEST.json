@@ -1,0 +1,48 @@
+{
+  "version": "https://jsonfeed.org/version/1.1",
+  "title": "TEST - Ecosistema STEM Juárez",
+  "items": [
+    {
+      "id": "test-001",
+      "url": "https://www.instagram.com/p/test001/",
+      "title": "Campamento de Robótica Verano 2026",
+      "content_text": "¡Este verano no te quedes sin aprender! El Centro de Estudios Industria 4.0 te invita a nuestro Campamento de Robótica del 4 al 8 de agosto de 2026, de lunes a viernes de 9:00 AM a 1:00 PM. Aprenderás programación, electrónica y construcción de robots. Lugar: T-Hub, Av. Tecnológico 11501, Ciudad Juárez. Cupo limitado. Inscríbete en nuestro link de bio.",
+      "image": "https://via.placeholder.com/800x600.png?text=Campamento+Robotica",
+      "date_published": "2026-07-20T10:00:00Z",
+      "authors": [{ "name": "Centro de Estudios Industria 4.0" }],
+      "attachments": []
+    },
+    {
+      "id": "test-002",
+      "url": "https://www.facebook.com/events/test002/",
+      "title": "Taller de Inteligencia Artificial para principiantes",
+      "content_text": "Frente Norte te invita a un taller introductorio de Inteligencia Artificial el sábado 9 de agosto de 2026 de 10:00 AM a 2:00 PM. No necesitas experiencia previa. Aprenderás los fundamentos de machine learning con Python. El evento se realizará en las instalaciones del T-Hub, Av. Tecnológico 11501, Ciudad Juárez, Chihuahua. Entrada libre con registro previo.",
+      "image": "https://via.placeholder.com/800x600.png?text=Taller+IA",
+      "date_published": "2026-07-22T14:00:00Z",
+      "authors": [{ "name": "Frente Norte" }],
+      "attachments": []
+    },
+    {
+      "id": "test-003",
+      "url": "https://www.instagram.com/p/test003/",
+      "title": "Conferencia: Mujeres en STEM",
+      "content_text": "Fab Lab Juárez presenta la conferencia 'Mujeres que transforman el futuro STEM' el viernes 15 de agosto de 2026 a las 5:00 PM en el Fab Lab, T-Hub Ciudad Juárez. Contaremos con panelistas de la industria tecnológica local que compartirán sus experiencias. Evento gratuito, abierto al público. Regístrate en nuestro sitio web.",
+      "image": null,
+      "date_published": "2026-07-25T09:00:00Z",
+      "authors": [{ "name": "Fab Lab Juárez" }],
+      "attachments": [
+        { "url": "https://via.placeholder.com/800x600.png?text=Mujeres+STEM", "mime_type": "image/png" }
+      ]
+    },
+    {
+      "id": "test-004",
+      "url": "https://www.instagram.com/p/test004/",
+      "title": "Post sin evento - promoción de servicios",
+      "content_text": "En Frente Norte llevamos más de 5 años apoyando al ecosistema emprendedor de Ciudad Juárez. Conoce nuestros programas de mentoría y aceleración para startups tecnológicas. Visítanos en thub.mx para más información.",
+      "image": null,
+      "date_published": "2026-07-18T12:00:00Z",
+      "authors": [{ "name": "Frente Norte" }],
+      "attachments": []
+    }
+  ]
+}

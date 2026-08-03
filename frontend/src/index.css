@@ -116,6 +116,11 @@
   --accent-d: #a7f3dd;
 }
 
+/* Aurora @property — requerido para animar conic-gradient */
+@property --a1 { syntax: '<angle>'; initial-value: 0deg;   inherits: false }
+@property --a2 { syntax: '<angle>'; initial-value: 60deg;  inherits: false }
+@property --a3 { syntax: '<angle>'; initial-value: 120deg; inherits: false }
+
 /* Reset & Base */
 
 *, *::before, *::after {
@@ -180,4 +185,15 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes etlProgress {
+  0%   { width: 0%; margin-left: 0%; }
+  50%  { width: 60%; margin-left: 20%; }
+  100% { width: 0%; margin-left: 100%; }
 }

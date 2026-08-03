@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { IconCalendar, IconMapPin } from '@tabler/icons-react';
+import { IconCalendar, IconMapPin, IconCalendarEvent } from '@tabler/icons-react';
 import { EventTag } from '../../pages/Events/components/EventTag';
 import { formatFechaEvento, formatHorario } from '../../utils/format';
 import { eventDetailPath } from '../../constants/routes';
@@ -11,13 +12,22 @@ interface Props {
 }
 
 export function EventGridCard({ evento }: Props) {
+  const [imgError, setImgError] = useState(false);
+
   return (
     <Link to={eventDetailPath(evento.id)} className={styles.card}>
       <div className={styles.imgSlot}>
-        {evento.imagen_url ? (
-          <img src={evento.imagen_url} alt={evento.nombre} className={styles.img} />
+        {evento.imagen_url && !imgError ? (
+          <img
+            src={evento.imagen_url}
+            alt={evento.nombre}
+            className={styles.img}
+            onError={() => setImgError(true)}
+          />
         ) : (
-          <div className={styles.imgPlaceholder} />
+          <div className={styles.imgPlaceholder}>
+            <IconCalendarEvent size={32} className={styles.imgPlaceholderIcon} />
+          </div>
         )}
       </div>
 
