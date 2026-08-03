@@ -18,6 +18,7 @@ Frecuencia recomendada:
 import json
 import re
 import time
+import unicodedata
 import logging
 import os
 import requests
@@ -199,42 +200,85 @@ Texto del post:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def _normalizar(texto: str) -> str:
+    """Minúsculas, sin tildes, sin espacios extras — para comparaciones tolerantes."""
+    texto = texto.lower().strip()
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(c for c in texto if unicodedata.category(c) != "Mn")
+    return " ".join(texto.split())
+
+
+def _similitud(a: str, b: str) -> float:
+    return SequenceMatcher(None, _normalizar(a), _normalizar(b)).ratio()
+
+
 def _get_org_from_post(post: dict, db, org: Organizacion | None = None) -> tuple[str, int | None]:
-    """Devuelve (nombre_org, org_id). org_id puede ser None si no se encuentra en BD."""
+    """
+    Devuelve (nombre_org, org_id).
+    Primero intenta match exacto (nombre / rss_alias), luego fuzzy normalizado.
+    org_id es None si no encuentra nada en BD.
+    """
     if org:
         return org.nombre, org.id
 
     authors = post.get("authors", [])
-    if authors and isinstance(authors, list):
-        author_name = authors[0].get("name")
-        if author_name:
-            org_db = (
-                db.query(Organizacion)
-                .filter(
-                    or_(Organizacion.nombre == author_name, Organizacion.rss_alias == author_name),
-                    Organizacion.activo == True,
-                )
-                .first()
-            )
-            if org_db:
-                return org_db.nombre, org_db.id
-            return author_name, None
+    if not (authors and isinstance(authors, list)):
+        return "Organización Desconocida", None
 
-    return "Organización Desconocida", None
+    author_name = authors[0].get("name", "").strip()
+    if not author_name:
+        return "Organización Desconocida", None
 
-
-def _es_duplicado(db, org_id: int, fecha_evento: date, nombre_nuevo: str) -> bool:
-    """Detecta duplicados por fecha + similitud de nombre (>65 %)."""
-    eventos_mismo_dia = (
-        db.query(Evento)
-        .filter(Evento.organizacion_id == org_id, Evento.fecha == fecha_evento)
-        .all()
+    # 1. Match exacto contra nombre o rss_alias
+    org_db = (
+        db.query(Organizacion)
+        .filter(
+            or_(Organizacion.nombre == author_name, Organizacion.rss_alias == author_name),
+            Organizacion.activo == True,
+        )
+        .first()
     )
-    nombre_nuevo_l = nombre_nuevo.lower()
-    for ev in eventos_mismo_dia:
-        nombre_bd = ev.nombre.lower()
-        sim = SequenceMatcher(None, nombre_bd, nombre_nuevo_l).ratio()
-        if sim > 0.65 or nombre_bd in nombre_nuevo_l or nombre_nuevo_l in nombre_bd:
+    if org_db:
+        return org_db.nombre, org_db.id
+
+    # 2. Match fuzzy normalizado contra todas las orgs activas
+    todas = db.query(Organizacion).filter(Organizacion.activo == True).all()
+    mejor_sim, mejor_org = 0.0, None
+    for o in todas:
+        candidatos = [o.nombre]
+        if o.rss_alias:
+            candidatos.append(o.rss_alias)
+        for c in candidatos:
+            sim = _similitud(author_name, c)
+            if sim > mejor_sim:
+                mejor_sim, mejor_org = sim, o
+
+    if mejor_org and mejor_sim >= 0.70:
+        logger.info(
+            "  [Org] '%s' → '%s' vía fuzzy (%.0f%%)", author_name, mejor_org.nombre, mejor_sim * 100
+        )
+        return mejor_org.nombre, mejor_org.id
+
+    logger.warning("  [Org] '%s' no encontrada en BD (mejor match %.0f%%). Saltando.", author_name, mejor_sim * 100)
+    return author_name, None
+
+
+def _es_duplicado(eventos_bd: list, fecha_evento: date, nombre_nuevo: str) -> bool:
+    """
+    Detecta duplicados por nombre similar en la misma fecha en toda la BD.
+    Opera sobre la lista cargada en memoria al inicio del lote.
+    """
+    nombre_nuevo_n = _normalizar(nombre_nuevo)
+    for ev in eventos_bd:
+        if ev.fecha != fecha_evento:
+            continue
+        nombre_bd_n = _normalizar(ev.nombre)
+        sim = SequenceMatcher(None, nombre_bd_n, nombre_nuevo_n).ratio()
+        if sim > 0.72 or nombre_bd_n in nombre_nuevo_n or nombre_nuevo_n in nombre_bd_n:
+            logger.info(
+                "  [Dedup] '%s' similar a '%s' existente (%.0f%%). Omitiendo.",
+                nombre_nuevo, ev.nombre, sim * 100,
+            )
             return True
     return False
 
@@ -250,6 +294,9 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
     events_added = 0
     total_tokens = 0
 
+    # Cargar eventos existentes una sola vez para dedup en memoria
+    eventos_bd = db.query(Evento).all()
+
     for i, post in enumerate(posts, 1):
         text_post = post.get("content_text") or post.get("summary") or post.get("title", "")
         url_post = post.get("url", "")
@@ -264,10 +311,22 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
         if not text_post.strip():
             continue
 
-        # Verificar si este URL ya fue procesado antes (evita gastar tokens en Gemini)
-        if url_post and db.query(Evento).filter(Evento.url_original == url_post).first():
+        # Dedup por URL exacta
+        if url_post and any(ev.url_original == url_post for ev in eventos_bd):
             logger.info("[%d/%d] Saltando: URL ya existe en BD.", i, len(posts))
             continue
+
+        # Dedup por título del post normalizado (protege contra cambios de URL en RSS)
+        titulo_post = _normalizar(post.get("title", ""))
+        if titulo_post:
+            titulo_duplicado = False
+            for ev in eventos_bd:
+                if _similitud(titulo_post, ev.nombre) > 0.80:
+                    logger.info("[%d/%d] Saltando: título similar a '%s' en BD.", i, len(posts), ev.nombre)
+                    titulo_duplicado = True
+                    break
+            if titulo_duplicado:
+                continue
 
         # Imagen adjunta tiene prioridad sobre la extraída por IA
         attachment_image = None
@@ -332,8 +391,7 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
         final_image = datos.get("imagen_url") or attachment_image
 
         # ── Deduplicación ──────────────────────────────────────────────────────
-        if _es_duplicado(db, org_id, fecha_evento, datos["nombre"]):
-            logger.info("  -> Duplicado; omitiendo.")
+        if _es_duplicado(eventos_bd, fecha_evento, datos["nombre"]):
             time.sleep(2)
             continue
 
@@ -355,6 +413,7 @@ def process_posts(posts: list, db, client: genai.Client, org: Organizacion | Non
             activo=True,
         )
         db.add(nuevo_evento)
+        eventos_bd.append(nuevo_evento)  # dedup en memoria para el mismo lote
         events_added += 1
         logger.info("  -> Evento preparado para guardar.")
 
