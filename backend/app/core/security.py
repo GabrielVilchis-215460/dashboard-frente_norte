@@ -21,12 +21,13 @@ def hash_password(password: str) -> str:
     return _bcrypt.hashpw(password.encode()[:72], _bcrypt.gensalt()).decode()
 
 
-def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(subject: str, rol: str, expires_delta: Optional[timedelta] = None) -> str:
     """
-    Crea un JWT firmado con el subject dado.
+    Crea un JWT firmado con el subject (username) y el rol del usuario.
 
     Args:
         subject: Identificador del usuario (username).
+        rol: Rol del usuario ("admin" | "viewer"), embebido como claim.
         expires_delta: Tiempo de vida del token. Si no se proporciona,
                        usa ACCESS_TOKEN_EXPIRE_MINUTES de la configuración.
 
@@ -36,19 +37,24 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    payload = {"sub": subject, "exp": expire}
+    payload = {"sub": subject, "rol": rol, "exp": expire}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def decode_access_token(token: str) -> Optional[str]:
+def decode_access_token(token: str) -> Optional[dict]:
     """
     Decodifica y valida un JWT.
 
     Returns:
-        El subject (username) si el token es válido, None si expiró o es inválido.
+        Un dict {"username": str, "rol": str} si el token es válido,
+        None si expiró o es inválido.
     """
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        return payload.get("sub")
+        username = payload.get("sub")
+        rol = payload.get("rol")
+        if username is None or rol is None:
+            return None
+        return {"username": username, "rol": rol}
     except Exception:
         return None

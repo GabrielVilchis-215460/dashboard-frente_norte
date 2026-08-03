@@ -53,6 +53,9 @@
   --accent-b: #34d399;
   --accent-c: #a78bfa;
   --accent-d: #f472b6;
+
+  /* --- Grainy variable --- */
+  --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 
 /* Temas de colores por pestaña */
@@ -97,6 +100,26 @@
   --accent-c: #0284c7;
   --accent-d: #bae6fd;
 }
+
+/* Event Page - NAVY & TEAL */
+.theme-public {
+  --bg-gradient: radial-gradient(
+      130% 130% at 20% 0%,
+      #1c3f6e 0%,
+      #12294d 35%,
+      #0a1730 70%,
+      #060d1e 100%
+    );
+  --accent-a: #2dd4a8;
+  --accent-b: #6ee7c8;
+  --accent-c: #14b391;
+  --accent-d: #a7f3dd;
+}
+
+/* Aurora @property — requerido para animar conic-gradient */
+@property --a1 { syntax: '<angle>'; initial-value: 0deg;   inherits: false }
+@property --a2 { syntax: '<angle>'; initial-value: 60deg;  inherits: false }
+@property --a3 { syntax: '<angle>'; initial-value: 120deg; inherits: false }
 
 /* Reset & Base */
 
@@ -162,4 +185,15 @@ body {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes etlProgress {
+  0%   { width: 0%; margin-left: 0%; }
+  50%  { width: 60%; margin-left: 20%; }
+  100% { width: 0%; margin-left: 100%; }
 }

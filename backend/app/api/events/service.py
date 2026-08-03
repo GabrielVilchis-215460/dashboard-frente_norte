@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_
 from datetime import date
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 from app.models.eventos import Evento
 from app.models.organizacion import Organizacion
@@ -92,7 +92,61 @@ def obtener_metricas_eventos(db: Session) -> dict:
         "historico_eventos_trimestral": obtener_historico_trimestral(db),
     }
 
-
+def obtener_eventos_publico(
+    db: Session,
+    q: Optional[str] = None,
+    tipo: Optional[str] = None,
+    enfoque: Optional[str] = None,
+    orden: str = "recientes",  # "recientes" | "populares"
+    skip: int = 0,
+    limit: int = 20,
+) -> Tuple[int, List[Evento]]:
+    """
+    Listado público de eventos próximos (para la página /eventos).
+    Siempre filtra activos y no vencidos. Devuelve (total, items) para
+    poder mostrar el contador de resultados en la UI.
+    """
+    fecha_hoy = date.today()
+ 
+    query = (
+        db.query(Evento)
+        .options(joinedload(Evento.organizacion))
+        .filter(
+            Evento.activo == True,
+            or_(
+                Evento.fecha >= fecha_hoy,
+                and_(Evento.fecha_fin.isnot(None), Evento.fecha_fin >= fecha_hoy),
+            ),
+        )
+    )
+ 
+    if q:
+        like = f"%{q}%"
+        query = query.outerjoin(Evento.organizacion).filter(
+            or_(Evento.nombre.ilike(like), Organizacion.nombre.ilike(like))
+        )
+    if tipo:
+        query = query.filter(Evento.tipo == tipo)
+    if enfoque:
+        query = query.filter(Evento.enfoque == enfoque)
+ 
+    total = query.count()
+ 
+    if orden == "populares":
+        query = query.order_by(Evento.vistas.desc(), Evento.fecha.asc())
+    else:
+        query = query.order_by(Evento.fecha.asc())
+ 
+    items = query.offset(skip).limit(limit).all()
+    return total, items
+ 
+def incrementar_vistas(db: Session, evento_id: int) -> None:
+    """Incrementa en 1 el contador de vistas de un evento."""
+    db.query(Evento).filter(Evento.id == evento_id).update(
+        {Evento.vistas: Evento.vistas + 1}
+    )
+    db.commit()
+ 
 # ── CRUD administrativo ───────────────────────────────────────────────────────
 def crear_evento(db: Session, data: EventoCreate) -> Evento:
     evento = Evento(**data.model_dump())
@@ -161,7 +215,13 @@ def contar_organizaciones_con_eventos_activos(db: Session) -> int:
     fecha_hoy = date.today()
     return (
         db.query(Evento.organizacion_id)
-        .filter(Evento.fecha >= fecha_hoy, Evento.activo == True)
+        .filter(
+            Evento.activo == True,
+            or_(
+                Evento.fecha >= fecha_hoy,
+                and_(Evento.fecha_fin.isnot(None), Evento.fecha_fin >= fecha_hoy)
+            )
+        )
         .distinct()
         .count()
     )

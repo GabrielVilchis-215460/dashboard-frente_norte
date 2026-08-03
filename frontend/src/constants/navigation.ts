@@ -55,7 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: 'events',
     label: 'Eventos',
-    path: ROUTES.EVENTS,
+    path: ROUTES.EVENTS_TAB,
     icon: 'IconCalendarEvent',
   },
 ];

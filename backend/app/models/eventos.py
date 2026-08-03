@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, ForeignKey, Text, Float
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.session import Base
@@ -24,9 +24,16 @@ class Evento(Base):
     enfoque = Column(String(100), nullable=True)
     tipo = Column(String(100), nullable=True)
 
+    # Coordenadas del evento (extraídas por IA, opcionales)
+    latitud = Column(Float, nullable=True)
+    longitud = Column(Float, nullable=True)
+
     # Media y enlace
     imagen_url = Column(Text, nullable=True)
     url_original = Column(Text, nullable=True)
+
+    # Popularidad (página pública de eventos)
+    vistas = Column(Integer, nullable=False, default=0, server_default="0")
 
     # Relación con organización
     organizacion_id = Column(Integer, ForeignKey("organizaciones.id"), nullable=True)

@@ -1,17 +1,21 @@
 import uuid
 import logging
+import threading
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status, Request
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.api.auth.service import get_current_admin
-from app.api.events import service
-# Importante: Agregamos MetricasEventos a la importación
-from app.api.events.schemas import EventoResponse, EventoCreate, EventoUpdate, EventoMapPoint, MetricasEventos
+from app.api.events import service, etl_runner
+from app.api.events.schemas import (
+    EventoResponse, EventoCreate, EventoUpdate, EventoMapPoint,
+    MetricasEventos, EventosPublicoResponse, ETLStatusResponse,
+)
 from app.core.config import settings
+from app.utils.view_dedup import ya_visto_recientemente
 
 logger = logging.getLogger("stem_api.eventos")
 
@@ -51,11 +55,40 @@ def eventos_mapa(db: Session = Depends(get_db)):
     return service.obtener_eventos_mapa(db)
 
 
+@router.get("/publico", response_model=EventosPublicoResponse)
+def listar_publico(
+    q: Optional[str] = Query(None, description="Búsqueda por nombre de evento u organización"),
+    tipo: Optional[str] = Query(None),
+    enfoque: Optional[str] = Query(None),
+    orden: str = Query("recientes", pattern="^(recientes|populares)$"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    total, items = service.obtener_eventos_publico(db, q, tipo, enfoque, orden, skip, limit)
+    return EventosPublicoResponse(total=total, items=items)
+
+
+def _obtener_ip_cliente(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        # XFF puede traer una cadena "cliente, proxy1, proxy2"
+        # el primer valor es la IP original del cliente.
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @router.get("/{evento_id}", response_model=EventoResponse)
-def detalle_evento(evento_id: int, db: Session = Depends(get_db)):
+def detalle_evento(evento_id: int, request: Request, db: Session = Depends(get_db)):
     ev = service.obtener_evento_por_id(db, evento_id)
     if not ev:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
+ 
+    ip_cliente = _obtener_ip_cliente(request)
+    if not ya_visto_recientemente(ip_cliente, evento_id):
+        service.incrementar_vistas(db, evento_id)
+        db.refresh(ev)
+ 
     return ev
 
 
@@ -109,6 +142,30 @@ def admin_toggle_evento(
     if not ev:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     return ev
+
+
+@router.post("/admin/etl/run", response_model=ETLStatusResponse, status_code=status.HTTP_202_ACCEPTED)
+def admin_run_etl(_: str = Depends(get_current_admin)):
+    """
+    Lanza el ETL de eventos en background.
+    Solo se permite un job a la vez — devuelve 409 si ya hay uno en ejecución.
+    Se recomienda ejecutar una vez por semana (cada lunes).
+    """
+    if etl_runner.is_running():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El ETL ya está en ejecución. Espera a que termine antes de lanzarlo de nuevo.",
+        )
+
+    hilo = threading.Thread(target=etl_runner.run_etl_background, daemon=True)
+    hilo.start()
+    return etl_runner.get_status()
+
+
+@router.get("/admin/etl/status", response_model=ETLStatusResponse)
+def admin_etl_status(_: str = Depends(get_current_admin)):
+    """Devuelve el estado actual del último job ETL."""
+    return etl_runner.get_status()
 
 
 @router.post("/admin/upload-imagen")

@@ -1,0 +1,110 @@
+.page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 var(--space-8) var(--space-12);
+}
+
+.hero {
+  text-align: center;
+  padding: var(--space-10) 0 var(--space-6);
+}
+.heroTitle {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  letter-spacing: 0.04em;
+  color: var(--text-100);
+}
+.heroSubtitle {
+  margin-top: var(--space-3);
+  color: var(--text-80);
+  font-size: var(--text-lg);
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.searchForm {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 640px;
+  margin: var(--space-6) auto 0;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
+}
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--text-base);
+  color: #1a1a2e;
+}
+.searchInput::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+.searchBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: #1a1a2e;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+.searchBtn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.section {
+  margin-top: var(--space-10);
+}
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  color: var(--text-100);
+  margin-bottom: var(--space-4);
+}
+.verTodos {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  color: var(--text-80);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: var(--text-sm);
+}
+.verTodos:hover {
+  color: var(--text-100);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+}
+@media (max-width: 1100px) {
+  .grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.empty {
+  color: var(--text-60);
+  text-align: center;
+  padding: var(--space-8) 0;
+}

@@ -1,3 +1,4 @@
+import threading
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -26,6 +27,18 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
+
+@app.on_event("startup")
+def _preload_etl():
+    """Pre-carga el módulo ETL en background para que la primera ejecución sea inmediata."""
+    def _load():
+        try:
+            import scripts.etl_events  # noqa: F401
+        except Exception:
+            pass
+    threading.Thread(target=_load, daemon=True).start()
+
 
 @app.get("/", tags=["Health"])
 def root():

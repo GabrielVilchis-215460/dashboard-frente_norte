@@ -1,0 +1,90 @@
+.page {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-8) var(--space-12);
+}
+
+.glass {
+  background: rgba(8, 16, 40, 0.60);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-8);
+}
+
+.hero {
+  text-align: center;
+}
+.eyebrow {
+  display: inline-block;
+  font-size: var(--text-sm);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-a);
+  margin-bottom: var(--space-3);
+}
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  color: var(--text-100);
+  line-height: 1.25;
+}
+.lead {
+  margin-top: var(--space-5);
+  font-size: var(--text-lg);
+  color: var(--text-80);
+  line-height: 1.7;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: var(--space-8) 0;
+}
+
+.section {
+  border-left: 2px solid rgba(45, 212, 168, 0.35);
+  padding-left: var(--space-6);
+}
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--text-100);
+  margin-bottom: var(--space-3);
+}
+.paragraph {
+  color: var(--text-80);
+  line-height: 1.75;
+  margin-bottom: var(--space-4);
+}
+.paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.siteBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: fit-content;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-md);
+  background: rgba(45, 212, 168, 0.10);
+  border: 1px solid rgba(45, 212, 168, 0.45);
+  color: var(--accent-a);
+  text-decoration: none;
+  font-size: var(--text-base);
+  font-weight: 500;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.siteBtn:hover {
+  background: rgba(45, 212, 168, 0.18);
+  border-color: var(--accent-a);
+}
+
+@media (max-width: 600px) {
+  .glass { padding: var(--space-6) var(--space-5); }
+  .page  { padding: var(--space-8) var(--space-5) var(--space-10); }
+}

@@ -226,6 +226,8 @@ export interface Evento {
   nombre: string;
   descripcion?: string | null;
   ubicacion?: string | null;
+  latitud?: number | null;
+  longitud?: number | null;
   fecha: string;           // "YYYY-MM-DD"
   fecha_fin?: string | null;
   hora_inicio?: string | null;  // "HH:MM:SS"
@@ -238,6 +240,20 @@ export interface Evento {
   organizacion?: OrganizacionBasicaEvento | null;
 }
  
+export type ETLJobStatus = 'idle' | 'running' | 'completed' | 'failed';
+
+export interface ETLStatus {
+  status: ETLJobStatus;
+  started_at: string | null;
+  finished_at: string | null;
+  tokens: number;
+  errores: string[];
+  error: string | null;
+  rss_no_disponible: boolean;
+  phase: string;
+  phase_detail: number | null;
+}
+
 export interface EventoCreate {
   nombre: string;
   descripcion?: string;

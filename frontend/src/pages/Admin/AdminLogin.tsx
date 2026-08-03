@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi, authStorage } from '../../services/adminApi';
+import { ROUTES } from '../../constants/routes';
 import styles from './AdminLogin.module.css';
 
 export function AdminLogin() {
@@ -15,9 +16,10 @@ export function AdminLogin() {
     setError('');
     setLoading(true);
     try {
-      const { access_token } = await adminApi.login({ username, password });
+      const { access_token, rol } = await adminApi.login({ username, password });
       authStorage.setToken(access_token);
-      navigate('/admin', { replace: true });
+      authStorage.setRol(rol);
+      navigate(ROUTES.OVERVIEW, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Credenciales incorrectas');
     } finally {

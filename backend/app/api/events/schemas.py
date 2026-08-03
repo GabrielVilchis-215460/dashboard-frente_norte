@@ -34,6 +34,8 @@ class EventoResponse(BaseModel):
     nombre: str
     descripcion: Optional[str] = None
     ubicacion: Optional[str] = None
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
     fecha: date
     fecha_fin: Optional[date] = None
     hora_inicio: Optional[time] = None
@@ -45,7 +47,6 @@ class EventoResponse(BaseModel):
     activo: bool
     organizacion: Optional[OrganizacionBasica] = None
 
-    # Actualización a Pydantic V2
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -94,3 +95,20 @@ class EventoMapPoint(BaseModel):
     longitud: float
     total_eventos: int
     eventos: List[EventoResponse]
+
+
+class EventosPublicoResponse(BaseModel):
+    total: int
+    items: List[EventoResponse]
+
+
+class ETLStatusResponse(BaseModel):
+    status: str          # idle | running | completed | failed
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    tokens: int = 0
+    errores: List[str] = []
+    error: Optional[str] = None
+    rss_no_disponible: bool = False
+    phase: str = ""
+    phase_detail: Optional[float] = None
