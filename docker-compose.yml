@@ -1,18 +1,18 @@
 services:
-  # ── Backend: FastAPI ────────────────────────────────────────────────────
   stem-backend:
     container_name: stem-backend
     build:
       context: ./backend
-      dockerfile: Dockerfile  # Asegúrate de usar el Dockerfile optimizado sin --reload
+      dockerfile: DockerFile 
     # En producción no exponemos el puerto 8000 al mundo exterior. 
-    # Todo el tráfico debe entrar obligatoriamente a través de Nginx (puerto 80).
-    expose:
-      - "8000"
+    #expose:
+     # - "8000"
+    ports:
+      - "8000:8000"
     env_file:
       - ./backend/.env
     environment:
-      # En producción cerramos los CORS estrictamente a los dominios productivos
+    # queda pendiente el dominio
       CORS_ORIGINS: '["http://localhost", "https://tudominio.com"]'
       ENVIRONMENT: "production"
 
@@ -22,23 +22,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-    restart: always
-    networks:
-      - stem-net
-
-  # ── Frontend: React + Nginx ──────────────────────────────────────────────
-  stem-frontend:
-    container_name: stem-frontend
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        VITE_API_URL: ""  # Se queda vacío para usar rutas relativas mediante el proxy de Nginx 
-    ports:
-      - "80:80"
-    depends_on:
-      stem-backend:
-        condition: service_healthy
     restart: always
     networks:
       - stem-net
