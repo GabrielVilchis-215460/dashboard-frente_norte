@@ -5,9 +5,9 @@ from typing import List
 class Settings(BaseSettings):
     # ── Base de datos ──────────────────────────────────────────────────────────
     DATABASE_URL: str
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
+    #POSTGRES_USER: str
+    #POSTGRES_PASSWORD: str
+    #POSTGRES_DB: str
 
     # ── Seguridad JWT ──────────────────────────────────────────────────────────
     # SECRET_KEY: mínimo 32 caracteres en producción.
