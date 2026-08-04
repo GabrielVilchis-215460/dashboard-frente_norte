@@ -20,18 +20,13 @@ services:
     build:
       context: ./backend
       dockerfile: DockerFile 
-    # En producción no exponemos el puerto 8000 al mundo exterior. 
-    #expose:
-     # - "8000"
     ports:
       - "8000:8000"
     env_file:
       - ./backend/.env
     environment:
-    # queda pendiente el dominio
-      CORS_ORIGINS: '["http://localhost", "https://tudominio.com"]'
+      CORS_ORIGINS: '["http://localhost", "https://borderstem.com", "https://www.borderstem.com"]'
       ENVIRONMENT: "production"
-
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 15s
@@ -39,6 +34,32 @@ services:
       retries: 3
       start_period: 20s
     restart: always
+    networks:
+      - stem-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: stem-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - stem-backend
+    networks:
+      - stem-net
+
+  certbot:
+    image: certbot/certbot
+    container_name: stem-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12d & wait $${!}; done;'"
     networks:
       - stem-net
 
