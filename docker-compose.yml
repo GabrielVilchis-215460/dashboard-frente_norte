@@ -43,8 +43,8 @@ services:
       - stem-net
 
 volumes:
-  posgres-data:
-  
+  postgres-data:
+
 networks:
   stem-net:
     driver: bridge
