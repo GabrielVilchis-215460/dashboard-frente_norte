@@ -1,11 +1,12 @@
 """
+Script de respaldo
+
 Script ETL (Extract, Transform, Load) para la automatización de eventos.
 
 Descripción:
-    Descarga el Bundle unificado de RSS.app y procesa los posts con un modelo
-    de NVIDIA NIM (meta/llama-3.1-70b-instruct) para detectar eventos futuros,
-    extrayendo: nombre, descripción, ubicación, coordenadas, fecha, horario,
-    categoría e imagen.
+    Descarga el Bundle unificado de RSS.app y procesa los posts con Gemini
+    para detectar eventos futuros, extrayendo: nombre, descripción,
+    ubicación, coordenadas, fecha, horario, categoría e imagen.
 
 Instrucciones de uso:
     Desde la carpeta backend:
@@ -21,7 +22,8 @@ from requests.exceptions import HTTPError
 from datetime import date, datetime
 from difflib import SequenceMatcher
 
-from openai import OpenAI, RateLimitError
+from google import genai
+from google.genai import types
 from sqlalchemy import or_
 
 from app.db.session import SessionLocal
@@ -36,19 +38,15 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
 BUNDLE_URL: str = settings.ETL_BUNDLE_URL
 FALLBACK_JSON_PATH: str = os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "stem_ecosystem.json")
 
-# Modelo y endpoint de NVIDIA NIM (compatible con el SDK de OpenAI)
-NIM_BASE_URL = settings.NIM_BASE_URL
-NIM_MODEL = "meta/llama-3.1-70b-instruct"
-
 # Bounding box de Ciudad Juárez para validar coordenadas extraídas por IA
 # Cualquier valor fuera de este rango se descarta (previene alucinaciones)
 _JUAREZ_LAT_MIN, _JUAREZ_LAT_MAX = 31.55, 31.85
 _JUAREZ_LNG_MIN, _JUAREZ_LNG_MAX = -106.65, -106.25
 
-# Intervalo mínimo entre llamadas a NIM (segundos).
-# Límite real observado en el free tier: ~40 RPM -> 60/40 = 1.5s exactos.
-# Usamos 2s para dejar margen de seguridad (~30 RPM efectivos).
-_NIM_MIN_INTERVAL: float = 2.0
+# Intervalo mínimo entre llamadas a Gemini (segundos).
+# Límite real observado en AI Studio: 15 RPM -> 60/15 = 4s exactos.
+# Usamos 6s para dejar margen de seguridad (~10 RPM efectivos).
+_GEMINI_MIN_INTERVAL: float = 6.0
 _RSS_PLAN_NO_PAGADO = False  # Se activa si el bundle devuelve 402
 
 def _coords_validas(lat: float | None, lng: float | None) -> bool:
@@ -60,15 +58,15 @@ def _coords_validas(lat: float | None, lng: float | None) -> bool:
         and _JUAREZ_LNG_MIN <= lng <= _JUAREZ_LNG_MAX
     )
 
-# Rate limiter para NIM
-class _NimRateLimiter:
+# Rate limiter para Gemini 
+class _GeminiRateLimiter:
     """
-    Esta clase garantiza un intervalo mínimo real entre llamadas a NIM usando
+    Esta clase garantiza un intervalo mínimo real entre llamadas a Gemini usando
     time.monotonic() (no afectado por cambios de reloj del sistema).
 
     A diferencia de un time.sleep() fijo después de cada post, este
     limiter mide cuánto tiempo *realmente* pasó desde la última llamada
-    (incluyendo el tiempo que tardó el modelo en responder) y solo espera
+    (incluyendo el tiempo que tardó Gemini en responder) y solo espera
     la diferencia que falte. Así nunca esperamos de más si una llamada
     fue lenta, pero tampoco excedemos el RPM si todas son rápidas.
     """
@@ -85,69 +83,45 @@ class _NimRateLimiter:
                 time.sleep(faltante)
         self._last_call_at = time.monotonic()
 
-_nim_rate_limiter = _NimRateLimiter(_NIM_MIN_INTERVAL)
+_gemini_rate_limiter = _GeminiRateLimiter(_GEMINI_MIN_INTERVAL)
 
 
-# NVIDIA NIM
-class NimQuotaExceeded(Exception):
-    """Se lanza cuando NIM sigue con 429 tras el retry — señal para detener el lote."""
+# Gemini 
+class GeminiQuotaExceeded(Exception):
+    """Se lanza cuando Gemini sigue con 429 tras el retry — señal para detener el lote."""
 
-def _parse_retry_delay(error: Exception) -> float:
-    """
-    Extrae el número de segundos de espera de un error 429.
-    El SDK de OpenAI expone el header Retry-After cuando el servidor lo manda;
-    NIM no siempre lo incluye, así que caemos a un valor conservador si falta.
-    """
-    response = getattr(error, "response", None)
-    if response is not None:
-        retry_after = response.headers.get("retry-after")
-        if retry_after:
-            try:
-                return float(retry_after)
-            except ValueError:
-                pass
-    m = re.search(r"retry in (\d+(?:\.\d+)?)s", str(error), re.IGNORECASE)
+def _parse_retry_delay(error_str: str) -> float:
+    """Extrae el número de segundos del retryDelay incluido en el mensaje de error 429."""
+    # Formato SDK: 'retryDelay': '58s'  o  Please retry in 58.54s
+    m = re.search(r"retryDelay['\"]?\s*:\s*['\"]?(\d+(?:\.\d+)?)s", error_str)
     if m:
         return float(m.group(1))
-    return 65.0  # fallback conservador si no se puede determinar
+    m = re.search(r"retry in (\d+(?:\.\d+)?)s", error_str, re.IGNORECASE)
+    if m:
+        return float(m.group(1))
+    return 65.0  # fallback conservador si no se puede parsear
 
 def _is_429(e: Exception) -> bool:
-    return isinstance(e, RateLimitError) or "429" in str(e)
+    return "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e)
 
-def _strip_json_fences(raw: str) -> str:
-    """Quita ```json ... ``` o bloques <think>...</think> que algunos modelos
-    abiertos agregan pese a la instrucción de responder solo JSON."""
-    raw = raw.strip()
-    if "<think>" in raw and "</think>" in raw:
-        raw = raw.split("</think>", 1)[1].strip()
-    if raw.startswith("```"):
-        raw = raw.strip("`")
-        raw = raw.split("\n", 1)[1] if "\n" in raw else raw
-        raw = raw.rsplit("```", 1)[0]
-    return raw.strip()
-
-def _call_nim(prompt: str, client: OpenAI) -> object:
+def _call_gemini(prompt: str, client: genai.Client) -> object:
     # El rate limiter espera lo necesario ANTES de cada llamada real a la API,
     # sin importar si es primer intento o retry.
-    _nim_rate_limiter.wait()
-    return client.chat.completions.create(
-        model=NIM_MODEL,
-        messages=[
-            {"role": "system", "content": "Responde únicamente con un objeto JSON válido, sin markdown ni texto adicional."},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=0.1,
-        max_tokens=800,
+    _gemini_rate_limiter.wait()
+    return client.models.generate_content(
+        model="gemini-3.1-flash-lite",
+        contents=prompt,
+        config=types.GenerateContentConfig(response_mime_type="application/json"),
     )
 
-def _get_nim_client() -> OpenAI:
-    if not settings.NVIDIA_API_KEY:
-        raise RuntimeError("NVIDIA_API_KEY no está configurada.")
-    return OpenAI(base_url=NIM_BASE_URL, api_key=settings.NVIDIA_API_KEY, timeout=60)
+def _get_gemini_client() -> genai.Client:
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY no está configurada.")
+    return genai.Client(api_key=settings.GEMINI_API_KEY)
 
-def extract_events_data(text_post: str, org_name: str, client: OpenAI, phase_callback=None) -> tuple[dict, int]:
+def extract_events_data(text_post: str, org_name: str, client: genai.Client, phase_callback=None) -> tuple[dict, int]:
     """
-    Envía el texto del post a NIM y devuelve el JSON extraído junto con
+    Envía el texto del post a Gemini y devuelve el JSON extraído junto con
     el total de tokens consumidos. Devuelve {"es_evento": False} en caso de error.
     """
     date_today = date.today().isoformat()
@@ -213,46 +187,38 @@ Texto del post:
 
     for attempt in range(2):  # intento 0 = primera llamada, intento 1 = retry tras 429
         try:
-            response = _call_nim(prompt, client)
+            response = _call_gemini(prompt, client)
 
             tokens_used = 0
-            usage = getattr(response, "usage", None)
-            if usage:
+            if response.usage_metadata:
+                m = response.usage_metadata
                 logger.info(
                     "  [Tokens] Entrada: %s | Salida: %s | Total: %s",
-                    usage.prompt_tokens, usage.completion_tokens, usage.total_tokens,
+                    m.prompt_token_count, m.candidates_token_count, m.total_token_count,
                 )
-                tokens_used = usage.total_tokens
+                tokens_used = m.total_token_count
 
-            raw = _strip_json_fences(response.choices[0].message.content)
-            parsed = json.loads(raw)
+            parsed = json.loads(response.text)
 
-            # Blindaje: si el modelo devolvió una lista de eventos en vez de un
-            # solo objeto (a veces pasa cuando el post menciona varios eventos),
-            # nos quedamos con el primero en vez de tronar más adelante.
             if isinstance(parsed, list):
                 logger.warning(
-                    "  -> NIM devolvió una lista de %d elemento(s) en vez de un objeto. "
+                    "  -> Gemini devolvió una lista de %d elemento(s) en vez de un objeto. "
                     "Se usa el primero.", len(parsed)
                 )
                 parsed = parsed[0] if parsed else {"es_evento": False}
 
             if not isinstance(parsed, dict):
-                logger.warning("  -> Respuesta de NIM no es un objeto JSON válido: %r", parsed)
+                logger.warning("  -> Respuesta de Gemini no es un objeto JSON válido: %r", parsed)
                 return {"es_evento": False}, tokens_used
 
             return parsed, tokens_used
 
-        except json.JSONDecodeError as e:
-            logger.error("  -> Respuesta de NIM no es JSON válido: %s", e)
-            return {"es_evento": False}, 0
-
         except Exception as e:
             if _is_429(e):
-                delay = _parse_retry_delay(e)
+                delay = _parse_retry_delay(str(e))
                 if attempt == 0:
                     logger.warning(
-                        "  -> 429 rate limit NIM. Esperando %.0fs antes de reintentar...", delay
+                        "  -> 429 cuota Gemini. Esperando %.0fs antes de reintentar...", delay
                     )
                     if phase_callback:
                         phase_callback("waiting_quota", delay + 2)
@@ -263,10 +229,10 @@ Texto del post:
                 else:
                     # Segundo 429 consecutivo — detenemos el lote completo
                     logger.error(
-                        "  -> 429 rate limit NIM tras reintento. Deteniendo procesamiento del lote."
+                        "  -> 429 cuota Gemini tras reintento. Deteniendo procesamiento del lote."
                     )
-                    raise NimQuotaExceeded() from e
-            logger.error("Error al procesar post con NIM: %s", e)
+                    raise GeminiQuotaExceeded() from e
+            logger.error("Error al procesar post con Gemini: %s", e)
             return {"es_evento": False}, 0
 
     return {"es_evento": False}, 0  # no debería llegar aquí
@@ -350,7 +316,7 @@ def _es_duplicado(eventos_bd: list, fecha_evento: date, nombre_nuevo: str) -> bo
     return False
 
 # Procesamiento de posts
-def process_posts(posts: list, db, client: OpenAI, phase_callback=None) -> tuple[int, int]:
+def process_posts(posts: list, db, client: genai.Client, phase_callback=None) -> tuple[int, int]:
     """
     Procesa una lista de posts del Bundle, extrae eventos y los inserta en BD.
     Devuelve (eventos_añadidos, tokens_consumidos).
@@ -404,15 +370,13 @@ def process_posts(posts: list, db, client: OpenAI, phase_callback=None) -> tuple
 
         try:
             datos, tokens = extract_events_data(text_post, org_name, client, phase_callback=phase_callback)
-        except NimQuotaExceeded:
+        except GeminiQuotaExceeded:
             logger.warning("  -> Cuota agotada. Se detiene el análisis de los posts restantes.")
             if phase_callback:
                 phase_callback("", None)  # limpiar fase al salir
             break
         total_tokens += tokens
 
-        # Blindaje adicional: por si en algún punto futuro extract_events_data
-        # llegara a devolver algo que no sea dict, no dejamos que tumbe el batch.
         if not isinstance(datos, dict):
             logger.warning(
                 "[%d/%d] -> Respuesta inesperada del modelo (tipo %s). Saltando post.",
@@ -422,7 +386,7 @@ def process_posts(posts: list, db, client: OpenAI, phase_callback=None) -> tuple
 
         datos["url_original"] = url_post
 
-        logger.debug("  -> JSON NIM: %s", json.dumps(datos, ensure_ascii=False))
+        logger.debug("  -> JSON Gemini: %s", json.dumps(datos, ensure_ascii=False))
 
         if not datos.get("es_evento"):
             logger.info("  -> No es un evento.")
@@ -499,7 +463,7 @@ def process_posts(posts: list, db, client: OpenAI, phase_callback=None) -> tuple
     return events_added, total_tokens
 
 # Procesamiento del bundle unificado
-def process_bundle(db, client: OpenAI, phase_callback=None) -> tuple[int, bool]:
+def process_bundle(db, client: genai.Client, phase_callback=None) -> tuple[int, bool]:
     """Devuelve (tokens_consumidos, rss_no_disponible)."""
     global _RSS_PLAN_NO_PAGADO
     logger.info("\nIniciando procesamiento del Bundle...")
@@ -559,7 +523,7 @@ def run_etl(phase_callback=None) -> dict:
     errores: list[str] = []
 
     try:
-        client = _get_nim_client()
+        client = _get_gemini_client()
     except RuntimeError as e:
         logger.error(str(e))
         return {"ok": False, "error": str(e), "tokens": 0, "rss_no_disponible": False}
