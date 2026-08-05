@@ -20,6 +20,7 @@ interface Props {
 
 export function OrgCarousel({ orgs, loading }: Props) {
   const [index, setIndex] = useState(0);
+  const [imgErrors, setImgErrors] = useState<Record<number, boolean>>({});
 
   if (loading) {
     return (
@@ -59,11 +60,12 @@ export function OrgCarousel({ orgs, loading }: Props) {
 
         <div className={`${styles.content} animate-fade-in`} key={index}>
           {/* Logo o placeholder */}
-          {current.logo_url ? (
+          {current.logo_url && !imgErrors[index] ? (
             <img
               src={current.logo_url}
               alt={current.organizacion}
               className={styles.logo}
+              onError={() => setImgErrors((prev) => ({ ...prev, [index]: true }))}
             />
           ) : (
             <div className={styles.logoPlaceholder}>

@@ -44,31 +44,31 @@ export const api = {
   // --- Panorama General ---
   getPanoramaGeneral: () =>
     client
-      .get<PanoramaGeneralResponse>('/api/panorama_general')
+      .get<PanoramaGeneralResponse>('/api/panorama_general/')
       .then((r) => r.data),
 
   // --- Perfil de Beneficiarios ---
   getBeneficiarios: () =>
     client
-      .get<BeneficiariosResponse>('/api/beneficiarios')
+      .get<BeneficiariosResponse>('/api/beneficiarios/')
       .then((r) => r.data),
 
   // --- Inclusión y Género ---
   getInclusion: () =>
     client
-      .get<InclusionResponse>('/api/inclusion')
+      .get<InclusionResponse>('/api/inclusion/')
       .then((r) => r.data),
 
   // --- Oferta STEM ---
   getOfertaSTEM: () =>
     client
-      .get<OfertaSTEMResponse>('/api/oferta_stem')
+      .get<OfertaSTEMResponse>('/api/oferta_stem/')
       .then((r) => r.data),
 
   // --- Madurez del Ecosistema ---
   getMadurez: () =>
     client
-      .get<MadurezResponse>('/api/madurez_ecosistema')
+      .get<MadurezResponse>('/api/madurez_ecosistema/')
       .then((r) => r.data),
 
   // --- Mapa del Ecosistema ---
@@ -77,6 +77,11 @@ export const api = {
       .get<MapaEcosistemaResponse>('/api/mapa_ecosistema/', { params: filters })
       .then((r) => r.data),
  
+  getTiposOrganizacion: () =>
+    client
+      .get<string[]>('/api/mapa_ecosistema/tipos')
+      .then((r) => r.data),
+
   getFichaActor: (orgId: number) =>
     client
       .get<FichaActor>(`/api/mapa_ecosistema/actor/${orgId}`)

@@ -89,7 +89,7 @@ class EventoUpdate(BaseModel):
 
 
 class EventoMapPoint(BaseModel):
-    organizacion_id: int
+    organizacion_id: Optional[int]
     organizacion_nombre: str
     latitud: float
     longitud: float

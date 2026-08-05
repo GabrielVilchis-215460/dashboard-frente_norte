@@ -4,11 +4,41 @@
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   z-index: 1000;
   animation: fadeIn var(--transition-fast) both;
-  padding: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+  overflow-y: auto;
+}
+
+@media (max-width: 560px) {
+  .overlay {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .modal {
+    max-height: none;
+  }
+
+  .header {
+    padding: var(--space-4) var(--space-4);
+  }
+
+  .body {
+    padding: var(--space-4);
+  }
+
+  .footer {
+    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .btnPrimary,
+  .btnSecondary {
+    flex: 1;
+    text-align: center;
+  }
 }
 
 .modal {

@@ -1,8 +1,9 @@
-from typing import Optional
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
+from app.models.organizacion import Organizacion
 from app.api.ecosystem_map.schemas import FichaActor, MapaEcosistema
 from app.api.ecosystem_map.service import obtener_ficha_actor, obtener_mapa
 
@@ -32,6 +33,22 @@ def mapa_ecosistema(
     db: Session = Depends(get_db),
 ):
     return obtener_mapa(db, tipo, area_stem, zona, madurez, nivel_educativo, poblacion, pct_mujeres_rango, solo_con_coordenadas)
+
+
+@router.get(
+    "/tipos",
+    response_model=List[str],
+    summary="Tipos de organización distintos en la BD",
+)
+def tipos_organizacion(db: Session = Depends(get_db)):
+    rows = (
+        db.query(Organizacion.tipo)
+        .filter(Organizacion.activo == True, Organizacion.tipo != None)
+        .distinct()
+        .order_by(Organizacion.tipo)
+        .all()
+    )
+    return [r[0] for r in rows]
 
 
 @router.get(

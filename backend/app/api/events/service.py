@@ -55,9 +55,17 @@ def obtener_eventos_mapa(db: Session) -> List[EventoMapPoint]:
         db.query(Evento)
         .options(joinedload(Evento.organizacion))
         .filter(
-            Evento.fecha >= fecha_hoy,
             Evento.activo == True,
-            Evento.organizacion_id.isnot(None),
+            # próximo: aún no empieza, O ya empezó pero aún no termina
+            or_(
+                Evento.fecha >= fecha_hoy,
+                and_(Evento.fecha_fin.isnot(None), Evento.fecha_fin >= fecha_hoy),
+            ),
+            # tiene coordenadas propias O viene de una org con coordenadas
+            or_(
+                and_(Evento.latitud.isnot(None), Evento.longitud.isnot(None)),
+                Evento.organizacion_id.isnot(None),
+            ),
         )
         .order_by(Evento.fecha.asc())
         .all()
@@ -65,20 +73,27 @@ def obtener_eventos_mapa(db: Session) -> List[EventoMapPoint]:
 
     grupos: dict[int, EventoMapPoint] = {}
     for ev in eventos:
-        org = ev.organizacion
-        if not org or not org.latitud or not org.longitud:
+        # Coordenadas: primero las del propio evento, luego las de la org
+        lat = ev.latitud or (ev.organizacion.latitud if ev.organizacion else None)
+        lng = ev.longitud or (ev.organizacion.longitud if ev.organizacion else None)
+        if not lat or not lng:
             continue
-        if org.id not in grupos:
-            grupos[org.id] = EventoMapPoint(
-                organizacion_id=org.id,
-                organizacion_nombre=org.nombre,
-                latitud=org.latitud,
-                longitud=org.longitud,
+
+        org = ev.organizacion
+        org_id = org.id if org else ev.id * -1  # clave única si no hay org
+        org_nombre = org.nombre if org else ev.nombre
+
+        if org_id not in grupos:
+            grupos[org_id] = EventoMapPoint(
+                organizacion_id=org.id if org else None,
+                organizacion_nombre=org_nombre,
+                latitud=lat,
+                longitud=lng,
                 total_eventos=0,
                 eventos=[],
             )
-        grupos[org.id].total_eventos += 1
-        grupos[org.id].eventos.append(EventoResponse.model_validate(ev))
+        grupos[org_id].total_eventos += 1
+        grupos[org_id].eventos.append(EventoResponse.model_validate(ev))
 
     return list(grupos.values())
 

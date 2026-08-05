@@ -1,21 +1,32 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: stem-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5433:5432"  # Puerto 5433 en host (5432 lo ocupa PostgreSQL 18 del sistema)
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/app/db/backup.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - stem-net
+
   stem-backend:
     container_name: stem-backend
     build:
       context: ./backend
       dockerfile: DockerFile 
-    # En producción no exponemos el puerto 8000 al mundo exterior. 
-    #expose:
-     # - "8000"
     ports:
       - "8000:8000"
     env_file:
       - ./backend/.env
     environment:
-    # queda pendiente el dominio
-      CORS_ORIGINS: '["http://localhost", "https://tudominio.com"]'
+      CORS_ORIGINS: '["http://localhost", "https://borderstem.com", "https://www.borderstem.com"]'
       ENVIRONMENT: "production"
-
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 15s
@@ -25,6 +36,35 @@ services:
     restart: always
     networks:
       - stem-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: stem-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - stem-backend
+    networks:
+      - stem-net
+
+  certbot:
+    image: certbot/certbot
+    container_name: stem-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12d & wait $${!}; done;'"
+    networks:
+      - stem-net
+
+volumes:
+  postgres-data:
 
 networks:
   stem-net:

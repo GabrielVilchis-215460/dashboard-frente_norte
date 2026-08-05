@@ -49,10 +49,12 @@
 
 .areaCard {
   min-height: 400px;
+  min-width: 0;
 }
 
 .orgCard {
   min-height: 400px;
+  min-width: 0;
 }
 
 /* Fila inferior: donut modalidades + cards actividades */
@@ -64,17 +66,19 @@
 
 .modalidadCard {
   min-height: 280px;
+  min-width: 0;
 }
 
 .actividadCard {
   min-height: 280px;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
-  .topGrid {
-    grid-template-columns: 1fr;
-  }
-  .bottomGrid {
-    grid-template-columns: 1fr;
-  }
+  .topGrid    { grid-template-columns: 1fr; }
+  .bottomGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .areaCard, .orgCard, .modalidadCard, .actividadCard { min-height: 220px; }
 }

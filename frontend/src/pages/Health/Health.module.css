@@ -49,6 +49,7 @@
 
 .flaskCard {
   min-height: 420px;
+  min-width: 0;
 }
 
 .flaskContent {
@@ -69,6 +70,7 @@
 
 .dimCard {
   min-height: 420px;
+  min-width: 0;
 }
 
 .formulaCard {
@@ -76,7 +78,9 @@
 }
 
 @media (max-width: 1000px) {
-  .topGrid {
-    grid-template-columns: 1fr;
-  }
+  .topGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .flaskCard, .dimCard { min-height: 300px; }
 }
