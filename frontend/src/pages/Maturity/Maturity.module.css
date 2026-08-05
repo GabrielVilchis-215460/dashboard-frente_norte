@@ -41,8 +41,9 @@
 
 .funnelCard {
   margin-bottom: var(--space-4);
+  overflow-x: auto;
 }
 
 .orgsCard {
-  /* nada extra, hereda glass de Card */
+  overflow-x: auto;
 }

@@ -77,6 +77,11 @@ export const api = {
       .get<MapaEcosistemaResponse>('/api/mapa_ecosistema/', { params: filters })
       .then((r) => r.data),
  
+  getTiposOrganizacion: () =>
+    client
+      .get<string[]>('/api/mapa_ecosistema/tipos')
+      .then((r) => r.data),
+
   getFichaActor: (orgId: number) =>
     client
       .get<FichaActor>(`/api/mapa_ecosistema/actor/${orgId}`)

@@ -3,11 +3,13 @@ from typing import List
 
 
 class Settings(BaseSettings):
-    # ── Base de datos ──────────────────────────────────────────────────────────
-    DATABASE_URL: str
-    #POSTGRES_USER: str
-    #POSTGRES_PASSWORD: str
-    #POSTGRES_DB: str
+    # -- Base de datos --
+    DATABASE_URL: str = ""
+    POSTGRES_USER: str = "root"
+    POSTGRES_PASSWORD: str = ""
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
+    POSTGRES_DB: str = "stem_db"
 
     # ── Seguridad JWT ──────────────────────────────────────────────────────────
     # SECRET_KEY: mínimo 32 caracteres en producción.

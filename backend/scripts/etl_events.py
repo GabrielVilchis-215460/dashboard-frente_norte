@@ -191,7 +191,10 @@ Texto del post:
                 )
                 tokens_used = m.total_token_count
 
-            return json.loads(response.text), tokens_used
+            parsed = json.loads(response.text)
+            if isinstance(parsed, list):
+                parsed = parsed[0] if parsed else {"es_evento": False}
+            return parsed, tokens_used
 
         except Exception as e:
             if _is_429(e):
@@ -367,7 +370,11 @@ def process_posts(posts: list, db, client: genai.Client, phase_callback=None) ->
         logger.info("  -> EVENTO DETECTADO: %s", datos.get("nombre"))
         datos.pop("es_evento", None)
 
-        # Parsear fechas y horas 
+        # Parsear fechas y horas
+        if not datos.get("fecha"):
+            logger.warning("  -> Evento sin fecha. Omitiendo.")
+            continue
+
         try:
             fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
 

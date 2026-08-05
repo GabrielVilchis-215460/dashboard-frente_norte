@@ -149,6 +149,16 @@ export const adminApi = {
   togglePrograma: (id: number) =>
     adminClient.patch<Programa>(`/api/panel_admin/programas/${id}/toggle`).then((r) => r.data),
 
+  // Importación CSV
+  importOrganizacionesCsv: async (file: File): Promise<{ creadas: number; omitidas: number; errores: string[] }> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await adminClient.post('/api/panel_admin/organizaciones/import-csv', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
   // Exportación CSV (requiere JWT — se inyecta automáticamente)
   exportOrganizaciones: async () => {
     const res = await adminClient.get('/api/exportar/organizaciones', { responseType: 'blob' });

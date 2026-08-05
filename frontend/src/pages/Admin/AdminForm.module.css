@@ -4,6 +4,16 @@
   gap: var(--space-4);
 }
 
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .fullWidth,
+  .sectionTitle {
+    grid-column: 1;
+  }
+}
+
 .fullWidth {
   grid-column: 1 / -1;
 }

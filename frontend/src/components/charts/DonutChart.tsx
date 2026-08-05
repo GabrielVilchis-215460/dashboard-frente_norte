@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import {
-  PieChart, Pie, Cell, Legend, ResponsiveContainer, Tooltip,
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
 } from 'recharts';
 import { Skeleton } from '../ui';
 import styles from './DonutChart.module.css';
@@ -35,42 +35,46 @@ function CustomTooltip({ active, payload }: any) {
 
 export function DonutChart({ data, loading = false }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+
   if (loading) return <Skeleton width="100%" height="200px" borderRadius="12px" />;
   if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
-      {/* contenedor responsive evita que el SVG se corte en diferentes breakpoints */}
-      <ResponsiveContainer width="100%" aspect={2} minHeight={160}>
+      <ResponsiveContainer width="100%" height={240}>
         <PieChart>
           <Pie
             data={data}
-            cx="38%"
+            cx="50%"
             cy="50%"
-            innerRadius="45%"
-            outerRadius="68%"
+            innerRadius="38%"
+            outerRadius="62%"
             paddingAngle={3}
             dataKey="value"
-            animationBegin={0}
-            animationDuration={600}
+            animationBegin={150}
+            animationDuration={900}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={CHART_PALETTE[i % CHART_PALETTE.length]} stroke="transparent" />
             ))}
           </Pie>
           <Tooltip content={<CustomTooltip />} />
-          <Legend
-            layout="vertical"
-            align="right"
-            verticalAlign="middle"
-            iconType="circle"
-            iconSize={8}
-            formatter={(value) => (
-              <span className={styles.legendLabel}>{value}</span>
-            )}
-          />
         </PieChart>
       </ResponsiveContainer>
+
+      {/* Leyenda custom: scroll si hay muchos items */}
+      <div className={styles.legend}>
+        {data.map((entry, i) => (
+          <div key={i} className={styles.legendItem}>
+            <span
+              className={styles.legendDot}
+              style={{ background: CHART_PALETTE[i % CHART_PALETTE.length] }}
+            />
+            <span className={styles.legendLabel}>{entry.name}</span>
+            <span className={styles.legendValue}>{entry.value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

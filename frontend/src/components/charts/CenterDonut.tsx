@@ -35,12 +35,11 @@ export function CenterDonut({
 }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [colors, setColors] = useState<string[]>(FALLBACK);
-
   useEffect(() => {
     setColors(readThemeColors(wrapperRef.current));
-  }, [loading, value]);
+  }, [value]);
 
-  if (loading) return <Skeleton width="100%" height="220px" borderRadius="12px" />;
+  if (loading) return <Skeleton width="100%" height="280px" borderRadius="12px" />;
 
   const data = [
     { name: legendA, value },
@@ -50,19 +49,20 @@ export function CenterDonut({
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
       <div className={styles.chartArea}>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={260}>
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={64}
-              outerRadius={88}
+              innerRadius={80}
+              outerRadius={108}
               paddingAngle={2}
               dataKey="value"
               startAngle={90}
               endAngle={-270}
-              animationDuration={600}
+              animationBegin={150}
+              animationDuration={900}
             >
               <Cell fill={colors[0]} stroke="transparent" />
               <Cell fill={colors[1]} stroke="transparent" />
