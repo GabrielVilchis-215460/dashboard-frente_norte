@@ -36,6 +36,7 @@ class Organizacion(Base):
     enfoque_principal = Column(String(255))
     # Educación / Capacitación técnica | Investigación / Desarrollo |
     # Articulación y políticas públicas | Incubación / Aceleración
+    nivel_madurez = Column(String(50))   # Exploración | Implementación | Escalamiento
 
     descripcion = Column(Text)
     logo_url = Column(String(500))
