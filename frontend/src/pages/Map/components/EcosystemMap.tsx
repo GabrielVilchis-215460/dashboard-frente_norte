@@ -5,6 +5,8 @@ import type { PinMapa, EventoMapPoint } from '../../../types';
 import { getTipoConfig } from './mapConfig';
 import { JUAREZ_CENTER, DEFAULT_ZOOM } from './mapConfig';
 import styles from './EcosystemMap.module.css';
+import L from 'leaflet';
+import 'leaflet.heat';
 
 export type MapMode = 'pins' | 'heatmap' | 'events';
 
@@ -66,45 +68,36 @@ export function EcosystemMap({
   showEventCount = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<import('leaflet').Map | null>(null);
-  const markersRef = useRef<Map<number, import('leaflet').Marker>>(new Map());
+  const mapRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<Map<number, L.Marker>>(new Map());
   const heatLayerRef = useRef<any>(null);
-  const markerLayerRef = useRef<import('leaflet').LayerGroup | null>(null);
+  const markerLayerRef = useRef<L.LayerGroup | null>(null);
 
   // Inicializar el mapa
   useEffect(() => {
     if (!containerRef.current) return;
+    if ((containerRef.current as any)._leaflet_id) return;
 
-    // circular import fix for public use of map
-    let cancelado = false;
-
-    import('leaflet').then((L) => {
-      if (cancelado || !containerRef.current) return;
-      if ((containerRef.current as any)._leaflet_id) return;
-
-      const map = L.map(containerRef.current, {
-        center: center ?? JUAREZ_CENTER,
-        zoom: zoom ?? DEFAULT_ZOOM,
-        zoomControl: true,
-        attributionControl: false,
-        // Deshabilitar zoom por doble click
-        doubleClickZoom: false,
-      });
-
-      L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { maxZoom: 19 }
-      ).addTo(map);
-
-      markerLayerRef.current = L.layerGroup().addTo(map);
-      mapRef.current = map;
-
-      setTimeout(() => map.invalidateSize(), 100);
+    const map = L.map(containerRef.current, {
+      center: center ?? JUAREZ_CENTER,
+      zoom: zoom ?? DEFAULT_ZOOM,
+      zoomControl: true,
+      attributionControl: false,
+      doubleClickZoom: false,
     });
 
+    L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      { maxZoom: 19 }
+    ).addTo(map);
+
+    markerLayerRef.current = L.layerGroup().addTo(map);
+    mapRef.current = map;
+
+    setTimeout(() => map.invalidateSize(), 100);
+
     return () => {
-      cancelado = true;
-      mapRef.current?.remove();
+      map.remove();
       mapRef.current = null;
       markerLayerRef.current = null;
       markersRef.current.clear();
@@ -114,76 +107,78 @@ export function EcosystemMap({
   // Actualizar pines cuando cambian los datos o el modo
   useEffect(() => {
     if (!mapRef.current) return;
+    const map = mapRef.current;
 
-    import('leaflet').then((L) => {
-      // Limpiar capa de marcadores
-      markerLayerRef.current?.clearLayers();
-      markersRef.current.clear();
+    // Limpiar capa de marcadores
+    markerLayerRef.current?.clearLayers();
+    markersRef.current.clear();
 
-      // Limpiar heatmap anterior
-      if (heatLayerRef.current) {
-        mapRef.current!.removeLayer(heatLayerRef.current);
-        heatLayerRef.current = null;
+    // Limpiar heatmap anterior de manera síncrona y segura
+    if (heatLayerRef.current) {
+      map.removeLayer(heatLayerRef.current);
+      heatLayerRef.current = null;
+    }
+
+    // ── Modo heatmap ──
+    if (mode === 'heatmap') {
+      const pinsConCoords = pins.filter((p) => p.latitud && p.longitud);
+      const heatData = pinsConCoords.map((p) => [
+        p.latitud!, p.longitud!, Math.max(1, p.total_programas),
+      ]);
+
+      const L_any = L as any;
+      if (typeof L_any.heatLayer === 'function') {
+        heatLayerRef.current = L_any.heatLayer(heatData, {
+          radius: 30,
+          blur: 20,
+          maxZoom: 14,
+          gradient: { 0.2: '#38bdf8', 0.5: '#2dd4bf', 0.8: '#34d399', 1.0: '#fbbf24' },
+        }).addTo(map);
       }
+      return;
+    }
 
-      // ── Modo heatmap ──
-      if (mode === 'heatmap') {
-        const pinsConCoords = pins.filter((p) => p.latitud && p.longitud);
-        const heatData = pinsConCoords.map((p) => [
-          p.latitud!, p.longitud!, Math.max(1, p.total_programas),
-        ]);
-        import('leaflet.heat').then(() => {
-          const L_any = L as any;
-          heatLayerRef.current = L_any.heatLayer(heatData, {
-            radius: 30, blur: 20, maxZoom: 14,
-            gradient: { 0.2: '#38bdf8', 0.5: '#2dd4bf', 0.8: '#34d399', 1.0: '#fbbf24' },
-          }).addTo(mapRef.current!);
-        });
-        return;
-      }
-
-      // ── Modo eventos ──
-      if (mode === 'events') {
-        eventPoints.forEach((punto) => {
-          const icon = L.divIcon({
-            className: '',
-            html: eventPinSvg(punto.total_eventos, showEventCount),
-            iconSize: [22, 22],
-            iconAnchor: [11, 11],
-          });
-          const preview = punto.eventos.slice(0, 3)
-            .map((ev) => `<li>${ev.nombre}</li>`).join('');
-          const mas = punto.total_eventos > 3
-            ? `<li style="opacity:0.6">+${punto.total_eventos - 3} más</li>` : '';
-          L.marker([punto.latitud, punto.longitud], { icon })
-            .bindTooltip(
-              `<strong>${punto.organizacion_nombre}</strong>
-               <ul style="margin:4px 0 0;padding-left:14px;font-size:11px">${preview}${mas}</ul>`,
-              { direction: 'top' }
-            )
-            .addTo(markerLayerRef.current!);
-        });
-        return;
-      }
-
-      // ── Modo pines ──
-      pins.filter((p) => p.latitud && p.longitud).forEach((pin) => {
-        const { color } = getTipoConfig(pin.tipo);
-        const dimmed = selectedId !== null && selectedId !== pin.id;
-        const animated = selectedId === null || selectedId === pin.id;
-
+    // ── Modo eventos ──
+    if (mode === 'events') {
+      eventPoints.forEach((punto) => {
         const icon = L.divIcon({
           className: '',
-          html: pinSvg(color, animated, dimmed),
-          iconSize: [16, 16],
-          iconAnchor: [8, 8],
+          html: eventPinSvg(punto.total_eventos, showEventCount),
+          iconSize: [22, 22],
+          iconAnchor: [11, 11],
         });
-
-        const marker = L.marker([pin.latitud!, pin.longitud!], { icon });
-        marker.on('click', () => onPinClick(pin.id, pin.latitud!, pin.longitud!));
-        markerLayerRef.current!.addLayer(marker);
-        markersRef.current.set(pin.id, marker);
+        const preview = punto.eventos.slice(0, 3)
+          .map((ev) => `<li>${ev.nombre}</li>`).join('');
+        const mas = punto.total_eventos > 3
+          ? `<li style="opacity:0.6">+${punto.total_eventos - 3} más</li>` : '';
+        L.marker([punto.latitud, punto.longitud], { icon })
+          .bindTooltip(
+            `<strong>${punto.organizacion_nombre}</strong>
+             <ul style="margin:4px 0 0;padding-left:14px;font-size:11px">${preview}${mas}</ul>`,
+            { direction: 'top' }
+          )
+          .addTo(markerLayerRef.current!);
       });
+      return;
+    }
+
+    // ── Modo pines ──
+    pins.filter((p) => p.latitud && p.longitud).forEach((pin) => {
+      const { color } = getTipoConfig(pin.tipo);
+      const dimmed = selectedId !== null && selectedId !== pin.id;
+      const animated = selectedId === null || selectedId === pin.id;
+
+      const icon = L.divIcon({
+        className: '',
+        html: pinSvg(color, animated, dimmed),
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+
+      const marker = L.marker([pin.latitud!, pin.longitud!], { icon });
+      marker.on('click', () => onPinClick(pin.id, pin.latitud!, pin.longitud!));
+      markerLayerRef.current!.addLayer(marker);
+      markersRef.current.set(pin.id, marker);
     });
   }, [pins, eventPoints, mode, selectedId, onPinClick, showEventCount]);
 
