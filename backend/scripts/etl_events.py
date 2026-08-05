@@ -157,6 +157,11 @@ No inventes información. Si no hay suficiente contexto, devuelve null.
 REGLA 6: IMAGEN
 Extrae la URL de la imagen promocional si existe explícitamente en el texto. Si no, null.
 
+IMPORTANTE SOBRE EL FORMATO DE RESPUESTA:
+Responde ÚNICAMENTE con UN SOLO objeto JSON (nunca una lista/array), incluso si detectas
+más de un evento posible en el texto. En ese caso, elige el evento principal o más
+prominente del post y describe solo ese.
+
 Responde ÚNICAMENTE con un objeto JSON válido, sin markdown:
 {{
     "es_evento": true/false,
@@ -191,7 +196,20 @@ Texto del post:
                 )
                 tokens_used = m.total_token_count
 
-            return json.loads(response.text), tokens_used
+            parsed = json.loads(response.text)
+
+            if isinstance(parsed, list):
+                logger.warning(
+                    "  -> Gemini devolvió una lista de %d elemento(s) en vez de un objeto. "
+                    "Se usa el primero.", len(parsed)
+                )
+                parsed = parsed[0] if parsed else {"es_evento": False}
+
+            if not isinstance(parsed, dict):
+                logger.warning("  -> Respuesta de Gemini no es un objeto JSON válido: %r", parsed)
+                return {"es_evento": False}, tokens_used
+
+            return parsed, tokens_used
 
         except Exception as e:
             if _is_429(e):
@@ -356,6 +374,14 @@ def process_posts(posts: list, db, client: genai.Client, phase_callback=None) ->
                 phase_callback("", None)  # limpiar fase al salir
             break
         total_tokens += tokens
+
+        if not isinstance(datos, dict):
+            logger.warning(
+                "[%d/%d] -> Respuesta inesperada del modelo (tipo %s). Saltando post.",
+                i, len(posts), type(datos).__name__,
+            )
+            continue
+
         datos["url_original"] = url_post
 
         logger.debug("  -> JSON Gemini: %s", json.dumps(datos, ensure_ascii=False))
@@ -367,7 +393,14 @@ def process_posts(posts: list, db, client: genai.Client, phase_callback=None) ->
         logger.info("  -> EVENTO DETECTADO: %s", datos.get("nombre"))
         datos.pop("es_evento", None)
 
-        # Parsear fechas y horas 
+        # Parsear fechas y horas
+        if not datos.get("fecha"):
+            logger.warning(
+                "  -> El modelo marcó el post como evento pero no dio 'fecha'. Se descarta "
+                "(revisar manualmente si el evento es real: '%s').", datos.get("nombre")
+            )
+            continue
+
         try:
             fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
 
