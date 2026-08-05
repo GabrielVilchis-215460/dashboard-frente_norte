@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/layout';
 import { Skeleton } from '../../components/ui';
 import { useApi } from '../../hooks/useApi';
-import { adminApi, authStorage } from '../../services/adminApi';
+import { adminApi, authStorage } from '../../services/adminApi'; // authStorage usado en logout
 import type { Organizacion, Programa } from '../../services/adminApi';
 import { Modal } from './Modal';
 import { OrgForm, defaultOrg, orgToForm } from './OrgForm';
@@ -93,17 +93,17 @@ function OrgsTable() {
     <>
       {error && <p className={styles.errorBanner}>{error}</p>}
 
-      <div className={styles.tableCard}>
+<div className={styles.tableCard}>
         <div className={styles.tableActions}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <input className={styles.searchInput} placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
             <span className={styles.count}>{filtered.length} registros</span>
           </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
             <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
               {exporting ? 'Exportando…' : '↓ Exportar CSV'}
             </button>
-            <button className={styles.addBtn} onClick={openCreate}>+ Nueva organización</button>
+<button className={styles.addBtn} onClick={openCreate}>+ Nueva organización</button>
           </div>
         </div>
 

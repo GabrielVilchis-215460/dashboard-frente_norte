@@ -50,6 +50,7 @@
 
 .donutCard {
   min-height: 300px;
+  min-width: 0;
 }
 
 /* Columna de 2 KPIs apilados */
@@ -65,6 +66,7 @@
 
 .rangoCard {
   min-height: 300px;
+  min-width: 0;
 }
 
 /* Fila inferior: barras nivel | carrusel */
@@ -76,10 +78,12 @@
 
 .nivelCard {
   min-height: 320px;
+  min-width: 0;
 }
 
 .carouselCard {
   min-height: 320px;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {

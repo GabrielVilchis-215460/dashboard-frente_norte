@@ -2,8 +2,43 @@ import styles from './AdminForm.module.css';
 import { LocationPicker } from './LocationPicker';
 import type { Organizacion, OrganizacionCreate } from '../../services/adminApi';
 
-const TIPOS = ['ONG / Asociación civil', 'Institución educativa', 'Gobierno', 'Empresa / Industria', 'Centro de investigación', 'Makerspace / Laboratorio', 'Centro comunitario', 'Incubadora / Aceleradora'];
-const AREAS = ['Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas', 'Robótica', 'IA', 'Medio ambiente', 'Historia Natural', 'Articulación y políticas públicas'];
+const TIPOS = [
+  // Del Excel de Gabriel
+  'Museo / OSC / Espacio educativo',
+  'Centro de innovación / infraestructura tecnológica',
+  'OSC / Laboratorio de fabricación digital',
+  'Organismo articulador / desarrollo económico e innovación',
+  'Programa / red de emprendimiento tecnológico',
+  'OSC empresarial / competitividad regional',
+  'Gobierno estatal',
+  'Consejo / organismo de desarrollo económico regional',
+  'Centro de innovación / adopción tecnológica',
+  'Universidad pública',
+  'Universidad pública tecnológica',
+  'Institución educativa privada',
+  'Bachillerato tecnológico público',
+  'OSC / programa de ciencia y pensamiento crítico',
+  'OSC / capacitación tecnológica',
+  'OSC / academia tecnológica',
+  'OSC / financiador y articulador social',
+  'Gobierno / sistema de protección de derechos',
+  'Fundación / financiador social',
+  'Programa / iniciativa de género y tecnología',
+  'Programa / centro cultural-educativo',
+  // Genéricos adicionales
+  'Empresa / Industria',
+  'Centro de investigación',
+  'Incubadora / Aceleradora',
+];
+const AREAS = [
+  'Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas',
+  'Robótica', 'IA', 'Programación', 'Ciberseguridad',
+  'Mecatrónica', 'Electrónica', 'Manufactura', 'Fabricación digital',
+  'Electromovilidad', 'Energía', 'Sustentabilidad',
+  'Emprendimiento', 'Diseño',
+  'Medio ambiente', 'Historia Natural',
+  'Articulación y políticas públicas',
+];
 const ZONAS = ['Urbana', 'Rural', 'Ambas'];
 const ENFOQUES = ['Educación / Capacitación técnica', 'Investigación / Desarrollo', 'Articulación y políticas públicas', 'Incubación / Aceleración'];
 

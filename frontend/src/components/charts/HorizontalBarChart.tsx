@@ -63,10 +63,11 @@ export function HorizontalBarChart({ data, loading = false, singleColor = false,
             tick={{ fill: 'rgba(255,255,255,0.60)', fontSize: 12, fontFamily: 'Inter, sans-serif' }}
             axisLine={false}
             tickLine={false}
-            width={120}
+            width={130}
+            tickFormatter={(v: string) => v.length > 17 ? v.slice(0, 16) + '…' : v}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-          <Bar dataKey="value" radius={[0, 4, 4, 0]} animationDuration={600}>
+          <Bar dataKey="value" radius={[0, 4, 4, 0]} animationBegin={150} animationDuration={900}>
             {data.map((_, i) => (
               <Cell
                 key={i}

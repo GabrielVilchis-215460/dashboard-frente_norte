@@ -89,7 +89,10 @@ export function EventDetail() {
       </div>
 
       {evento.imagen_url && (
-        <div className={styles.heroImgWrap}>
+        <div
+          className={styles.heroImgWrap}
+          style={{ backgroundImage: `url(${evento.imagen_url})` }}
+        >
           <img src={evento.imagen_url} alt={evento.nombre} className={styles.heroImg} />
         </div>
       )}

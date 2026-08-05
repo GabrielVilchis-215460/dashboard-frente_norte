@@ -55,12 +55,30 @@
   overflow: hidden;
   border: 1px solid var(--glass-border);
   aspect-ratio: 16 / 7;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: cover;
+  background-position: center;
+}
+.heroImgWrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  background-size: cover;
+  background-position: center;
+  filter: blur(22px) saturate(1.5);
+  transform: scale(1.1);
 }
 .heroImg {
+  position: relative;
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
+  z-index: 1;
 }
 
 .contentGrid {

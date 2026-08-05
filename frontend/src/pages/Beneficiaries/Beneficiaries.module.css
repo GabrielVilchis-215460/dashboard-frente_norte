@@ -49,6 +49,7 @@
 
 .card {
   min-height: 280px;
+  min-width: 0;
 }
 
 /* Fila inferior: zona (angosto) + recorrido (ancho) */
@@ -60,17 +61,19 @@
 
 .zonaCard {
   min-height: 280px;
+  min-width: 0;
 }
 
 .journeyCard {
   min-height: 280px;
+  min-width: 0;
 }
 
 @media (max-width: 1100px) {
-  .topGrid {
-    grid-template-columns: 1fr;
-  }
-  .bottomGrid {
-    grid-template-columns: 1fr;
-  }
+  .topGrid    { grid-template-columns: 1fr; }
+  .bottomGrid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .card, .zonaCard, .journeyCard { min-height: 220px; }
 }

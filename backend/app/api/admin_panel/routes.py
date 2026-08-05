@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+﻿from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
@@ -57,6 +57,7 @@ def pines_mapa(
     if tipo:      q = q.filter(Organizacion.tipo == tipo)
     if area_stem: q = q.filter(Organizacion.areas_stem.any(area_stem))
     return q.all()
+
 
 @router.get("/organizaciones/{org_id}", response_model=OrganizacionOut)
 def detalle_organizacion(org_id: int, db: Session = Depends(get_db)):
@@ -175,4 +176,6 @@ def toggle_programa(prog_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(prog)
     return prog
+
+
 

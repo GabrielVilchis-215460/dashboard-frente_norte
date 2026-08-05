@@ -65,7 +65,7 @@ export function DimensionBars({ dimensiones, loading }: Props) {
             width={150}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-          <Bar dataKey="value" radius={[0, 6, 6, 0]} animationDuration={700} barSize={16}>
+          <Bar dataKey="value" radius={[0, 6, 6, 0]} animationBegin={150} animationDuration={900} barSize={16}>
             {data.map((_, i) => (
               <Cell key={i} fill={DIM_COLORS[i % DIM_COLORS.length]} />
             ))}
