@@ -129,3 +129,27 @@
 }
 
 .btnSecondary:hover { background: var(--glass-bg-active); }
+
+select {
+  background-color: #0c2340;
+  color: var(--text-100);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+
+select:focus {
+  border-color: var(--accent-a);
+}
+
+select option {
+  background-color: #0f2744;
+  color: var(--text-100);
+  padding: var(--space-2);
+}
