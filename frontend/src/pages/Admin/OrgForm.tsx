@@ -3,33 +3,18 @@ import { LocationPicker } from './LocationPicker';
 import type { Organizacion, OrganizacionCreate } from '../../services/adminApi';
 
 const TIPOS = [
-  // Del Excel de Gabriel
-  'Museo / OSC / Espacio educativo',
-  'Centro de innovación / infraestructura tecnológica',
-  'OSC / Laboratorio de fabricación digital',
-  'Organismo articulador / desarrollo económico e innovación',
-  'Programa / red de emprendimiento tecnológico',
-  'OSC empresarial / competitividad regional',
-  'Gobierno estatal',
-  'Consejo / organismo de desarrollo económico regional',
-  'Centro de innovación / adopción tecnológica',
-  'Universidad pública',
-  'Universidad pública tecnológica',
-  'Institución educativa privada',
-  'Bachillerato tecnológico público',
-  'OSC / programa de ciencia y pensamiento crítico',
-  'OSC / capacitación tecnológica',
-  'OSC / academia tecnológica',
-  'OSC / financiador y articulador social',
-  'Gobierno / sistema de protección de derechos',
-  'Fundación / financiador social',
-  'Programa / iniciativa de género y tecnología',
-  'Programa / centro cultural-educativo',
-  // Genéricos adicionales
-  'Empresa / Industria',
-  'Centro de investigación',
-  'Incubadora / Aceleradora',
+  'ONG / Asociación Civil',
+  'OSC / Sociedad Civil',
+  'Institución Educativa',
+  'Empresa Tecnológica',
+  'Centro de Investigación',
+  'Entidad Gubernamental',
+  'Makerspace / Laboratorio',
+  'Organismo Articulador',
+  'Organismo Financiador',
+  'Programa / Iniciativa',
 ];
+
 const AREAS = [
   'Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas',
   'Robótica', 'IA', 'Programación', 'Ciberseguridad',
@@ -39,10 +24,12 @@ const AREAS = [
   'Medio ambiente', 'Historia Natural',
   'Articulación y políticas públicas',
 ];
+
 const ZONAS = ['Urbana', 'Rural', 'Ambas'];
 const ENFOQUES = ['Educación / Capacitación técnica', 'Investigación / Desarrollo', 'Articulación y políticas públicas', 'Incubación / Aceleración'];
 
-type FormData = Omit<OrganizacionCreate, 'areas_stem' | 'colonias'> & {
+type FormData = Omit<OrganizacionCreate, 'tipo' | 'areas_stem' | 'colonias'> & {
+  tipo: string[];
   areas_stem: string[];
   colonias: string[];
 };
@@ -66,15 +53,19 @@ export function OrgForm({ value, onChange }: OrgFormProps) {
         <input className={styles.input} value={value.nombre ?? ''} onChange={(e) => set('nombre', e.target.value)} placeholder="Nombre de la organización" required />
       </div>
 
-      <div className={styles.fieldGroup}>
-        <label className={styles.label}>Tipo *</label>
-        <select className={styles.select} value={value.tipo ?? ''} onChange={(e) => set('tipo', e.target.value)}>
-          <option value="">Seleccionar...</option>
-          {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
-        </select>
-      </div>
+      <span className={styles.sectionTitle}>Tipos de Organización *</span>
+      {TIPOS.map((t) => (
+        <label key={t} className={styles.checkboxRow}>
+          <input 
+            type="checkbox" 
+            checked={Array.isArray(value.tipo) && value.tipo.includes(t)} 
+            onChange={() => set('tipo', toggleItem(value.tipo || [], t))} 
+          />
+          <span>{t}</span>
+        </label>
+      ))}
 
-      <div className={styles.fieldGroup}>
+      <div className={styles.fieldGroup} style={{ marginTop: '16px' }}>
         <label className={styles.label}>Zona</label>
         <select className={styles.select} value={value.zona ?? ''} onChange={(e) => set('zona', e.target.value)}>
           <option value="">Seleccionar...</option>
@@ -155,7 +146,7 @@ export function OrgForm({ value, onChange }: OrgFormProps) {
 export function defaultOrg(): FormData {
   return {
     nombre: '',
-    tipo: '',
+    tipo: [],
     areas_stem: [],
     enfoque_principal: undefined,
     descripcion: undefined,
@@ -177,7 +168,7 @@ export function defaultOrg(): FormData {
 export function orgToForm(org: Organizacion): FormData {
   return {
     nombre: org.nombre,
-    tipo: org.tipo,
+    tipo: Array.isArray(org.tipo) ? org.tipo : (org.tipo ? [org.tipo] : []),
     areas_stem: org.areas_stem ?? [],
     enfoque_principal: org.enfoque_principal,
     descripcion: org.descripcion,
