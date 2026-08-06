@@ -1,5 +1,4 @@
 .page {
-  animation: fadeIn var(--transition-slow) both;
 }
 
 @keyframes fadeIn {

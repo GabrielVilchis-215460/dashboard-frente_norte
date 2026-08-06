@@ -252,6 +252,10 @@ export interface ETLStatus {
   rss_no_disponible: boolean;
   phase: string;
   phase_detail: number | null;
+  posts_encontrados: number;
+  posts_analizados: number;
+  eventos_añadidos: number;
+  nuevos_ids: number[];
 }
 
 export interface EventoCreate {

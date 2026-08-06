@@ -3,10 +3,19 @@ import logging
 from app.api.territorial_coverage.schemas import CoberturaTerritorial, CoberturaColonia
 from app.models.programa import Programa
 from app.utils.helpers import coverage_level
+from app.utils import ttl_cache
 
 logger = logging.getLogger("stem_api.cobertura_territorial")
 
+
+_CACHE_KEY = "cobertura_territorial"
+_CACHE_TTL = 300
+
 def get_cobertura(db: Session) -> CoberturaTerritorial:
+    cached = ttl_cache.get(_CACHE_KEY, _CACHE_TTL)
+    if cached:
+        return cached
+
     """
     Calcula la cobertura territorial del ecosistema STEM por colonia y zona.
 
@@ -57,9 +66,11 @@ def get_cobertura(db: Session) -> CoberturaTerritorial:
         len(colonia_count), len(baja_oferta),
     )
 
-    return CoberturaTerritorial(
+    result = CoberturaTerritorial(
         total_colonias_impactadas=len(colonia_count),
         por_zona=zona_count,
         colonias_detalle=detalle,
         zonas_baja_oferta=baja_oferta,
     )
+    ttl_cache.put(_CACHE_KEY, result)
+    return result

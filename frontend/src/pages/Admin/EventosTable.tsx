@@ -206,6 +206,18 @@ function EventoFormFields({
   );
 }
 
+const statBox: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid var(--glass-border)',
+  borderRadius: 'var(--radius-sm)',
+  padding: '8px 12px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+};
+const statNum: React.CSSProperties = { fontSize: 20, fontWeight: 700, color: 'var(--text-100)', lineHeight: 1 };
+const statLabel: React.CSSProperties = { fontSize: 11, color: 'var(--text-40)', marginTop: 2 };
+
 const row: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4 };
 const label: React.CSSProperties = { fontSize: 12, color: 'var(--text-60)', fontWeight: 500 };
 const input: React.CSSProperties = {
@@ -250,7 +262,7 @@ const etlStatusColor: Record<string, string> = {
   failed: '#ef4444',
 };
 
-function ETLPanel({ onComplete }: { onComplete: () => void }) {
+export function ETLPanel({ onComplete }: { onComplete: (status: ETLStatus) => void }) {
   const [etl, setEtl] = useState<ETLStatus | null>(null);
   const [launching, setLaunching] = useState(false);
   const [launchError, setLaunchError] = useState('');
@@ -271,7 +283,7 @@ function ETLPanel({ onComplete }: { onComplete: () => void }) {
         setEtl(s);
         if (s.status !== 'running') {
           stopPolling();
-          if (s.status === 'completed') onComplete();
+          if (s.status === 'completed') onComplete(s);
         }
       } catch {
         stopPolling();
@@ -396,9 +408,33 @@ function ETLPanel({ onComplete }: { onComplete: () => void }) {
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-60)' }}>
             {etl.started_at && <span>Inicio: {new Date(etl.started_at).toLocaleString('es-MX')}</span>}
             {etl.finished_at && <span>Fin: {new Date(etl.finished_at).toLocaleString('es-MX')}</span>}
-            {etl.status === 'completed' && <span style={{ color: '#10b981' }}>Tokens: {etl.tokens.toLocaleString()}</span>}
-            {etl.errores.length > 0 && <span style={{ color: '#f59e0b' }}>{etl.errores.length} advertencia(s)</span>}
           </div>
+          {etl.status === 'completed' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8, marginTop: 4 }}>
+              <div style={statBox}>
+                <span style={statNum}>{etl.posts_encontrados}</span>
+                <span style={statLabel}>Posts en feed</span>
+              </div>
+              <div style={statBox}>
+                <span style={statNum}>{etl.posts_analizados}</span>
+                <span style={statLabel}>Analizados con IA</span>
+              </div>
+              <div style={{ ...statBox, background: etl.eventos_añadidos > 0 ? 'rgba(16,185,129,0.12)' : undefined, borderColor: etl.eventos_añadidos > 0 ? '#10b981' : undefined }}>
+                <span style={{ ...statNum, color: etl.eventos_añadidos > 0 ? '#10b981' : 'var(--text-60)' }}>{etl.eventos_añadidos}</span>
+                <span style={statLabel}>Eventos nuevos</span>
+              </div>
+              <div style={statBox}>
+                <span style={statNum}>{etl.tokens.toLocaleString()}</span>
+                <span style={statLabel}>Tokens usados</span>
+              </div>
+              {etl.errores.length > 0 && (
+                <div style={{ ...statBox, background: 'rgba(245,158,11,0.1)', borderColor: '#f59e0b' }}>
+                  <span style={{ ...statNum, color: '#f59e0b' }}>{etl.errores.length}</span>
+                  <span style={statLabel}>Advertencias</span>
+                </div>
+              )}
+            </div>
+          )}
           {etl.rss_no_disponible && (
             <span style={{ fontSize: 12, color: '#f59e0b', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
               <IconAlertTriangle size={13} />
@@ -422,10 +458,11 @@ function ETLPanel({ onComplete }: { onComplete: () => void }) {
 
 // ── Tabla principal ───────────────────────────────────────────────────────────
 
-export function EventosTable() {
-  const { data, loading, error, refetch } = useApi(() => adminApi.getEventosAdmin(), []);
+export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: number; nuevosIds?: number[] }) {
+  const { data, loading, error, refetch } = useApi(() => adminApi.getEventosAdmin(), [refreshKey]);
   const { data: orgs } = useApi(() => adminApi.getOrganizaciones(), []);
   const [search, setSearch] = useState('');
+  const [soloNuevos, setSoloNuevos] = useState(false);
   const [modal, setModal] = useState<'create' | 'edit' | 'toggle' | null>(null);
   const [selected, setSelected] = useState<Evento | null>(null);
   const [form, setForm] = useState<EventoForm>(defaultEvento());
@@ -433,16 +470,20 @@ export function EventosTable() {
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState('');
 
+  const nuevosSet = useMemo(() => new Set(nuevosIds), [nuevosIds]);
+
   const filtered = useMemo(() => {
     if (!data) return [];
+    let list = data;
+    if (soloNuevos && nuevosSet.size > 0) list = list.filter((e) => nuevosSet.has(e.id));
     const q = search.toLowerCase();
     return q
-      ? data.filter((e) =>
+      ? list.filter((e) =>
           e.nombre.toLowerCase().includes(q) ||
           e.organizacion?.nombre.toLowerCase().includes(q)
         )
-      : data;
-  }, [data, search]);
+      : list;
+  }, [data, search, soloNuevos, nuevosSet]);
 
   function openCreate() {
     setForm(defaultEvento());
@@ -526,19 +567,37 @@ export function EventosTable() {
 
   return (
     <>
-      <ETLPanel onComplete={refetch} />
-
       {error && <p className={styles.errorBanner}>{error}</p>}
 
       <div className={styles.tableCard}>
         <div className={styles.tableActions}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
             <input
               className={styles.searchInput}
               placeholder="Buscar evento u organización…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            {nuevosSet.size > 0 && (
+              <button
+                onClick={() => setSoloNuevos((v) => !v)}
+                style={{
+                  background: soloNuevos ? 'rgba(16,185,129,0.2)' : 'rgba(16,185,129,0.07)',
+                  border: `1px solid ${soloNuevos ? '#10b981' : 'rgba(16,185,129,0.4)'}`,
+                  color: soloNuevos ? '#10b981' : 'var(--text-60)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                ✦ Solo nuevos ({nuevosSet.size})
+              </button>
+            )}
             <span className={styles.count}>{filtered.length} eventos</span>
           </div>
           <button className={styles.addBtn} onClick={openCreate}>+ Nuevo evento</button>
@@ -560,16 +619,35 @@ export function EventosTable() {
             {filtered.length === 0 && (
               <tr><td colSpan={7} className={styles.empty}>No hay eventos</td></tr>
             )}
-            {filtered.map((ev) => (
-              <tr key={ev.id}>
-                <td style={{ color: 'var(--text-100)', fontWeight: 500, maxWidth: 200 }}>
+            {filtered.map((ev) => {
+              const esNuevo = nuevosSet.has(ev.id);
+              return (
+              <tr key={ev.id} style={esNuevo ? { background: 'rgba(16,185,129,0.05)' } : undefined}>
+                <td style={{ color: 'var(--text-100)', fontWeight: 500, maxWidth: 220 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {ev.imagen_url && (
                       <img src={ev.imagen_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
                     )}
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {ev.nombre}
-                    </span>
+                    <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ev.nombre}
+                      </span>
+                      {esNuevo && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: '#10b981',
+                          background: 'rgba(16,185,129,0.15)',
+                          border: '1px solid rgba(16,185,129,0.35)',
+                          borderRadius: 4,
+                          padding: '1px 5px',
+                          letterSpacing: '0.04em',
+                          width: 'fit-content',
+                        }}>
+                          ✦ NUEVO
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatFechaEvento(ev.fecha, ev.fecha_fin)}</td>
@@ -590,7 +668,8 @@ export function EventosTable() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -19,6 +19,8 @@ export function EventList() {
   const [items, setItems] = useState<Evento[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  // staleItems mantiene los resultados anteriores visibles mientras cargan los nuevos
+  const [staleItems, setStaleItems] = useState<Evento[]>([]);
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
 
   const q = searchParams.get('q') ?? '';
@@ -31,6 +33,8 @@ export function EventList() {
   const hayFiltrosActivos = Boolean(tipo || enfoque || orden === 'populares');
 
   useEffect(() => {
+    // Guarda los items actuales como stale antes de empezar a cargar
+    setStaleItems((prev) => (items.length > 0 ? items : prev));
     setLoading(true);
     publicApi
       .getEventosPublico({
@@ -43,12 +47,15 @@ export function EventList() {
       .then((res) => {
         setItems(res.items);
         setTotal(res.total);
+        setStaleItems([]);
       })
       .catch(() => {
         setItems([]);
         setTotal(0);
+        setStaleItems([]);
       })
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, tipo, enfoque, orden]);
 
   function updateParam(key: string, value: string) {
@@ -169,12 +176,15 @@ export function EventList() {
         {loading ? 'Buscando...' : `${total} evento${total === 1 ? '' : 's'} encontrado${total === 1 ? '' : 's'}`}
       </p>
 
-      <div className={styles.grid}>
-        {loading
+      <div
+        className={styles.grid}
+        style={loading && staleItems.length > 0 ? { opacity: 0.5, transition: 'opacity 0.2s ease', pointerEvents: 'none' } : undefined}
+      >
+        {loading && staleItems.length === 0
           ? Array.from({ length: 8 }).map((_, i) => (
               <Skeleton key={i} height="280px" borderRadius="16px" />
             ))
-          : items.map((ev) => <EventGridCard key={ev.id} evento={ev} />)}
+          : (loading ? staleItems : items).map((ev) => <EventGridCard key={ev.id} evento={ev} />)}
       </div>
 
       {!loading && items.length === 0 && (

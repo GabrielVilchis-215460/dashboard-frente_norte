@@ -1,7 +1,7 @@
 // -- Router y loading por pagina --
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { lazy, Suspense, useEffect } from 'react';
 import { AppLayout } from './components/layout';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { ROUTES } from './constants/routes';
@@ -26,6 +26,12 @@ const EventList    = lazy(() => import('./pages/Public/EventList').then(m => ({ 
 const EventDetail  = lazy(() => import('./pages/Public/EventDetail').then(m => ({ default: m.EventDetail })));
 const About        = lazy(() => import('./pages/Public/About').then(m => ({ default: m.About })));
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 function PageLoader() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 32 }}>
@@ -43,6 +49,7 @@ function PageLoader() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* Ruta de login — fuera de ambos layouts */}
         <Route

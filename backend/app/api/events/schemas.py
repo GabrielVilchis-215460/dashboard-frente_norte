@@ -112,3 +112,7 @@ class ETLStatusResponse(BaseModel):
     rss_no_disponible: bool = False
     phase: str = ""
     phase_detail: Optional[float] = None
+    posts_encontrados: int = 0    # total de posts en el feed
+    posts_analizados: int = 0     # posts que pasaron el filtro y se mandaron a NIM
+    eventos_añadidos: int = 0     # eventos nuevos guardados en BD
+    nuevos_ids: List[int] = []    # IDs de los eventos recién insertados por este run

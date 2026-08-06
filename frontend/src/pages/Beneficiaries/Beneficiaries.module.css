@@ -1,11 +1,6 @@
 .page {
-  animation: fadeIn var(--transition-slow) both;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 
 /* Banner de error */
 .errorBanner {

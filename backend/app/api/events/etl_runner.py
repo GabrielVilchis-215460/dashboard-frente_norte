@@ -30,8 +30,12 @@ _state: dict = {
     "errores": [],
     "error": None,
     "rss_no_disponible": False,
-    "phase": "",          # fase detallada durante RUNNING (ej. "waiting_quota")
-    "phase_detail": None, # segundos restantes u otro dato extra
+    "phase": "",
+    "phase_detail": None,
+    "posts_encontrados": 0,
+    "posts_analizados": 0,
+    "eventos_añadidos": 0,
+    "nuevos_ids": [],
 }
 
 
@@ -45,18 +49,13 @@ def is_running() -> bool:
         return _state["status"] == ETLStatus.RUNNING
 
 
-def run_etl_background() -> None:
-    """
-    Ejecuta el ETL en un hilo separado.
-    Actualiza _state durante y después de la ejecución.
-    Llama a esta función SOLO si is_running() devuelve False.
-    """
-    # Importación diferida para evitar import circular al arrancar la app
-    from scripts.etl_events import run_etl
-
+def try_start() -> bool:
+    """Intenta arrancar el ETL de forma atómica. Retorna False si ya está corriendo."""
     with _lock:
+        if _state["status"] == ETLStatus.RUNNING:
+            return False
         _state["status"] = ETLStatus.RUNNING
-        _state["started_at"] = datetime.now(timezone.utc).isoformat()
+        _state["started_at"] = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
         _state["finished_at"] = None
         _state["tokens"] = 0
         _state["errores"] = []
@@ -64,6 +63,19 @@ def run_etl_background() -> None:
         _state["rss_no_disponible"] = False
         _state["phase"] = ""
         _state["phase_detail"] = None
+        _state["posts_encontrados"] = 0
+        _state["posts_analizados"] = 0
+        _state["eventos_añadidos"] = 0
+        _state["nuevos_ids"] = []
+    return True
+
+
+def run_etl_background() -> None:
+    """
+    Ejecuta el ETL en un hilo separado.
+    Llamar solo tras un try_start() exitoso — el estado ya fue marcado RUNNING.
+    """
+    from scripts.etl_events import run_etl
 
     logger.info("ETL iniciado en background.")
 
@@ -83,6 +95,10 @@ def run_etl_background() -> None:
                 _state["rss_no_disponible"] = resultado.get("rss_no_disponible", False)
                 _state["phase"] = ""
                 _state["phase_detail"] = None
+                _state["posts_encontrados"] = resultado.get("posts_encontrados", 0)
+                _state["posts_analizados"] = resultado.get("posts_analizados", 0)
+                _state["eventos_añadidos"] = resultado.get("eventos_añadidos", 0)
+                _state["nuevos_ids"] = resultado.get("nuevos_ids", [])
             else:
                 _state["status"] = ETLStatus.FAILED
                 _state["error"] = resultado.get("error", "Error desconocido")
