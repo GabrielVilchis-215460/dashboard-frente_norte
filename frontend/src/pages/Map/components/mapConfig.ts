@@ -5,10 +5,14 @@ export interface TipoConfig {
   color: string;
 }
 
-const TIPO_MAP: Array<{ keywords: string[]; config: TipoConfig }> = [
+export const TIPO_MAP: Array<{ keywords: string[]; config: TipoConfig }> = [
   {
     keywords: ['ong', 'asociacion', 'civil'],
     config: { label: 'ONG / Asociación Civil', color: '#38bdf8' },
+  },
+  {
+    keywords: ['osc', 'sociedad civil'],
+    config: { label: 'OSC / Sociedad Civil', color: '#38bdf8' },
   },
   {
     keywords: ['educativ', 'escuela', 'universidad', 'colegio', 'institucion'],
@@ -19,16 +23,28 @@ const TIPO_MAP: Array<{ keywords: string[]; config: TipoConfig }> = [
     config: { label: 'Empresa Tecnológica', color: '#a78bfa' },
   },
   {
-    keywords: ['investigacion', 'centro', 'research', 'lab'],
+    keywords: ['investigacion', 'centro', 'research'],
     config: { label: 'Centro de Investigación', color: '#fbbf24' },
   },
   {
-    keywords: ['gobierno', 'municipal', 'estatal', 'federal', 'public'],
-    config: { label: 'Gobierno', color: '#f87171' },
+    keywords: ['gobierno', 'municipal', 'estatal', 'federal', 'public', 'entidad gubernamental'],
+    config: { label: 'Entidad Gubernamental', color: '#f87171' },
   },
   {
-    keywords: ['maker', 'makerspace', 'laboratorio'],
-    config: { label: 'Makerspace / Lab', color: '#2dd4bf' },
+    keywords: ['maker', 'makerspace', 'laboratorio', 'lab'],
+    config: { label: 'Makerspace / Laboratorio', color: '#2dd4bf' },
+  },
+  {
+    keywords: ['articulador', 'organismo articulador'],
+    config: { label: 'Organismo Articulador', color: '#f472b6' },
+  },
+  {
+    keywords: ['financiador', 'organismo financiador'],
+    config: { label: 'Organismo Financiador', color: '#acc8e5' },
+  },
+  {
+    keywords: ['programa', 'iniciativa'],
+    config: { label: 'Programa / Iniciativa', color: '#e879f9' },
   },
 ];
 

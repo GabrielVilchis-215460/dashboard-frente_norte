@@ -44,11 +44,10 @@ def tipos_organizacion(db: Session = Depends(get_db)):
     rows = (
         db.query(Organizacion.tipo)
         .filter(Organizacion.activo == True, Organizacion.tipo != None)
-        .distinct()
-        .order_by(Organizacion.tipo)
         .all()
     )
-    return [r[0] for r in rows]
+    tipos_unicos = sorted(list({t for row in rows if row[0] for t in row[0]}))
+    return tipos_unicos
 
 
 @router.get(

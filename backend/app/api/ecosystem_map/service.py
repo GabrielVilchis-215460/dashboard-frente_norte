@@ -24,18 +24,10 @@ def obtener_mapa(
     pct_mujeres_rango: Optional[str],
     solo_con_coordenadas: bool,
 ) -> MapaEcosistema:
-    """
-    Retorna todos los pins del mapa aplicando los filtros dados.
-
-    Filtros a nivel organización: tipo, area_stem, zona, coordenadas.
-    Filtros a nivel programa: madurez, nivel_educativo, poblacion, pct_mujeres_rango.
-    Una organización se incluye si tiene al menos un programa que cumpla
-    todos los filtros de programa especificados.
-    """
     q = db.query(Organizacion).filter(Organizacion.activo == True)
 
     if tipo:
-        q = q.filter(Organizacion.tipo == tipo)
+        q = q.filter(Organizacion.tipo.any(tipo))
     if area_stem:
         q = q.filter(Organizacion.areas_stem.any(area_stem))
     if zona:
@@ -70,7 +62,7 @@ def obtener_mapa(
         PinMapa(
             id=org.id,
             nombre=org.nombre,
-            tipo=org.tipo or "",
+            tipo=org.tipo or [],
             areas_stem=org.areas_stem or [],
             latitud=org.latitud,
             longitud=org.longitud,
@@ -88,10 +80,6 @@ def obtener_mapa(
 
 
 def obtener_ficha_actor(db: Session, org_id: int) -> Optional[FichaActor]:
-    """
-    Retorna la ficha descriptiva completa de un actor para mostrarla
-    al hacer clic en su pin en el mapa.
-    """
     org = db.query(Organizacion).filter(
         Organizacion.id == org_id, Organizacion.activo == True
     ).first()
@@ -108,7 +96,7 @@ def obtener_ficha_actor(db: Session, org_id: int) -> Optional[FichaActor]:
     return FichaActor(
         id=org.id,
         nombre=org.nombre,
-        tipo=org.tipo or "",
+        tipo=org.tipo or [],
         descripcion=org.descripcion,
         areas_stem=org.areas_stem or [],
         enfoque_principal=org.enfoque_principal,
