@@ -17,7 +17,7 @@ export interface TokenResponse {
 export interface Organizacion {
   id: number;
   nombre: string;
-  tipo: string;
+  tipo: string[];
   areas_stem: string[];
   enfoque_principal?: string;
   descripcion?: string;

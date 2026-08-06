@@ -1,15 +1,17 @@
 // -- Tipos (TypeScript) --
 
 export type OrganizationType =
-  | 'centro_investigacion'
-  | 'ong'
-  | 'gobierno'
-  | 'laboratorio'
-  | 'institucion_educativa'
-  | 'empresa_tecnologica'
-  | 'makerspace'
-  | 'centro_comunitario';
-
+  | 'ONG / Asociación Civil'
+  | 'OSC / Sociedad Civil'
+  | 'Institución Educativa'
+  | 'Empresa Tecnológica'
+  | 'Centro de Investigación'
+  | 'Entidad Gubernamental'
+  | 'Makerspace / Laboratorio'
+  | 'Organismo Articulador'
+  | 'Organismo Financiador'
+  | 'Programa / Iniciativa';
+  
 export type STEMArea =
   | 'ciencia'
   | 'tecnologia'

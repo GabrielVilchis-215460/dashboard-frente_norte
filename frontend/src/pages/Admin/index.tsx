@@ -39,7 +39,7 @@ function OrgsTable() {
       const matchNombre = o.nombre.toLowerCase().includes(q);
       const matchTipo = Array.isArray(o.tipo) 
         ? o.tipo.some(t => t.toLowerCase().includes(q)) 
-        : o.tipo?.toLowerCase().includes(q);
+        : false;
       return matchNombre || matchTipo;
     }) : data;
   }, [data, search]);
