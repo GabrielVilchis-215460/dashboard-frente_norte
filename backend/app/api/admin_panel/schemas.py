@@ -3,8 +3,6 @@ from typing import List, Optional
 from datetime import datetime
 
 
-# ── Programas ─────────────────────────────────────────────────────────────────
-
 class ProgramaBase(BaseModel):
     nombre: Optional[str] = None
     organizacion_id: int
@@ -48,12 +46,9 @@ class ProgramaOut(ProgramaBase):
     class Config:
         from_attributes = True
 
-
-# ── Organizaciones ────────────────────────────────────────────────────────────
-
 class OrganizacionBase(BaseModel):
     nombre: str
-    tipo: Optional[str] = None
+    tipo: Optional[List[str]] = []  
     areas_stem: Optional[List[str]] = []
     enfoque_principal: Optional[str] = None
     descripcion: Optional[str] = None
@@ -77,7 +72,7 @@ class OrganizacionCreate(OrganizacionBase):
 
 class OrganizacionUpdate(OrganizacionBase):
     nombre: Optional[str] = None
-    tipo: Optional[str] = None
+    tipo: Optional[List[str]] = None 
 
 
 class OrganizacionOut(OrganizacionBase):
@@ -93,8 +88,7 @@ class OrganizacionMapPin(BaseModel):
     """Schema ligero solo para el mapa — evita cargar todos los campos."""
     id: int
     nombre: str
-    tipo: Optional[str]
-    areas_stem: List[str] = []
+    tipo: Optional[List[str]] = []  
     latitud: Optional[float]
     longitud: Optional[float]
     zona: Optional[str]

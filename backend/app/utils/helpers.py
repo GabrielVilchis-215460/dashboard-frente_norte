@@ -78,19 +78,18 @@ def coverage_level(programs_num: int) -> str:
 
 def count_by_field(items: list[Any], field: str) -> dict[str, int]:
     """
-    Genera un conteo de ocurrencias de un campo de texto en una lista de objetos.
-    Omite valores None y strings vacíos.
-
-    Args:
-        items: Lista de instancias de modelos SQLAlchemy.
-        campo: Nombre del atributo a contar.
-
-    Returns:
-        Diccionario {valor: conteo} ordenado por conteo descendente.
+    Genera un conteo de ocurrencias de un campo de texto o lista en una lista de objetos.
+    Omite valores None y listas/strings vacíos.
     """
-    contador = Counter(
-        getattr(item, field)
-        for item in items
-        if getattr(item, field, None)
-    )
+    values = []
+    for item in items:
+        val = getattr(item, field, None)
+        if val is not None:
+            # Si el campo es una lista (ej. tipo con múltiples valores), extraemos cada elemento
+            if isinstance(val, list):
+                values.extend([v for v in val if v])
+            elif isinstance(val, str) and val.strip():
+                values.append(val)
+                
+    contador = Counter(values)
     return dict(contador.most_common())

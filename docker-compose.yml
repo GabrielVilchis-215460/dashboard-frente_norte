@@ -27,12 +27,12 @@ services:
     environment:
       CORS_ORIGINS: '["http://localhost", "https://borderstem.com", "https://www.borderstem.com"]'
       ENVIRONMENT: "production"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
+    #healthcheck:
+     # test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      #interval: 15s
+      #timeout: 5s
+      #retries: 3
+      #start_period: 20s
     restart: always
     networks:
       - stem-net

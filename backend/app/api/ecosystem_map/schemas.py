@@ -6,7 +6,7 @@ class PinMapa(BaseModel):
     """Datos mínimos para renderizar un pin en el mapa interactivo."""
     id: int
     nombre: str
-    tipo: str
+    tipo: List[str] = []
     areas_stem: List[str] = []
     latitud: Optional[float]
     longitud: Optional[float]
@@ -21,7 +21,7 @@ class FichaActor(BaseModel):
     """Ficha descriptiva completa de un actor, mostrada al hacer clic en su pin."""
     id: int
     nombre: str
-    tipo: str
+    tipo: List[str] = []
     descripcion: Optional[str]
     areas_stem: List[str] = []
     enfoque_principal: Optional[str]
