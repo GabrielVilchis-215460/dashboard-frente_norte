@@ -1,6 +1,6 @@
 // -- Sidebar (Navegacion) --
 
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import {
   IconChartBar,
   IconUsers,
@@ -11,10 +11,13 @@ import {
   IconActivity,
   IconSettings,
   IconCalendarEvent,
+  IconArrowLeft,
 } from '@tabler/icons-react';
 import { NAV_ITEMS } from '../../constants/navigation';
 import { ROUTES } from '../../constants/routes';
 import { useDashboardStore } from '../../store/dashboardStore';
+import { authStorage } from '../../services/adminApi';
+import { LogoutButton } from '../common/LogoutButton';
 import styles from './Sidebar.module.css';
 
 // Map de iconos — extensible sin tocar el componente
@@ -37,6 +40,7 @@ function NavIcon({ name, size = 18 }: { name: string; size?: number }) {
 
 export function Sidebar() {
   const lastUpdated = useDashboardStore((s) => s.lastUpdated);
+  const esAdmin = authStorage.getRol() === 'admin';
 
   return (
     <aside className={styles.sidebar}>
@@ -76,14 +80,29 @@ export function Sidebar() {
             Última actualización: {lastUpdated}
           </span>
         )}
-        <NavLink
-          to={ROUTES.ADMIN}
-          className={({ isActive }) =>
-            `${styles.settingsBtn} ${isActive ? styles.settingsBtnActive : ''}`
-          }
-        >
-          <IconSettings size={16} stroke={1.5} />
-        </NavLink>
+
+        <div className={styles.footerRow}>
+          <div className={styles.footerLeft}>
+            <Link to={ROUTES.HOME} className={styles.iconBtn} aria-label="Volver al sitio">
+              <IconArrowLeft size={16} stroke={1.5} />
+              <span>Volver</span>
+            </Link>
+
+            {esAdmin && (
+              <NavLink
+                to={ROUTES.ADMIN}
+                className={({ isActive }) =>
+                  `${styles.iconBtn} ${styles.iconBtnSquare} ${isActive ? styles.iconBtnActive : ''}`
+                }
+                aria-label="Panel de administración"
+              >
+                <IconSettings size={16} stroke={1.5} />
+              </NavLink>
+            )}
+          </div>
+
+          <LogoutButton className={styles.iconBtnSquare} />
+        </div>
       </div>
     </aside>
   );

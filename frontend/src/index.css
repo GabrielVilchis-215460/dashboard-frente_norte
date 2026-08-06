@@ -133,14 +133,17 @@ html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background: #060d1e;
 }
 
 body {
   font-family: var(--font-body);
   color: var(--text-100);
   line-height: 1.5;
-  min-height: 100vh;
+  min-height: 100vh; /* fallback */
+  min-height: 100dvh;
   overflow-x: hidden;
+  background: #060d1e;
 }
 
 /* Scrollbar */

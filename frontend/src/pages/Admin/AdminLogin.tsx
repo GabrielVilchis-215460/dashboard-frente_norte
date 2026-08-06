@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { IconArrowLeft } from '@tabler/icons-react';
 import { adminApi, authStorage } from '../../services/adminApi';
 import { ROUTES } from '../../constants/routes';
 import styles from './AdminLogin.module.css';
@@ -30,9 +31,13 @@ export function AdminLogin() {
   return (
     <div className={`${styles.wrapper} theme-cyan`}>
       <div className={styles.card}>
+        <Link to={ROUTES.HOME} className={styles.backLink} aria-label="Volver al sitio">
+          <IconArrowLeft size={16} stroke={1.8} />
+        </Link>
+
         <div className={styles.logo}>
           <img src="/frente_norte_logo.png" alt="Frente Norte" className={styles.logoImg} />
-          <span className={styles.logoTitle}>Panel de Administración</span>
+          <span className={styles.logoTitle}>Acceso al Dashboard STEM</span>
           <span className={styles.logoSub}>Ecosistema STEM — Ciudad Juárez</span>
         </div>
 
@@ -44,7 +49,7 @@ export function AdminLogin() {
               className={styles.input}
               type="text"
               autoComplete="username"
-              placeholder="admin"
+              placeholder="Nombre de usuario"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required

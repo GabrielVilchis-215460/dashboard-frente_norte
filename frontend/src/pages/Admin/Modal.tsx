@@ -1,4 +1,5 @@
 import { ReactNode, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import styles from './Modal.module.css';
 
 interface ModalProps {
@@ -18,8 +19,8 @@ export function Modal({ title, onClose, onConfirm, confirmLabel = 'Guardar', loa
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  return (
-    <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  return createPortal(
+    <div className={styles.overlay}>
       <div className={styles.modal}>
         <div className={styles.header}>
           <span className={styles.title}>{title}</span>
@@ -35,6 +36,7 @@ export function Modal({ title, onClose, onConfirm, confirmLabel = 'Guardar', loa
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

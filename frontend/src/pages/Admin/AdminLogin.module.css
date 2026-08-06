@@ -12,7 +12,7 @@
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border-radius: var(--radius-lg);
-  padding: var(--space-10) var(--space-8);
+  padding: var(--space-4) var(--space-8) var(--space-10) var(--space-8);
   width: 100%;
   max-width: 400px;
   box-shadow: var(--glass-shadow);
@@ -119,4 +119,21 @@
 .submitBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--text-80);
+  text-decoration: none;
+  margin-bottom: var(--space-4);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.backLink:hover {
+  color: var(--text-100);
+  background: var(--glass-bg-active);
 }

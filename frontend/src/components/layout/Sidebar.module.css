@@ -94,6 +94,19 @@
   gap: var(--space-3);
 }
 
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+ 
+.footerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .lastUpdated {
   font-size: 11px;
   color: var(--text-60);
@@ -119,6 +132,37 @@
 .settingsBtnActive {
   color: var(--text-100);
   background: rgba(255, 255, 255, 0.15);
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  color: var(--text-80);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  cursor: pointer;
+  background: none;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+}
+
+.iconBtn:hover {
+  color: var(--text-100);
+  border-color: var(--text-80);
+  background: var(--glass-bg-active);
+}
+
+.iconBtnSquare {
+  padding: var(--space-2);
+  gap: 0;
+}
+ 
+.iconBtnActive {
+  color: var(--accent-a);
+  border-color: var(--accent-a);
 }
 
 /* Responsive — en móvil aparece como bottom bar fijo */

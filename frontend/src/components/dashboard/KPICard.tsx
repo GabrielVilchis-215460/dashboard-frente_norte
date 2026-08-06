@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SkeletonKPI } from '../ui/Skeleton';
+import { useMinDuration } from '../../hooks/useMinDuration';
 import styles from './KPICard.module.css';
 
 interface BadgeProps {
@@ -26,7 +27,8 @@ export function KPICard({
   animationDelay = 0,
   badge,
 }: KPICardProps) {
-  if (loading) {
+  const showLoading = useMinDuration(loading, 250);
+  if (showLoading) {
     return (
       <div className={styles.card}>
         <SkeletonKPI />

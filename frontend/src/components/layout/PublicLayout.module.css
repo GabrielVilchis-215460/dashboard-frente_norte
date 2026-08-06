@@ -1,5 +1,6 @@
 .shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background-image: var(--noise), var(--bg-gradient);
@@ -140,6 +141,7 @@
   flex: 1;
   position: relative;
   z-index: 1;
+  min-height: calc(100dvh - 180px);
 }
  
 .footer {
@@ -227,6 +229,7 @@
   .nav {
     justify-content: flex-end;
     padding: var(--space-4) var(--space-5);
+    margin: 0;
   }
  
   .footerInner {

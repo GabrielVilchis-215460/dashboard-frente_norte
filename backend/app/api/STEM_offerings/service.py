@@ -3,10 +3,18 @@ from app.api.STEM_offerings.schemas import OfertaSTEM, OrganizacionProgramas, Mo
 import logging
 from app.models.organizacion import Organizacion
 from app.models.programa import Programa
+from app.utils import ttl_cache
 
 logger = logging.getLogger("stem_api.ofertas_stem")
 
+_CACHE_KEY = "oferta_stem"
+_CACHE_TTL = 300
+
 def get_oferta_stem(db: Session) -> OfertaSTEM:
+    cached = ttl_cache.get(_CACHE_KEY, _CACHE_TTL)
+    if cached:
+        return cached
+
     """
     Calcula el análisis de oferta STEM del ecosistema.
 
@@ -76,10 +84,11 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
         for k, v in modalidades_conteo.items()
     ]
 
-    return OfertaSTEM(
+    result = OfertaSTEM(
         programas_por_area=dict(sorted(areas.items(), key=lambda x: x[1], reverse=True)),
         tipos_actividad_ofrecidos=dict(sorted(actividades.items(), key=lambda x: x[1], reverse=True)),
-        #organizaciones_por_especialidad=dict(sorted(especialidad.items(), key=lambda x: x[1], reverse=True)),
         organizaciones_con_programas=lista_orgs_programas,
         modalidades_programas=lista_modalidades
     )
+    ttl_cache.put(_CACHE_KEY, result)
+    return result

@@ -1,6 +1,7 @@
 // -- Gráfica de dona --
 
 import { useRef } from 'react';
+import { useMinDuration } from '../../hooks/useMinDuration';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
 } from 'recharts';
@@ -35,13 +36,14 @@ function CustomTooltip({ active, payload }: any) {
 
 export function DonutChart({ data, loading = false }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const showLoading = useMinDuration(loading, 350);
 
-  if (loading) return <Skeleton width="100%" height="200px" borderRadius="12px" />;
+  if (showLoading) return <Skeleton width="100%" height="280px" borderRadius="12px" />;
   if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={280}>
         <PieChart>
           <Pie
             data={data}

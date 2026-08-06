@@ -188,12 +188,16 @@ export function EcosystemMap({
     const marker = markersRef.current.get(selectedId);
     if (!marker) return;
 
+    const map = mapRef.current;
     const latlng = marker.getLatLng();
-    mapRef.current.flyTo(
-      [latlng.lat + 0.008, latlng.lng],
-      13,
-      { duration: 0.8, easeLinearity: 0.4 }
-    );
+    const currentZoom = map.getZoom();
+    const targetZoom = Math.max(currentZoom, 13); 
+
+    // offset en píxeles reales (constante en pantalla, no en grados)
+    const offsetPoint = map.project(latlng, targetZoom).subtract([0, 80]);
+    const offsetLatLng = map.unproject(offsetPoint, targetZoom);
+
+    map.flyTo(offsetLatLng, targetZoom, { duration: 0.8, easeLinearity: 0.4 });
   }, [selectedId]);
 
   return <div ref={containerRef} className={styles.map} />;
