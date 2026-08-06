@@ -10,7 +10,7 @@ class OrganizacionProgramas(BaseModel):
     logo_url: Optional[str] = None
     organizacion: str
     enfoque_principal: Optional[str] = "No especificado"
-    tipo_organizacion: Optional[str] = "No especificado"
+    tipo_organizacion: List[str] = []
     programas: List[str]
 
 class OfertaSTEM(BaseModel):
