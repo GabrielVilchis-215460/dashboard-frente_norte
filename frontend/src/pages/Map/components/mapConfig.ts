@@ -54,7 +54,7 @@ function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '');
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 export function getTipoConfig(tipo: string): TipoConfig {
@@ -93,12 +93,16 @@ export const FILTER_GROUPS: FilterGroup[] = [
     label: 'Tipo de organización',
     queryParam: 'tipo',
     options: [
-      { label: 'ONG / Asociación Civil', value: 'ONG / Asociación civil' },
-      { label: 'Institución Educativa', value: 'Institución educativa' },
-      { label: 'Empresa Tecnológica', value: 'Empresa tecnológica' },
-      { label: 'Centro de Investigación', value: 'Centro de investigación' },
-      { label: 'Gobierno', value: 'Gobierno' },
-      { label: 'Makerspace / Lab', value: 'Makerspace' },
+      { label: 'ONG / Asociación Civil', value: 'ONG / Asociación Civil' },
+      { label: 'OSC / Sociedad Civil', value: 'OSC / Sociedad Civil' },
+      { label: 'Institución Educativa', value: 'Institución Educativa' },
+      { label: 'Empresa Tecnológica', value: 'Empresa Tecnológica' },
+      { label: 'Centro de Investigación', value: 'Centro de Investigación' },
+      { label: 'Entidad Gubernamental', value: 'Entidad Gubernamental' },
+      { label: 'Makerspace / Laboratorio', value: 'Makerspace / Laboratorio' },
+      { label: 'Organismo Articulador', value: 'Organismo Articulador' },
+      { label: 'Organismo Financiador', value: 'Organismo Financiador' },
+      { label: 'Programa / Iniciativa', value: 'Programa / Iniciativa' },
     ],
   },
   {
@@ -111,10 +115,15 @@ export const FILTER_GROUPS: FilterGroup[] = [
       { label: 'Ingeniería', value: 'Ingeniería' },
       { label: 'Matemáticas', value: 'Matemáticas' },
       { label: 'Robótica', value: 'Robótica' },
+      { label: 'Electrónica', value: 'Electrónica' },
       { label: 'Inteligencia Artificial', value: 'Inteligencia Artificial' },
-      { label: 'Medio Ambiente', value: 'Medio ambiente' },
-      { label: 'Historia Natural', value: 'Historia Natural' },
-      { label: 'Articulación y políticas públicas', value: 'Articulación y políticas públicas' },
+      { label: 'Diseño', value: 'Diseño' },
+      { label: 'Medio ambiente', value: 'Medio ambiente' },
+      { label: 'Energía', value: 'Energía' },
+      { label: 'Historia natural', value: 'Historia natural' },
+      { label: 'Articulación / políticas públicas', value: 'Articulación / políticas públicas' },
+      { label: 'Emprendimiento / Innovación económica', value: 'Emprendimiento / Innovación económica' },
+      { label: 'Desarrollo comunitario', value: 'Desarrollo comunitario' },
     ],
   },
   {

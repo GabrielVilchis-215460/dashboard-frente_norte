@@ -13,13 +13,21 @@ export type OrganizationType =
   | 'Programa / Iniciativa';
   
 export type STEMArea =
-  | 'ciencia'
-  | 'tecnologia'
-  | 'ingenieria'
-  | 'matematicas'
-  | 'robotica'
-  | 'inteligencia_artificial';
-
+  | 'Ciencia'
+  | 'Tecnología'
+  | 'Ingeniería'
+  | 'Matemáticas'
+  | 'Robótica'
+  | 'Electrónica'
+  | 'Inteligencia Artificial'
+  | 'Diseño'
+  | 'Medio ambiente'
+  | 'Energía'
+  | 'Historia natural'
+  | 'Articulación / políticas públicas'
+  | 'Emprendimiento / Innovación económica'
+  | 'Desarrollo comunitario';
+  
 export type MaturityLevel = 'exploracion' | 'implementacion' | 'escalamiento';
 
 export type ActivityType =

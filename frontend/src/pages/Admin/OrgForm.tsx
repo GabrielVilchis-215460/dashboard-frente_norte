@@ -16,13 +16,20 @@ const TIPOS = [
 ];
 
 const AREAS = [
-  'Ciencia', 'Tecnología', 'Ingeniería', 'Matemáticas',
-  'Robótica', 'IA', 'Programación', 'Ciberseguridad',
-  'Mecatrónica', 'Electrónica', 'Manufactura', 'Fabricación digital',
-  'Electromovilidad', 'Energía', 'Sustentabilidad',
-  'Emprendimiento', 'Diseño',
-  'Medio ambiente', 'Historia Natural',
-  'Articulación y políticas públicas',
+  'Ciencia',
+  'Tecnología',
+  'Ingeniería',
+  'Matemáticas',
+  'Robótica',
+  'Electrónica',
+  'Inteligencia Artificial',
+  'Diseño',
+  'Medio ambiente',
+  'Energía',
+  'Historia natural',
+  'Articulación / políticas públicas',
+  'Emprendimiento / Innovación económica',
+  'Desarrollo comunitario',
 ];
 
 const ZONAS = ['Urbana', 'Rural', 'Ambas'];
