@@ -1,9 +1,8 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/layout';
 import { Skeleton } from '../../components/ui';
 import { useApi } from '../../hooks/useApi';
-import { adminApi, authStorage } from '../../services/adminApi'; // authStorage usado en logout
+import { adminApi } from '../../services/adminApi';
 import type { Organizacion, Programa } from '../../services/adminApi';
 import { Modal } from './Modal';
 import { OrgForm, defaultOrg, orgToForm } from './OrgForm';
@@ -360,12 +359,6 @@ function ProgramasTable() {
 
 export function Admin() {
   const [tab, setTab] = useState<Tab>('organizaciones');
-  const navigate = useNavigate();
-
-  function logout() {
-    authStorage.clearToken();
-    navigate('/admin/login', { replace: true });
-  }
 
   return (
     <div>
@@ -374,7 +367,6 @@ export function Admin() {
           title="Panel de Administración"
           description="Gestión de organizaciones y programas del ecosistema STEM"
         />
-        <button className={styles.logoutBtn} onClick={logout}>Cerrar sesión</button>
       </div>
 
       <div className={styles.tabs}>

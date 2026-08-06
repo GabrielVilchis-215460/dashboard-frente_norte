@@ -228,6 +228,7 @@
   .nav {
     justify-content: flex-end;
     padding: var(--space-4) var(--space-5);
+    margin: 0;
   }
  
   .footerInner {
