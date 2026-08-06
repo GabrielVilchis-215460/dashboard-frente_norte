@@ -1,11 +1,6 @@
 .page {
-  animation: fadeIn var(--transition-slow) both;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 
 /* Fila 1 */
 .topGrid {
@@ -23,7 +18,7 @@
 }
 
 .kpiCard { flex: 1; }
-.donutCard { min-height: 240px; }
+.donutCard { min-height: 320px; }
 
 /*  Fila 2 */
 .bottomGrid {
@@ -35,7 +30,7 @@
 .chartCard,
 .carouselCard {
   min-width: 0;
-  min-height: 300px;
+  min-height: 400px;
 }
 
 /*  Responsive  */

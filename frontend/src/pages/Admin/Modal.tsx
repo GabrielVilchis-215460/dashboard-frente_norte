@@ -20,7 +20,7 @@ export function Modal({ title, onClose, onConfirm, confirmLabel = 'Guardar', loa
   }, [onClose]);
 
   return createPortal(
-    <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={styles.overlay}>
       <div className={styles.modal}>
         <div className={styles.header}>
           <span className={styles.title}>{title}</span>

@@ -1,5 +1,4 @@
 .page {
-  animation: fadeIn var(--transition-slow) both;
 }
 
 .errorBanner {
@@ -33,10 +32,6 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 
 /* KPI Grid: 2 cols de cards + columna de tabla Top Organizaciones */
 .kpiGrid {

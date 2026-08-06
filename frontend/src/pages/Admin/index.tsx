@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import type { ETLStatus } from '../../types';
 import { PageHeader } from '../../components/layout';
 import { Skeleton } from '../../components/ui';
 import { useApi } from '../../hooks/useApi';
@@ -7,7 +8,7 @@ import type { Organizacion, Programa } from '../../services/adminApi';
 import { Modal } from './Modal';
 import { OrgForm, defaultOrg, orgToForm } from './OrgForm';
 import { ProgramaForm, defaultPrograma, programaToForm } from './ProgramaForm';
-import { EventosTable } from './EventosTable';
+import { EventosTable, ETLPanel } from './EventosTable';
 import styles from './Admin.module.css';
 
 type Tab = 'organizaciones' | 'programas' | 'eventos';
@@ -359,6 +360,15 @@ function ProgramasTable() {
 
 export function Admin() {
   const [tab, setTab] = useState<Tab>('organizaciones');
+  const [eventsRefreshKey, setEventsRefreshKey] = useState(0);
+  const [etlNuevosIds, setEtlNuevosIds] = useState<number[]>([]);
+
+  const handleETLComplete = useCallback((status: ETLStatus) => {
+    setEventsRefreshKey((k) => k + 1);
+    setEtlNuevosIds(status.nuevos_ids ?? []);
+    // Navega automáticamente a la pestaña de eventos para ver los nuevos
+    if ((status.nuevos_ids?.length ?? 0) > 0) setTab('eventos');
+  }, []);
 
   return (
     <div>
@@ -368,6 +378,8 @@ export function Admin() {
           description="Gestión de organizaciones y programas del ecosistema STEM"
         />
       </div>
+
+      <ETLPanel onComplete={handleETLComplete} />
 
       <div className={styles.tabs}>
         <button className={`${styles.tab} ${tab === 'organizaciones' ? styles.tabActive : ''}`} onClick={() => setTab('organizaciones')}>
@@ -383,7 +395,7 @@ export function Admin() {
 
       {tab === 'organizaciones' && <OrgsTable />}
       {tab === 'programas' && <ProgramasTable />}
-      {tab === 'eventos' && <EventosTable />}
+      {tab === 'eventos' && <EventosTable refreshKey={eventsRefreshKey} nuevosIds={etlNuevosIds} />}
     </div>
   );
 }

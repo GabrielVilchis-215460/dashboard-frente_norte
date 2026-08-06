@@ -3,16 +3,24 @@ from app.models.organizacion import Organizacion
 from app.models.programa import Programa
 from app.api.overview.schemas import PanoramaGeneral, MapaPreview, TopOrganizacion
 from app.utils.helpers import count_by_field, mid_volume, mid_pct
+from app.utils import ttl_cache
 import logging
 from sqlalchemy import func
 from app.models.eventos import Evento
 from datetime import date
+
+_CACHE_KEY = "panorama_general"
+_CACHE_TTL = 300  # 5 minutos
 
 logger = logging.getLogger("stem_api.panorama_general")
 
 #  Módulo 1: Panorama General 
 
 def get_panorama(db: Session) -> PanoramaGeneral:
+    cached = ttl_cache.get(_CACHE_KEY, _CACHE_TTL)
+    if cached:
+        return cached
+
     """
     Calcula y retorna los indicadores generales del ecosistema STEM.
 
@@ -111,20 +119,17 @@ def get_panorama(db: Session) -> PanoramaGeneral:
         len(orgs), len(programas), beneficiarios, len(colonias),
     )
 
-    return PanoramaGeneral(
+    result = PanoramaGeneral(
         total_organizaciones=len(orgs),
         total_programas_activos=len(programas),
-        #total_eventos_activos=total_eventos,
-        #organizaciones_con_eventos_activos=orgs_con_eventos,
         beneficiarios_semestre=beneficiarios,
         colonias_impactadas=len(colonias),
-        pct_mujeres_beneficiarias=pct_mujeres, 
-        pct_programas_enfoque_integral=pct_integral, 
+        pct_mujeres_beneficiarias=pct_mujeres,
+        pct_programas_enfoque_integral=pct_integral,
         organizaciones_por_tipo=tipos_count,
-        areas_stem_representadas=dict(sorted(areas_conteo.items(), key=lambda x: x[1], reverse=True)), # MODIFICADO
+        areas_stem_representadas=dict(sorted(areas_conteo.items(), key=lambda x: x[1], reverse=True)),
         top_organizaciones=top_organizaciones,
-        #distribucion_eventos_enfoque=eventos_por_enfoque, 
-        #distribucion_eventos_tipo=eventos_por_tipo,       
-        #historico_eventos_trimestral=historico_linea,
-        preview_mapa=preview_marcadores
+        preview_mapa=preview_marcadores,
     )
+    ttl_cache.put(_CACHE_KEY, result)
+    return result

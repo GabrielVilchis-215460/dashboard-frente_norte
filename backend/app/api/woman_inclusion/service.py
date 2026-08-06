@@ -1,16 +1,24 @@
 import logging
 from sqlalchemy.orm import Session
 from app.api.woman_inclusion.schemas import (
-    InclusionFemenina, 
-    ProgramaDetalle, 
+    InclusionFemenina,
+    ProgramaDetalle,
     RangoParticipacion
 )
 from app.models.programa import Programa
 from app.utils.helpers import mid_pct
+from app.utils import ttl_cache
 
 logger = logging.getLogger("stem_api.inclusion_femenina")
 
+_CACHE_KEY = "inclusion_femenina"
+_CACHE_TTL = 300
+
 def get_inclusion_femenina(db: Session) -> InclusionFemenina:
+    cached = ttl_cache.get(_CACHE_KEY, _CACHE_TTL)
+    if cached:
+        return cached
+
     logger.info("Calculando inclusión femenina")
     programas = db.query(Programa).filter(Programa.activo == True).all()
 
@@ -84,7 +92,7 @@ def get_inclusion_femenina(db: Session) -> InclusionFemenina:
         for k, v in por_nivel.items()
     }
 
-    return InclusionFemenina(
+    result = InclusionFemenina(
         pct_promedio_mujeres=promedio,
         total_ninas_adolescentes=total_ninas,
         total_enfocados_mujeres=total_mujeres,
@@ -92,3 +100,5 @@ def get_inclusion_femenina(db: Session) -> InclusionFemenina:
         por_nivel_educativo=por_nivel_avg,
         carrusel_programas_destacados=carrusel_destacados
     )
+    ttl_cache.put(_CACHE_KEY, result)
+    return result

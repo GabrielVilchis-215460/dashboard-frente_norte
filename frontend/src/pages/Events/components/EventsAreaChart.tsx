@@ -1,6 +1,7 @@
 // Gráfica de área del histórico trimestral
 
 import { useRef, useState, useEffect } from 'react';
+import { useMinDuration } from '../../../hooks/useMinDuration';
 import {
   AreaChart,
   Area,
@@ -39,19 +40,20 @@ function CustomTooltip({ active, payload, label }: any) {
 export function EventsAreaChart({ data, loading }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [color, setColor] = useState(FALLBACK_COLOR);
+  const showLoading = useMinDuration(loading, 350);
 
   useEffect(() => {
     setColor(readAccent(wrapperRef.current));
-  }, [loading, data]);
+  }, [showLoading, data]);
 
-  if (loading) return <Skeleton width="100%" height="240px" borderRadius="12px" />;
+  if (showLoading) return <Skeleton width="100%" height="320px" borderRadius="12px" />;
   if (!data.length) return <p className={styles.empty}>Sin datos disponibles</p>;
 
   const gradId = 'events-area-grad';
 
   return (
     <div className={styles.wrapper} ref={wrapperRef}>
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={320}>
         <AreaChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -16 }}>
           <defs>
             <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">

@@ -1,4 +1,4 @@
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useRef, useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconSearch, IconArrowRight } from '@tabler/icons-react';
 import { CategoryIcons } from '../../components/public/CategoryIcons';
@@ -16,10 +16,16 @@ export function Home() {
 
   const [destacados, setDestacados] = useState<Evento[] | null>(null);
   const [eventPoints, setEventPoints] = useState<EventoMapPoint[]>([]);
+  // En home los datos no cambian por filtros — solo cargan una vez, sin stale pattern necesario.
+  // Usamos ref para evitar re-fetch si el componente se remonta (navegación y vuelta).
+  const fetchedRef = useRef(false);
   const [loadingDestacados, setLoadingDestacados] = useState(true);
   const [loadingMapa, setLoadingMapa] = useState(true);
 
   useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
     publicApi.getEventosDestacados(8)
       .then(setDestacados)
       .catch(() => setDestacados([]))

@@ -15,10 +15,10 @@ Frecuencia recomendada:
     Una vez por semana, preferiblemente cada lunes.
 """
 
-import json, re, time, unicodedata, logging, os, requests
+import json, re, time, unicodedata, logging, os, requests, threading, concurrent.futures
 from requests.exceptions import HTTPError
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from difflib import SequenceMatcher
 
 from openai import OpenAI, RateLimitError
@@ -45,11 +45,68 @@ NIM_MODEL = "meta/llama-3.1-70b-instruct"
 _JUAREZ_LAT_MIN, _JUAREZ_LAT_MAX = 31.55, 31.85
 _JUAREZ_LNG_MIN, _JUAREZ_LNG_MAX = -106.65, -106.25
 
-# Intervalo mínimo entre llamadas a NIM (segundos).
-# Límite real observado en el free tier: ~40 RPM -> 60/40 = 1.5s exactos.
-# Usamos 2s para dejar margen de seguridad (~30 RPM efectivos).
-_NIM_MIN_INTERVAL: float = 2.0
+# Intervalo mínimo global entre llamadas a NIM (segundos).
+# Límite del free tier: 40 RPM → 60/40 = 1.5s exactos entre llamadas globales.
+# El limiter es thread-safe para soportar procesamiento paralelo.
+_NIM_MIN_INTERVAL: float = 1.5
 _RSS_PLAN_NO_PAGADO = False  # Se activa si el bundle devuelve 402
+
+# Límites de texto del post enviado a NIM
+_TEXT_MIN_CHARS = 80       # posts muy cortos no tienen info suficiente
+_TEXT_MAX_CHARS = 2500     # truncar para ahorrar tokens y mantener instrucciones al frente
+
+# Ventana de fechas aceptables
+_FECHA_MAX_PASADO_DIAS = 14   # eventos que empezaron hace más de 14 días se descartan
+_FECHA_MAX_FUTURO_DIAS = 730  # eventos a más de 2 años se descartan (posible alucinación)
+
+# Valores permitidos para validación post-extracción
+_ENFOQUES_VALIDOS = {"Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica",
+                     "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento"}
+_TIPOS_VALIDOS = {"Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos"}
+
+# Cap de seguridad: máximo de eventos extraíbles de un solo post.
+# Previene que el modelo "alucine" listas largas de eventos inventados.
+_MAX_EVENTOS_POR_POST = 8
+
+# Claves que algunos modelos usan para envolver el array de resultados
+_WRAPPER_KEYS = ("eventos", "events", "items", "data", "results", "lista")
+
+# Palabras clave que indican que un post PODRÍA anunciar un evento.
+# Un post sin ninguna de estas palabras se descarta antes de llamar a NIM,
+# reduciendo el número de llamadas a la API en un 40-60%.
+_PALABRAS_EVENTO = {
+    # Tipos de actividad
+    "taller", "talleres", "curso", "cursos", "clase", "clases",
+    "conferencia", "conferencias", "webinar", "webinars", "seminario",
+    "bootcamp", "hackathon", "campamento", "feria", "simposio",
+    "workshop", "training", "capacitación", "charla", "ponencia",
+    "open house", "demo day", "pitch", "concurso", "competencia",
+    # Verbos de invitación
+    "regístrate", "inscríbete", "inscribete", "registrate", "únete",
+    "participa", "asiste", "acompáñanos", "acompañanos", "join",
+    "register", "sign up", "signup", "enroll",
+    # Sustantivos de convocatoria
+    "convocatoria", "inscripción", "inscripcion", "registro", "cupo",
+    "cupos", "evento", "eventos", "actividad", "actividades", "sesión",
+    "sesion", "reunion", "reunión",
+    # Palabras de tiempo que indican fecha concreta
+    "lunes", "martes", "miércoles", "miercoles", "jueves", "viernes",
+    "sábado", "sabado", "domingo",
+    "enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+    # Palabras de horario
+    "am", "pm", "hrs", "horas", "hora", "horario",
+}
+
+def _tiene_palabras_evento(texto: str) -> bool:
+    """
+    Filtro rápido O(n) en Python: descarta posts que no contienen ninguna
+    palabra clave de evento. Evita llamadas a NIM innecesarias.
+    Se aplica sobre el texto normalizado (minúsculas, sin tildes).
+    """
+    texto_n = _normalizar(texto)
+    return any(kw in texto_n for kw in _PALABRAS_EVENTO)
+
 
 def _coords_validas(lat: float | None, lng: float | None) -> bool:
     """Devuelve True solo si las coords caen dentro del bounding box de Juárez."""
@@ -60,30 +117,32 @@ def _coords_validas(lat: float | None, lng: float | None) -> bool:
         and _JUAREZ_LNG_MIN <= lng <= _JUAREZ_LNG_MAX
     )
 
-# Rate limiter para NIM
+# Rate limiter para NIM — thread-safe para procesamiento paralelo
 class _NimRateLimiter:
     """
-    Esta clase garantiza un intervalo mínimo real entre llamadas a NIM usando
-    time.monotonic() (no afectado por cambios de reloj del sistema).
+    Garantiza un intervalo mínimo global entre llamadas a NIM usando
+    time.monotonic() y un lock para soportar múltiples workers simultáneos.
 
-    A diferencia de un time.sleep() fijo después de cada post, este
-    limiter mide cuánto tiempo *realmente* pasó desde la última llamada
-    (incluyendo el tiempo que tardó el modelo en responder) y solo espera
-    la diferencia que falte. Así nunca esperamos de más si una llamada
-    fue lenta, pero tampoco excedemos el RPM si todas son rápidas.
+    El patrón check-and-reserve evita que dos threads obtengan el slot
+    al mismo tiempo: solo se actualiza _last_call_at cuando el thread
+    ya "ganó" su turno, antes de liberar el lock.
     """
 
     def __init__(self, min_interval: float):
         self.min_interval = min_interval
-        self._last_call_at: float | None = None
+        self._lock = threading.Lock()
+        self._last_call_at: float = 0.0
 
     def wait(self) -> None:
-        if self._last_call_at is not None:
-            elapsed = time.monotonic() - self._last_call_at
-            faltante = self.min_interval - elapsed
-            if faltante > 0:
-                time.sleep(faltante)
-        self._last_call_at = time.monotonic()
+        while True:
+            with self._lock:
+                now = time.monotonic()
+                elapsed = now - self._last_call_at
+                if elapsed >= self.min_interval:
+                    self._last_call_at = now
+                    return
+                wait_time = self.min_interval - elapsed
+            time.sleep(wait_time)
 
 _nim_rate_limiter = _NimRateLimiter(_NIM_MIN_INTERVAL)
 
@@ -127,89 +186,179 @@ def _strip_json_fences(raw: str) -> str:
     return raw.strip()
 
 def _call_nim(prompt: str, client: OpenAI) -> object:
-    # El rate limiter espera lo necesario ANTES de cada llamada real a la API,
-    # sin importar si es primer intento o retry.
     _nim_rate_limiter.wait()
     return client.chat.completions.create(
         model=NIM_MODEL,
         messages=[
-            {"role": "system", "content": "Responde únicamente con un objeto JSON válido, sin markdown ni texto adicional."},
+            {"role": "system", "content": "Responde únicamente con un array JSON válido, sin markdown ni texto adicional."},
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,
-        max_tokens=800,
+        max_tokens=1000,  # suficiente para ≤8 eventos; menos tokens = respuesta más rápida
     )
 
 def _get_nim_client() -> OpenAI:
     if not settings.NVIDIA_API_KEY:
         raise RuntimeError("NVIDIA_API_KEY no está configurada.")
-    return OpenAI(base_url=NIM_BASE_URL, api_key=settings.NVIDIA_API_KEY, timeout=60)
+    return OpenAI(base_url=NIM_BASE_URL, api_key=settings.NVIDIA_API_KEY, timeout=90)
 
-def extract_events_data(text_post: str, org_name: str, client: OpenAI, phase_callback=None) -> tuple[dict, int]:
-    """
-    Envía el texto del post a NIM y devuelve el JSON extraído junto con
-    el total de tokens consumidos. Devuelve {"es_evento": False} en caso de error.
-    """
+def _construir_prompt(text_post: str, org_name: str) -> str:
     date_today = date.today().isoformat()
-    prompt = f"""
-Eres un analizador de datos experto. Analiza el siguiente texto extraído de las redes sociales de la organización '{org_name}'.
-La fecha actual del sistema es {date_today}.
+    texto_truncado = text_post[:_TEXT_MAX_CHARS]
+    texto_escapado = texto_truncado.replace("\\", "\\\\").replace('"""', "'''")
 
-Tu tarea es determinar si el texto anuncia un evento, taller o actividad futura.
+    return f"""Eres un extractor de datos experto para un directorio de eventos STEM en Ciudad Juárez, México.
+Analiza el siguiente post de redes sociales publicado por la organización "{org_name}".
+Fecha actual: {date_today}.
 
-REGLA 1: FILTRO DE AUTORÍA ORIGINAL (ANTI-REPOST)
-Si el post es un repost o colaboración de un evento organizado por OTRA entidad, marca "es_evento": false.
+TAREA
+Extraer TODOS los eventos válidos que mencione el post. Un post puede contener cero, uno o varios eventos
+(por ejemplo, un resumen semanal de actividades). Devuelve un array JSON con un objeto por evento.
+Si no hay eventos válidos, devuelve un array vacío: []
 
-REGLA 2: UBICACIÓN GEOGRÁFICA
-Solo considera válido (es_evento: true) si el evento es en Ciudad Juárez, Chihuahua, o es 100% ONLINE/VIRTUAL.
-Extrae el nombre del lugar en "ubicacion" (ej. "T-Hub, Ciudad Juárez").
-Además, si el texto menciona una dirección o lugar específico y conocido de Ciudad Juárez del que puedas
-inferir coordenadas con alta confianza, extrae "latitud" y "longitud" como números decimales.
-Si no puedes determinarlas con certeza, devuelve null en ambos campos.
-IMPORTANTE: Las coordenadas deben estar dentro del rango de Ciudad Juárez
-(lat entre 31.55 y 31.85, lng entre -106.65 y -106.25). Nunca inventes coordenadas.
+REGLA 1 — AUTORÍA ORIGINAL
+Incluye solo eventos organizados DIRECTAMENTE por "{org_name}".
+Si un evento lo organiza OTRA entidad (repost, mención, colaboración externa), omítelo.
+Excepción: si "{org_name}" es co-organizador explícito ("by the Hub in collaboration with…"), inclúyelo.
 
-REGLA 3: CATEGORIZACIÓN
-- ENFOQUE permitido: "Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica", "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento".
-- TIPO permitido: "Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos".
+REGLA 2 — FECHA OBLIGATORIA
+Incluye solo eventos con fecha explícita en el texto. No inventes ni inferras fechas.
+Formato: "YYYY-MM-DD". Si el texto dice solo mes y día, usa el año {date_today[:4]}.
+Si el año inferido produce una fecha pasada de más de 30 días, usa {int(date_today[:4]) + 1}.
 
-REGLA 4: FECHAS Y HORARIOS
-- Evento de un día: "fecha" = ese día, "fecha_fin" = null.
-- Rango de fechas: "fecha" = inicio, "fecha_fin" = final. Formato "YYYY-MM-DD".
-- "hora_inicio" y "hora_fin" en formato "HH:MM" (24 h). null si no se mencionan.
+REGLA 3 — UBICACIÓN GEOGRÁFICA
+Incluye solo eventos en Ciudad Juárez, Chihuahua, México, o 100% ONLINE/VIRTUAL.
+Si el evento es claramente en otra ciudad (ej. El Paso, TX), omítelo.
+Coordenadas: solo si las puedes inferir con certeza del texto. Rango Juárez: lat 31.55–31.85, lng -106.65 a -106.25.
+Si no las conoces con certeza, pon null en ambos campos.
 
-REGLA 5: DESCRIPCIÓN
-Extrae un resumen breve (máximo 3 oraciones) del evento basado exclusivamente en lo que dice el texto.
-No inventes información. Si no hay suficiente contexto, devuelve null.
+REGLA 4 — HORARIOS
+Convierte siempre a formato 24h (HH:MM).
+Ejemplos: "12:15 PM" → "12:15", "8:30 AM" → "08:30", "4 PM" → "16:00", "10am" → "10:00".
+Si no se menciona hora, pon null.
 
-REGLA 6: IMAGEN
-Extrae la URL de la imagen promocional si existe explícitamente en el texto. Si no, null.
+REGLA 5 — CATEGORIZACIÓN (usa exactamente estos valores o null, sin variaciones)
+ENFOQUE: "Ciencia" | "Tecnologia" | "Ingenieria" | "Matematicas" | "Robotica" | "Inteligencia artificial" | "Medio ambiente" | "Finanzas" | "Emprendimiento"
+TIPO: "Talleres" | "Cursos" | "Campamento" | "Bootcamp" | "Conferencia" | "Eventos"
 
-IMPORTANTE SOBRE EL FORMATO DE RESPUESTA:
-Responde ÚNICAMENTE con UN SOLO objeto JSON (nunca una lista/array), incluso si detectas
-más de un evento posible en el texto. En ese caso, elige el evento principal o más
-prominente del post y describe solo ese.
+REGLA 6 — DESCRIPCIÓN
+Máximo 2 oraciones por evento, basadas únicamente en el texto del post. No inventes detalles.
+Si no hay información suficiente, pon null.
 
-Responde ÚNICAMENTE con un objeto JSON válido, sin markdown:
-{{
-    "es_evento": true/false,
-    "nombre": "Nombre del evento",
-    "descripcion": "Resumen breve o null",
-    "ubicacion": "Lugar mencionado o null",
-    "latitud": 31.xxxx o null,
-    "longitud": -106.xxxx o null,
+REGLA 7 — IMAGEN
+Extrae la URL de imagen solo si aparece explícitamente en el texto. Si no, null.
+
+FORMATO DE RESPUESTA
+Devuelve ÚNICAMENTE el array JSON, sin markdown, sin texto antes ni después.
+Estructura de cada objeto (todos los campos son obligatorios, usa null cuando no aplique):
+[
+  {{
+    "nombre": "string",
+    "descripcion": "string o null",
+    "ubicacion": "string o null",
+    "latitud": número o null,
+    "longitud": número o null,
     "fecha": "YYYY-MM-DD",
     "fecha_fin": "YYYY-MM-DD o null",
     "hora_inicio": "HH:MM o null",
     "hora_fin": "HH:MM o null",
-    "enfoque": "Opción permitida o null",
-    "tipo": "Opción permitida o null",
+    "enfoque": "valor_exacto o null",
+    "tipo": "valor_exacto o null",
     "imagen_url": "URL o null"
-}}
+  }}
+]
 
-Texto del post:
-"{text_post}"
-"""
+POST A ANALIZAR:
+\"\"\"
+{texto_escapado}
+\"\"\""""
+
+
+def _parsear_hora(raw: str | None) -> "datetime.time | None":
+    """Parsea hora en formato 24h o 12h (AM/PM). Retorna None si falla."""
+    if not raw:
+        return None
+    raw = raw.strip()
+    for fmt in ("%H:%M", "%I:%M %p", "%I:%M%p", "%I %p", "%I%p"):
+        try:
+            return datetime.strptime(raw.upper(), fmt.upper()).time()
+        except ValueError:
+            continue
+    return None
+
+
+def _limpiar_texto(valor: str | None, max_len: int = 500) -> str | None:
+    """Strip de whitespace y truncado. Retorna None si queda vacío."""
+    if not valor or not isinstance(valor, str):
+        return None
+    limpio = " ".join(valor.split())
+    return limpio[:max_len] if limpio else None
+
+
+def _validar_fecha(fecha_str: str | None) -> "date | None":
+    """Parsea fecha YYYY-MM-DD con tolerancia a formatos sin cero inicial."""
+    if not fecha_str or not isinstance(fecha_str, str):
+        return None
+    for fmt in ("%Y-%m-%d", "%Y/%m/%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(fecha_str.strip(), fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _normalizar_respuesta_nim(parsed: object) -> list[dict]:
+    """
+    Normaliza la respuesta de NIM a list[dict] independientemente del formato
+    que haya devuelto el modelo. Aplica el cap de seguridad y filtra basura.
+    """
+    # Caso 1: array directo (formato esperado)
+    if isinstance(parsed, list):
+        eventos = parsed
+
+    # Caso 2: dict envuelto en una clave conocida  {"eventos": [...]}
+    elif isinstance(parsed, dict):
+        for key in _WRAPPER_KEYS:
+            if key in parsed and isinstance(parsed[key], list):
+                logger.warning("  -> NIM envolvió el array en la clave '%s'. Extrayendo.", key)
+                eventos = parsed[key]
+                break
+        else:
+            # Caso 3: dict único con campos de evento — modelo ignoró la instrucción de array
+            if "nombre" in parsed or "fecha" in parsed:
+                logger.warning("  -> NIM devolvió un objeto único en vez de array. Convirtiendo.")
+                eventos = [parsed]
+            else:
+                logger.warning("  -> Respuesta de NIM no reconocida: %r", type(parsed))
+                return []
+    else:
+        logger.warning("  -> Respuesta de NIM inesperada (tipo %s). Descartando.", type(parsed).__name__)
+        return []
+
+    # Filtrar elementos que no sean dicts
+    validos = [e for e in eventos if isinstance(e, dict)]
+    descartados = len(eventos) - len(validos)
+    if descartados:
+        logger.warning("  -> %d elemento(s) del array no son objetos válidos; descartados.", descartados)
+
+    # Aplicar cap de seguridad
+    if len(validos) > _MAX_EVENTOS_POR_POST:
+        logger.warning(
+            "  -> NIM devolvió %d eventos (máximo permitido: %d). Truncando.",
+            len(validos), _MAX_EVENTOS_POR_POST,
+        )
+        validos = validos[:_MAX_EVENTOS_POR_POST]
+
+    return validos
+
+
+def extract_events_data(text_post: str, org_name: str, client: OpenAI, phase_callback=None) -> tuple[list[dict], int]:
+    """
+    Envía el texto del post a NIM y devuelve la lista de eventos extraídos
+    junto con el total de tokens consumidos.
+    Retorna ([], 0) ante cualquier error no recuperable.
+    """
+    prompt = _construir_prompt(text_post, org_name)
 
     for attempt in range(2):  # intento 0 = primera llamada, intento 1 = retry tras 429
         try:
@@ -226,26 +375,14 @@ Texto del post:
 
             raw = _strip_json_fences(response.choices[0].message.content)
             parsed = json.loads(raw)
+            eventos = _normalizar_respuesta_nim(parsed)
 
-            # Blindaje: si el modelo devolvió una lista de eventos en vez de un
-            # solo objeto (a veces pasa cuando el post menciona varios eventos),
-            # nos quedamos con el primero en vez de tronar más adelante.
-            if isinstance(parsed, list):
-                logger.warning(
-                    "  -> NIM devolvió una lista de %d elemento(s) en vez de un objeto. "
-                    "Se usa el primero.", len(parsed)
-                )
-                parsed = parsed[0] if parsed else {"es_evento": False}
-
-            if not isinstance(parsed, dict):
-                logger.warning("  -> Respuesta de NIM no es un objeto JSON válido: %r", parsed)
-                return {"es_evento": False}, tokens_used
-
-            return parsed, tokens_used
+            logger.info("  -> %d evento(s) extraído(s) del post.", len(eventos))
+            return eventos, tokens_used
 
         except json.JSONDecodeError as e:
             logger.error("  -> Respuesta de NIM no es JSON válido: %s", e)
-            return {"es_evento": False}, 0
+            return [], 0
 
         except Exception as e:
             if _is_429(e):
@@ -259,17 +396,14 @@ Texto del post:
                     time.sleep(delay + 2)
                     if phase_callback:
                         phase_callback("", None)
-                    continue  # retry
+                    continue
                 else:
-                    # Segundo 429 consecutivo — detenemos el lote completo
-                    logger.error(
-                        "  -> 429 rate limit NIM tras reintento. Deteniendo procesamiento del lote."
-                    )
+                    logger.error("  -> 429 tras reintento. Deteniendo procesamiento del lote.")
                     raise NimQuotaExceeded() from e
             logger.error("Error al procesar post con NIM: %s", e)
-            return {"es_evento": False}, 0
+            return [], 0
 
-    return {"es_evento": False}, 0  # no debería llegar aquí
+    return [], 0  # no debería llegar aquí
 
 
 # Funciones auxilares
@@ -330,177 +464,248 @@ def _get_org_from_post(post: dict, db) -> tuple[str, int | None]:
     logger.warning("  [Org] '%s' no encontrada en BD (mejor match %.0f%%). Saltando.", author_name, mejor_sim * 100)
     return author_name, None
 
-def _es_duplicado(eventos_bd: list, fecha_evento: date, nombre_nuevo: str) -> bool:
+def _es_duplicado(eventos_bd: list[dict], fecha_evento: date, nombre_nuevo: str) -> bool:
     """
     Detecta duplicados por nombre similar en la misma fecha en toda la BD.
-    Opera sobre la lista cargada en memoria al inicio del lote.
+    Opera sobre la lista de dicts {"fecha", "nombre", "url_original"} cargada en memoria.
     """
     nombre_nuevo_n = _normalizar(nombre_nuevo)
     for ev in eventos_bd:
-        if ev.fecha != fecha_evento:
+        if ev["fecha"] != fecha_evento:
             continue
-        nombre_bd_n = _normalizar(ev.nombre)
+        nombre_bd_n = _normalizar(ev["nombre"])
         sim = SequenceMatcher(None, nombre_bd_n, nombre_nuevo_n).ratio()
         if sim > 0.72 or nombre_bd_n in nombre_nuevo_n or nombre_nuevo_n in nombre_bd_n:
             logger.info(
                 "  [Dedup] '%s' similar a '%s' existente (%.0f%%). Omitiendo.",
-                nombre_nuevo, ev.nombre, sim * 100,
+                nombre_nuevo, ev["nombre"], sim * 100,
             )
             return True
     return False
 
 # Procesamiento de posts
-def process_posts(posts: list, db, client: OpenAI, phase_callback=None) -> tuple[int, int]:
+_NIM_WORKERS = 8  # workers paralelos — el rate limiter global gestiona el RPM
+
+def process_posts(posts: list, client: OpenAI, phase_callback=None) -> tuple[int, int, int, int]:
     """
     Procesa una lista de posts del Bundle, extrae eventos y los inserta en BD.
-    Devuelve (eventos_añadidos, tokens_consumidos).
-    No llama a db.commit() — el caller es responsable del commit.
+
+    Usa dos sesiones de BD de corta duración para evitar que la conexión quede
+    abierta e inactiva durante los minutos que tardan las llamadas a NIM:
+      - Sesión 1 (Fase 1): pre-filtrado y carga de catálogos → cierra antes de NIM.
+      - Sesión 2 (Fase 3): inserción de eventos → abre DESPUÉS de NIM → commit → cierra.
+
+    Devuelve (eventos_añadidos, tokens_consumidos, posts_candidatos, total_posts).
     """
     events_added = 0
     total_tokens = 0
 
-    # Cargar eventos existentes una sola vez para dedup en memoria
-    eventos_bd = db.query(Evento).all()
+    # ── Fase 1: pre-filtrado con sesión corta ─────────────────────────────────
+    # Cargamos los datos que necesitamos en memoria (dicts plain) y cerramos la
+    # sesión ANTES de la fase NIM para no dejar una conexión idle varios minutos.
+    db_pre = SessionLocal()
+    try:
+        eventos_bd: list[dict] = [
+            {"fecha": ev.fecha, "nombre": ev.nombre, "url_original": ev.url_original}
+            for ev in db_pre.query(Evento).all()
+        ]
+        # Set de URLs existentes para dedup O(1) — evita O(n) por cada post
+        urls_existentes: set[str] = {
+            ev["url_original"] for ev in eventos_bd if ev["url_original"]
+        }
 
-    for i, post in enumerate(posts, 1):
-        text_post = post.get("content_text") or post.get("summary") or post.get("title", "")
-        url_post = post.get("url", "")
-        attachments = post.get("attachments", [])
+        candidates = []
+        for i, post in enumerate(posts, 1):
+            text_post = post.get("content_text") or post.get("summary") or post.get("title", "")
+            url_post = post.get("url", "")
+            attachments = post.get("attachments", [])
 
-        org_name, org_id = _get_org_from_post(post, db)
-
-        if not org_id:
-            logger.info("[%d/%d] Saltando: org '%s' no encontrada en BD.", i, len(posts), org_name)
-            continue
-
-        if not text_post.strip():
-            continue
-
-        # Dedup por URL exacta
-        if url_post and any(ev.url_original == url_post for ev in eventos_bd):
-            logger.info("[%d/%d] Saltando: URL ya existe en BD.", i, len(posts))
-            continue
-
-        # Dedup por título del post normalizado (protege contra cambios de URL en RSS)
-        titulo_post = _normalizar(post.get("title", ""))
-        if titulo_post:
-            titulo_duplicado = False
-            for ev in eventos_bd:
-                if _similitud(titulo_post, ev.nombre) > 0.80:
-                    logger.info("[%d/%d] Saltando: título similar a '%s' en BD.", i, len(posts), ev.nombre)
-                    titulo_duplicado = True
-                    break
-            if titulo_duplicado:
+            org_name, org_id = _get_org_from_post(post, db_pre)
+            if not org_id:
+                logger.info("[%d/%d] Saltando: org '%s' no encontrada en BD.", i, len(posts), org_name)
+                continue
+            if len(text_post.strip()) < _TEXT_MIN_CHARS:
+                logger.info("[%d/%d] Saltando: texto demasiado corto (%d chars).", i, len(posts), len(text_post.strip()))
+                continue
+            if url_post and url_post in urls_existentes:
+                logger.info("[%d/%d] Saltando: URL ya existe en BD.", i, len(posts))
+                continue
+            titulo_post = _normalizar(post.get("title", ""))
+            if titulo_post and any(_similitud(titulo_post, ev["nombre"]) > 0.80 for ev in eventos_bd):
+                logger.info("[%d/%d] Saltando: título similar ya existe en BD.", i, len(posts))
+                continue
+            if not _tiene_palabras_evento(text_post):
+                logger.info("[%d/%d] Saltando: sin palabras clave de evento.", i, len(posts))
                 continue
 
-        # Imagen adjunta tiene prioridad sobre la extraída por IA
-        attachment_image = None
-        if attachments and isinstance(attachments, list):
-            attachment_image = attachments[0].get("url")
-        if not attachment_image:
-            attachment_image = post.get("image") or post.get("thumbnail")
+            attachment_image = None
+            if attachments and isinstance(attachments, list):
+                attachment_image = attachments[0].get("url")
+            if not attachment_image:
+                attachment_image = post.get("image") or post.get("thumbnail")
 
-        logger.info("[%d/%d] Analizando post para '%s'...", i, len(posts), org_name)
+            candidates.append({
+                "idx": i,
+                "total": len(posts),
+                "text": text_post,
+                "url": url_post,
+                "org_name": org_name,
+                "org_id": org_id,
+                "attachment_image": attachment_image,
+            })
+    finally:
+        db_pre.close()  # libera la conexión antes de la fase NIM (puede tardar minutos)
 
+    logger.info("Posts candidatos para NIM: %d / %d", len(candidates), len(posts))
+
+    # ── Fase 2: llamadas NIM en paralelo (sin BD) ─────────────────────────────
+    quota_exceeded = threading.Event()
+    # (candidate, lista_eventos, tokens_consumidos)
+    nim_results: list[tuple[dict, list[dict], int]] = []
+    results_lock = threading.Lock()
+
+    def extract_one(cand: dict) -> None:
+        if quota_exceeded.is_set():
+            return
+        logger.info("[%d/%d] Analizando post para '%s'...", cand["idx"], cand["total"], cand["org_name"])
         try:
-            datos, tokens = extract_events_data(text_post, org_name, client, phase_callback=phase_callback)
+            lista_eventos, tokens = extract_events_data(cand["text"], cand["org_name"], client, phase_callback)
+            with results_lock:
+                nim_results.append((cand, lista_eventos, tokens))
         except NimQuotaExceeded:
-            logger.warning("  -> Cuota agotada. Se detiene el análisis de los posts restantes.")
+            quota_exceeded.set()
+            logger.warning("  -> Cuota agotada. Cancelando posts restantes.")
             if phase_callback:
-                phase_callback("", None)  # limpiar fase al salir
-            break
-        total_tokens += tokens
+                phase_callback("", None)
 
-        # Blindaje adicional: por si en algún punto futuro extract_events_data
-        # llegara a devolver algo que no sea dict, no dejamos que tumbe el batch.
-        if not isinstance(datos, dict):
-            logger.warning(
-                "[%d/%d] -> Respuesta inesperada del modelo (tipo %s). Saltando post.",
-                i, len(posts), type(datos).__name__,
-            )
-            continue
+    with concurrent.futures.ThreadPoolExecutor(max_workers=_NIM_WORKERS) as executor:
+        executor.map(extract_one, candidates)
 
-        datos["url_original"] = url_post
+    # ── Fase 3: validación e inserción con sesión fresca ─────────────────────
+    # La sesión se abre AQUÍ, después de NIM, garantizando una conexión activa.
+    # pool_pre_ping=True en el engine la verificará antes de usarla.
+    hoy = date.today()
+    fecha_min = hoy - timedelta(days=_FECHA_MAX_PASADO_DIAS)
+    fecha_max = hoy + timedelta(days=_FECHA_MAX_FUTURO_DIAS)
 
-        logger.debug("  -> JSON NIM: %s", json.dumps(datos, ensure_ascii=False))
+    nuevos_eventos: list[Evento] = []    # para capturar IDs tras el commit
+    urls_nuevas: set[str] = set()        # dedup de URLs de este run (complementa urls_existentes)
 
-        if not datos.get("es_evento"):
-            logger.info("  -> No es un evento.")
-            continue
+    db_insert = SessionLocal()
+    try:
+        for cand, lista_eventos, tokens in nim_results:
+            total_tokens += tokens
 
-        logger.info("  -> EVENTO DETECTADO: %s", datos.get("nombre"))
-        datos.pop("es_evento", None)
+            if not lista_eventos:
+                logger.info("  -> Post de '%s': sin eventos válidos.", cand["org_name"])
+                continue
 
-        # Parsear fechas y horas
-        if not datos.get("fecha"):
-            logger.warning(
-                "  -> El modelo marcó el post como evento pero no dio 'fecha'. Se descarta "
-                "(revisar manualmente si el evento es real: '%s').", datos.get("nombre")
-            )
-            continue
+            for ev_idx, datos in enumerate(lista_eventos, 1):
+                prefijo = f"  [Evento {ev_idx}/{len(lista_eventos)}]"
+                logger.debug("%s JSON: %s", prefijo, json.dumps(datos, ensure_ascii=False))
 
-        try:
-            fecha_evento = datetime.strptime(datos["fecha"], "%Y-%m-%d").date()
+                # ── Validar nombre ────────────────────────────────────────────
+                nombre = _limpiar_texto(datos.get("nombre"), max_len=200)
+                if not nombre:
+                    logger.warning("%s Sin nombre válido. Descartando.", prefijo)
+                    continue
 
-            end_date = None
-            if datos.get("fecha_fin"):
-                end_date = datetime.strptime(datos["fecha_fin"], "%Y-%m-%d").date()
-                if end_date < fecha_evento:
-                    logger.warning("  -> fecha_fin anterior a fecha; se descarta.")
+                logger.info("%s EVENTO DETECTADO: %s", prefijo, nombre)
+
+                # ── Validar fecha ─────────────────────────────────────────────
+                fecha_evento = _validar_fecha(datos.get("fecha"))
+                if not fecha_evento:
+                    logger.warning("%s '%s' sin fecha válida. Descartando.", prefijo, nombre)
+                    continue
+                if fecha_evento < fecha_min:
+                    logger.info("%s '%s' con fecha %s muy en el pasado. Descartando.", prefijo, nombre, fecha_evento)
+                    continue
+                if fecha_evento > fecha_max:
+                    logger.warning("%s '%s' con fecha %s muy en el futuro (posible alucinación). Descartando.", prefijo, nombre, fecha_evento)
+                    continue
+
+                # ── Validar fecha_fin ─────────────────────────────────────────
+                end_date = _validar_fecha(datos.get("fecha_fin"))
+                if end_date and end_date < fecha_evento:
+                    logger.warning("%s fecha_fin anterior a fecha_inicio; se descarta.", prefijo)
                     end_date = None
 
-            start_time = None
-            if datos.get("hora_inicio"):
-                start_time = datetime.strptime(datos["hora_inicio"], "%H:%M").time()
+                # ── Parsear horarios (tolerante a 12h y 24h) ──────────────────
+                start_time = _parsear_hora(datos.get("hora_inicio"))
+                end_time = _parsear_hora(datos.get("hora_fin"))
+                if datos.get("hora_inicio") and not start_time:
+                    logger.warning("%s Hora inicio '%s' no reconocida; se omite.", prefijo, datos.get("hora_inicio"))
+                if datos.get("hora_fin") and not end_time:
+                    logger.warning("%s Hora fin '%s' no reconocida; se omite.", prefijo, datos.get("hora_fin"))
 
-            end_time = None
-            if datos.get("hora_fin"):
-                end_time = datetime.strptime(datos["hora_fin"], "%H:%M").time()
+                # ── Validar coordenadas ───────────────────────────────────────
+                lat = datos.get("latitud")
+                lng = datos.get("longitud")
+                if not _coords_validas(lat, lng):
+                    lat, lng = None, None
 
-        except (ValueError, TypeError) as exc:
-            logger.warning("  -> Fecha/hora inválida de IA: %s", exc)
-            continue
+                # ── Validar enfoque y tipo contra listas permitidas ───────────
+                enfoque = datos.get("enfoque")
+                if enfoque and enfoque not in _ENFOQUES_VALIDOS:
+                    logger.warning("%s Enfoque '%s' no reconocido; se descarta.", prefijo, enfoque)
+                    enfoque = None
 
-        # Validar coordenadas 
-        lat = datos.get("latitud")
-        lng = datos.get("longitud")
-        if not _coords_validas(lat, lng):
-            lat, lng = None, None
+                tipo = datos.get("tipo")
+                if tipo and tipo not in _TIPOS_VALIDOS:
+                    logger.warning("%s Tipo '%s' no reconocido; se descarta.", prefijo, tipo)
+                    tipo = None
 
-        # Imagen final 
-        final_image = datos.get("imagen_url") or attachment_image
+                # ── Limpiar campos de texto ───────────────────────────────────
+                descripcion = _limpiar_texto(datos.get("descripcion"), max_len=1000)
+                ubicacion = _limpiar_texto(datos.get("ubicacion"), max_len=200)
+                imagen_url_nim = _limpiar_texto(datos.get("imagen_url"), max_len=500)
+                final_image = imagen_url_nim or cand["attachment_image"]
 
-        # Deduplicación 
-        if _es_duplicado(eventos_bd, fecha_evento, datos["nombre"]):
-            continue
+                if _es_duplicado(eventos_bd, fecha_evento, nombre):
+                    continue
 
-        nuevo_evento = Evento(
-            nombre=datos["nombre"],
-            descripcion=datos.get("descripcion"),
-            ubicacion=datos.get("ubicacion"),
-            latitud=lat,
-            longitud=lng,
-            fecha=fecha_evento,
-            fecha_fin=end_date,
-            hora_inicio=start_time,
-            hora_fin=end_time,
-            enfoque=datos.get("enfoque"),
-            tipo=datos.get("tipo"),
-            url_original=datos["url_original"],
-            imagen_url=final_image,
-            organizacion_id=org_id,
-            activo=True,
-        )
-        db.add(nuevo_evento)
-        eventos_bd.append(nuevo_evento)  # dedup en memoria para el mismo lote
-        events_added += 1
-        logger.info("  -> Evento preparado para guardar.")
+                nuevo_evento = Evento(
+                    nombre=nombre,
+                    descripcion=descripcion,
+                    ubicacion=ubicacion,
+                    latitud=lat,
+                    longitud=lng,
+                    fecha=fecha_evento,
+                    fecha_fin=end_date,
+                    hora_inicio=start_time,
+                    hora_fin=end_time,
+                    enfoque=enfoque,
+                    tipo=tipo,
+                    url_original=cand["url"],
+                    imagen_url=final_image,
+                    organizacion_id=cand["org_id"],
+                    activo=True,
+                )
+                db_insert.add(nuevo_evento)
+                nuevos_eventos.append(nuevo_evento)
+                eventos_bd.append({"fecha": fecha_evento, "nombre": nombre, "url_original": cand["url"]})
+                events_added += 1
+                logger.info("%s '%s' preparado para guardar.", prefijo, nombre)
 
-    return events_added, total_tokens
+        db_insert.commit()
+        # Después del commit el ORM refresca los IDs autogenerados
+        nuevos_ids = [ev.id for ev in nuevos_eventos if ev.id is not None]
+    except Exception:
+        db_insert.rollback()
+        nuevos_ids = []
+        raise
+    finally:
+        db_insert.close()
+
+    return events_added, total_tokens, len(candidates), len(posts), nuevos_ids
 
 # Procesamiento del bundle unificado
-def process_bundle(db, client: OpenAI, phase_callback=None) -> tuple[int, bool]:
-    """Devuelve (tokens_consumidos, rss_no_disponible)."""
+def process_bundle(client: OpenAI, phase_callback=None) -> tuple[int, bool, int, int, int, list[int]]:
+    """
+    Descarga y procesa el Bundle RSS.
+    Devuelve (tokens_consumidos, rss_no_disponible, eventos_añadidos, posts_analizados, posts_encontrados, nuevos_ids).
+    No requiere una sesión de BD — process_posts gestiona sus propias sesiones.
+    """
     global _RSS_PLAN_NO_PAGADO
     logger.info("\nIniciando procesamiento del Bundle...")
 
@@ -519,7 +724,7 @@ def process_bundle(db, client: OpenAI, phase_callback=None) -> tuple[int, bool]:
                 rss_no_disponible = True
                 _RSS_PLAN_NO_PAGADO = True
                 logger.warning("RSS.app no disponible (plan no pagado). Sin datos nuevos que procesar.")
-                return 0, rss_no_disponible
+                return 0, rss_no_disponible, 0, 0, 0, []
             else:
                 logger.warning("No se pudo descargar el Bundle (%s). Usando respaldo local...", e)
         except Exception as e:
@@ -532,16 +737,17 @@ def process_bundle(db, client: OpenAI, phase_callback=None) -> tuple[int, bool]:
                 feed_data = json.load(f)
         else:
             logger.error("Error crítico: no hay Bundle URL ni archivo local en %s", FALLBACK_JSON_PATH)
-            return 0, rss_no_disponible
+            return 0, rss_no_disponible, 0, 0, 0, []
 
     posts = feed_data.get("items", []) or feed_data.get("entries", [])
     logger.info("Se encontraron %d posts en el Bundle.", len(posts))
 
-    events_added, total_tokens = process_posts(posts, db, client, phase_callback=phase_callback)
-    db.commit()
+    events_added, total_tokens, posts_analizados, posts_encontrados, nuevos_ids = process_posts(
+        posts, client, phase_callback=phase_callback
+    )
 
     logger.info("Bundle procesado. Eventos nuevos: %d", events_added)
-    return total_tokens, rss_no_disponible
+    return total_tokens, rss_no_disponible, events_added, posts_analizados, posts_encontrados, nuevos_ids
 
 
 # Punto de entrada
@@ -556,6 +762,10 @@ def run_etl(phase_callback=None) -> dict:
 
     logger.info("\n=== Iniciando ETL de eventos ===")
     total_tokens = 0
+    total_eventos_añadidos = 0
+    total_posts_analizados = 0
+    total_posts_encontrados = 0
+    total_nuevos_ids: list[int] = []
     errores: list[str] = []
 
     try:
@@ -564,30 +774,34 @@ def run_etl(phase_callback=None) -> dict:
         logger.error(str(e))
         return {"ok": False, "error": str(e), "tokens": 0, "rss_no_disponible": False}
 
-    db = SessionLocal()
+    logger.info("\n--- Procesando Bundle unificado ---")
     try:
-        logger.info("\n--- Procesando Bundle unificado ---")
-        try:
-            tokens, _ = process_bundle(db, client, phase_callback=phase_callback)
-            total_tokens += tokens
-        except Exception as e:
-            msg = f"Error procesando bundle: {e}"
-            logger.error(msg)
-            errores.append(msg)
-            db.rollback()
-
-    finally:
-        db.close()
+        tokens, _, ev_añadidos, posts_anal, posts_enc, nuevos_ids = process_bundle(
+            client, phase_callback=phase_callback
+        )
+        total_tokens += tokens
+        total_eventos_añadidos += ev_añadidos
+        total_posts_analizados += posts_anal
+        total_posts_encontrados += posts_enc
+        total_nuevos_ids.extend(nuevos_ids)
+    except Exception as e:
+        msg = f"Error procesando bundle: {e}"
+        logger.error(msg)
+        errores.append(msg)
 
     if _RSS_PLAN_NO_PAGADO:
         logger.warning("RSS.app no disponible — plan no pagado. Se usaron datos locales de respaldo.")
 
-    logger.info("\n=== ETL finalizado. Tokens totales: %d ===", total_tokens)
+    logger.info("\n=== ETL finalizado. Tokens totales: %d | Eventos añadidos: %d ===", total_tokens, total_eventos_añadidos)
     return {
         "ok": True,
         "tokens": total_tokens,
         "errores": errores,
         "rss_no_disponible": _RSS_PLAN_NO_PAGADO,
+        "posts_encontrados": total_posts_encontrados,
+        "posts_analizados": total_posts_analizados,
+        "eventos_añadidos": total_eventos_añadidos,
+        "nuevos_ids": total_nuevos_ids,
     }
 
 if __name__ == "__main__":

@@ -8,13 +8,22 @@ from app.utils.constants import (
     ISE_PESOS
 )
 from app.utils.helpers import ise_level
+from app.utils import ttl_cache
 from app.api.woman_inclusion.service import get_inclusion_femenina
 from app.api.overview.service import get_panorama
 from app.api.ecosystem_maturity.service import get_madurez
 
 logger = logging.getLogger("stem_api.indice_salud")
 
+
+_CACHE_KEY = "indice_salud"
+_CACHE_TTL = 300
+
 def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
+    cached = ttl_cache.get(_CACHE_KEY, _CACHE_TTL)
+    if cached:
+        return cached
+
     """
     Calcula el Índice de Salud del Ecosistema STEM (ISE).
 
@@ -72,7 +81,7 @@ def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
     nivel = ise_level(score)
     logger.info("ISE score: %.1f — nivel: %s", score, nivel)
 
-    return IndiceSaludEcosistema(
+    result = IndiceSaludEcosistema(
         score_global=round(score, 1),
         nivel=nivel,
         dimensiones=[
@@ -109,3 +118,5 @@ def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
             ),
         ],
     )
+    ttl_cache.put(_CACHE_KEY, result)
+    return result

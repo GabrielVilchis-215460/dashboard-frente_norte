@@ -38,7 +38,7 @@ def obtener_historial_eventos(
     q = (
         db.query(Evento)
         .options(joinedload(Evento.organizacion))
-        .filter(Evento.fecha < fecha_hoy)
+        .filter(Evento.fecha < fecha_hoy, Evento.activo == True)
     )
     if organizacion_id:
         q = q.filter(Evento.organizacion_id == organizacion_id)
@@ -74,9 +74,9 @@ def obtener_eventos_mapa(db: Session) -> List[EventoMapPoint]:
     grupos: dict[int, EventoMapPoint] = {}
     for ev in eventos:
         # Coordenadas: primero las del propio evento, luego las de la org
-        lat = ev.latitud or (ev.organizacion.latitud if ev.organizacion else None)
-        lng = ev.longitud or (ev.organizacion.longitud if ev.organizacion else None)
-        if not lat or not lng:
+        lat = ev.latitud if ev.latitud is not None else (ev.organizacion.latitud if ev.organizacion else None)
+        lng = ev.longitud if ev.longitud is not None else (ev.organizacion.longitud if ev.organizacion else None)
+        if lat is None or lng is None:
             continue
 
         org = ev.organizacion
@@ -222,7 +222,11 @@ def listar_todos_eventos_admin(
 def contar_eventos_activos(db: Session) -> int:
     fecha_hoy = date.today()
     return db.query(Evento).filter(
-        Evento.fecha >= fecha_hoy, Evento.activo == True
+        Evento.activo == True,
+        or_(
+            Evento.fecha >= fecha_hoy,
+            and_(Evento.fecha_fin.isnot(None), Evento.fecha_fin >= fecha_hoy),
+        ),
     ).count()
 
 

@@ -69,13 +69,16 @@ def listar_publico(
     return EventosPublicoResponse(total=total, items=items)
 
 
+_TRUSTED_PROXIES = {"127.0.0.1", "::1"}
+
 def _obtener_ip_cliente(request: Request) -> str:
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        # XFF puede traer una cadena "cliente, proxy1, proxy2"
-        # el primer valor es la IP original del cliente.
-        return xff.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    client_host = request.client.host if request.client else None
+    # Solo confiar en X-Forwarded-For si la conexión viene de un proxy de confianza
+    if client_host in _TRUSTED_PROXIES:
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            return xff.split(",")[0].strip()
+    return client_host or "unknown"
 
 
 @router.get("/{evento_id}", response_model=EventoResponse)
@@ -151,7 +154,7 @@ def admin_run_etl(_: str = Depends(get_current_admin)):
     Solo se permite un job a la vez — devuelve 409 si ya hay uno en ejecución.
     Se recomienda ejecutar una vez por semana (cada lunes).
     """
-    if etl_runner.is_running():
+    if not etl_runner.try_start():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="El ETL ya está en ejecución. Espera a que termine antes de lanzarlo de nuevo.",

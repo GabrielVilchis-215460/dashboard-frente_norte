@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # ── Seguridad JWT ──────────────────────────────────────────────────────────
     # SECRET_KEY: mínimo 32 caracteres en producción.
     # Genera uno seguro con: openssl rand -hex 32
-    SECRET_KEY: str = "dev-secret-change-in-production"
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 horas
 
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     # Google Gemini API (opcional en desarrollo, requerida para ETL de eventos RSS)
     GEMINI_API_KEY: str = ""
     NIM_BASE_URL: str = ""
-    NVIDIA_API_KEY: str
+    NVIDIA_API_KEY: str = ""
 
     # ETL de eventos: URL del bundle RSS unificado de RSS.app
     # Si no se configura, el ETL usará el archivo local de respaldo.

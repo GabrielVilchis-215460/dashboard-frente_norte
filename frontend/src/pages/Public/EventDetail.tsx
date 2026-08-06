@@ -91,7 +91,7 @@ export function EventDetail() {
       {evento.imagen_url && (
         <div
           className={styles.heroImgWrap}
-          style={{ backgroundImage: `url(${evento.imagen_url})` }}
+          style={{ backgroundImage: `url("${evento.imagen_url.replace(/"/g, '%22')}")` }}
         >
           <img src={evento.imagen_url} alt={evento.nombre} className={styles.heroImg} />
         </div>

@@ -141,6 +141,7 @@
   flex: 1;
   position: relative;
   z-index: 1;
+  min-height: calc(100dvh - 180px);
 }
  
 .footer {

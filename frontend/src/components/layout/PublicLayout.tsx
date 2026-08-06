@@ -1,11 +1,19 @@
 import { useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { IconMenu2, IconX } from '@tabler/icons-react';
 import { ROUTES } from '../../constants/routes';
 import styles from './PublicLayout.module.css';
 
+const pageVariants = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] } },
+  exit:    { opacity: 0,        transition: { duration: 0.15, ease: 'easeIn' } },
+};
+
 export function PublicLayout() {
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const location = useLocation();
 
   const links = (
     <>
@@ -68,7 +76,11 @@ export function PublicLayout() {
       )}
 
       <main className={styles.main}>
-        <Outlet />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div key={location.pathname} variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       <footer className={styles.footer}>

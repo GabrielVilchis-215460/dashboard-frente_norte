@@ -5,10 +5,19 @@ from sqlalchemy.orm import Session
 from app.api.ecosystem_maturity.schemas import MadurezEcosistema, MadurezDetalle 
 from app.utils.constants import MADUREZ_ORDEN
 from app.utils.helpers import mid_volume
+from app.utils import ttl_cache
 
 logger = logging.getLogger("stem_api.madurez_ecosistema")
 
+
+_CACHE_KEY = "madurez_ecosistema"
+_CACHE_TTL = 300
+
 def get_madurez(db: Session) -> MadurezEcosistema:
+    cached = ttl_cache.get(_CACHE_KEY, _CACHE_TTL)
+    if cached:
+        return cached
+
     logger.info("Calculando madurez del ecosistema")
     programas = db.query(Programa).filter(Programa.activo == True).all()
     orgs = db.query(Organizacion).filter(Organizacion.activo == True).all()
@@ -50,8 +59,10 @@ def get_madurez(db: Session) -> MadurezEcosistema:
         for etapa, cantidad in org_madurez_count.items()
     ]
 
-    return MadurezEcosistema(
+    result = MadurezEcosistema(
         por_etapa=por_etapa,
         beneficiarios_por_etapa=beneficiarios_etapa,
         organizaciones_por_madurez=lista_organizaciones_madurez 
     )
+    ttl_cache.put(_CACHE_KEY, result)
+    return result

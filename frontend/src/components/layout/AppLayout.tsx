@@ -1,9 +1,16 @@
 // -- Esqueleto principal de cada pestaña --
 
 import { Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { ROUTES } from '../../constants/routes';
 import styles from './AppLayout.module.css';
+
+const pageVariants = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } },
+  exit:    { opacity: 0,       transition: { duration: 0.15, ease: 'easeIn' } },
+};
 
 const ROUTE_THEME: Record<string, string> = {
   [ROUTES.OVERVIEW]:      'theme-navy',
@@ -35,7 +42,11 @@ export function AppLayout() {
       {/* Contenido principal como tarjeta glass */}
       <main className={styles.contentGlass}>
         <div className={styles.inner}>
-          <Outlet />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={location.pathname} variants={pageVariants} initial="initial" animate="animate" exit="exit">
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
     </div>
