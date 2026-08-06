@@ -29,6 +29,7 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
     """
     logger.info("Calculando oferta STEM")
     programas = db.query(Programa).filter(Programa.activo == True).all()
+    organizaciones = db.query(Organizacion).filter(Organizacion.activo == True).all()
 
     # Conteo de programas por área STEM (un programa puede tener múltiples áreas)
     areas: dict[str, int] = {}
@@ -42,23 +43,22 @@ def get_oferta_stem(db: Session) -> OfertaSTEM:
         for tipo in (p.tipos_actividad or []):
             actividades[tipo] = actividades.get(tipo, 0) + 1
 
+    # Inicializamos con TODAS las organizaciones activas de la base de datos
     orgs_programas = {}
-    for p in programas: 
-        nombre_org = p.organizacion.nombre if p.organizacion else "Organización Desconocida"
-        enfoque_org = p.organizacion.enfoque_principal if p.organizacion and p.organizacion.enfoque_principal else "No especificado"
-        tipo_org = p.organizacion.tipo if p.organizacion and p.organizacion.tipo else "No especificado"
-        logo_org = p.organizacion.logo_url if p.organizacion and p.organizacion.logo_url else None
+    for org in organizaciones:
+        orgs_programas[org.nombre] = {
+            "logo_url": org.logo_url,
+            "enfoque_principal": org.enfoque_principal or "No especificado",
+            "tipo_organizacion": org.tipo or "No especificado",
+            "programas": []
+        }
 
-        if nombre_org not in orgs_programas:
-            orgs_programas[nombre_org] = {
-                "logo_url": logo_org,
-                "enfoque_principal": enfoque_org,
-                "tipo_organizacion": tipo_org,
-                "programas": []
-            }
-
-        if p.nombre:
-            orgs_programas[nombre_org]["programas"].append(p.nombre)
+    # Asociamos los programas activos a sus respectivas organizaciones
+    for p in programas:
+        if p.organizacion:
+            nombre_org = p.organizacion.nombre
+            if nombre_org in orgs_programas and p.nombre:
+                orgs_programas[nombre_org]["programas"].append(p.nombre)
 
     lista_orgs_programas = [
         OrganizacionProgramas(
