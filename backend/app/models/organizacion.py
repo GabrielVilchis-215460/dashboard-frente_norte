@@ -24,7 +24,7 @@ class Organizacion(Base):
     nombre = Column(String(255), nullable=False, index=True)
 
     # Clasificación
-    tipo = Column(String(100), nullable=True)
+    tipo = Column(ARRAY(String), nullable=True, default=[])
     # ONG / Asociación civil | Institución educativa | Gobierno |
     # Empresa / Industria | Centro de investigación |
     # Makerspace / Laboratorio | Centro comunitario | Incubadora / Aceleradora
