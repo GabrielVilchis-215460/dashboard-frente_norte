@@ -164,7 +164,9 @@ export function EcosystemMap({
 
     // ── Modo pines ──
     pins.filter((p) => p.latitud && p.longitud).forEach((pin) => {
-      const { color } = getTipoConfig(pin.tipo);
+      // Tomamos el primer tipo del arreglo para asignarle color de manera segura
+      const primerTipo = Array.isArray(pin.tipo) && pin.tipo.length > 0 ? pin.tipo[0] : (pin.tipo as unknown as string);
+      const { color } = getTipoConfig(primerTipo);
       const dimmed = selectedId !== null && selectedId !== pin.id;
       const animated = selectedId === null || selectedId === pin.id;
 

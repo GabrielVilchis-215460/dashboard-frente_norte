@@ -35,7 +35,13 @@ function OrgsTable() {
   const filtered = useMemo(() => {
     if (!data) return [];
     const q = search.toLowerCase();
-    return q ? data.filter((o) => o.nombre.toLowerCase().includes(q) || o.tipo?.toLowerCase().includes(q)) : data;
+    return q ? data.filter((o) => {
+      const matchNombre = o.nombre.toLowerCase().includes(q);
+      const matchTipo = Array.isArray(o.tipo) 
+        ? o.tipo.some(t => t.toLowerCase().includes(q)) 
+        : o.tipo?.toLowerCase().includes(q);
+      return matchNombre || matchTipo;
+    }) : data;
   }, [data, search]);
 
   function openCreate() {
@@ -93,7 +99,7 @@ function OrgsTable() {
     <>
       {error && <p className={styles.errorBanner}>{error}</p>}
 
-<div className={styles.tableCard}>
+      <div className={styles.tableCard}>
         <div className={styles.tableActions}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <input className={styles.searchInput} placeholder="Buscar..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -103,7 +109,7 @@ function OrgsTable() {
             <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
               {exporting ? 'Exportando…' : '↓ Exportar CSV'}
             </button>
-<button className={styles.addBtn} onClick={openCreate}>+ Nueva organización</button>
+            <button className={styles.addBtn} onClick={openCreate}>+ Nueva organización</button>
           </div>
         </div>
 
@@ -125,7 +131,11 @@ function OrgsTable() {
             {filtered.map((org) => (
               <tr key={org.id}>
                 <td style={{ color: 'var(--text-100)', fontWeight: 500 }}>{org.nombre}</td>
-                <td>{org.tipo ?? '—'}</td>
+                <td>
+                  {Array.isArray(org.tipo) && org.tipo.length > 0 
+                    ? org.tipo.join(', ') 
+                    : (org.tipo ?? '—')}
+                </td>
                 <td>{org.zona ?? '—'}</td>
                 <td>{org.areas_stem?.slice(0, 2).join(', ') ?? '—'}{(org.areas_stem?.length ?? 0) > 2 ? '...' : ''}</td>
                 <td>

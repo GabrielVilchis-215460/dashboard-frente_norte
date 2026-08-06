@@ -42,6 +42,11 @@ export function OrgCarousel({ orgs, loading }: Props) {
   const prev = () => setIndex((i) => (i - 1 + total) % total);
   const next = () => setIndex((i) => (i + 1) % total);
 
+  // Asegurarnos de que tipo_organizacion sea un array seguro para iterar
+  const tiposOrg = Array.isArray(current.tipo_organizacion) 
+    ? current.tipo_organizacion 
+    : (current.tipo_organizacion ? [current.tipo_organizacion] : []);
+
   return (
     <div className={styles.carousel}>
       <div className={styles.counter}>
@@ -75,14 +80,14 @@ export function OrgCarousel({ orgs, loading }: Props) {
           {/* Nombre de la organización */}
           <h3 className={styles.orgName}>{current.organizacion}</h3>
           
-          {/* Badges */}
+          {/* Badges dinámicos para múltiples tipos */}
           <div className={styles.badges}>
-            {current.tipo_organizacion && current.tipo_organizacion !== 'No especificado' && (
-              <span className={`${styles.badge} ${styles.badgeBlue}`}>
+            {tiposOrg.map((t, idx) => (
+              <span key={idx} className={`${styles.badge} ${styles.badgeBlue}`}>
                 <IconUsersGroup size={14} stroke={1.5} />
-                {formatLabel(current.tipo_organizacion)}
+                {formatLabel(t)}
               </span>
-            )}
+            ))}
             {current.enfoque_principal && current.enfoque_principal !== 'No especificado' && (
               <span className={`${styles.badge} ${styles.badgeGreen}`}>
                 <IconSchool size={14} stroke={1.5} />

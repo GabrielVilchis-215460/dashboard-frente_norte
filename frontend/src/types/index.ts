@@ -107,7 +107,7 @@ export interface OrganizacionProgramas {
   logo_url: string | null;
   organizacion: string;
   enfoque_principal: string | null;
-  tipo_organizacion: string | null;
+  tipo_organizacion: string[];
   programas: string[];
 }
 
@@ -147,7 +147,7 @@ export interface PinMapa {
 export interface FichaActor {
   id: number;
   nombre: string;
-  tipo: string;
+  tipo: string[];
   descripcion: string | null;
   areas_stem: string[];
   enfoque_principal: string | null;

@@ -22,18 +22,25 @@ interface Props {
 export function ActorSheet({ ficha, loading, onClose }: Props) {
   if (!ficha && !loading) return null;
 
-  const tipoConfig = ficha ? getTipoConfig(ficha.tipo) : null;
-
   return (
     <div className={styles.sheet}>
       {/* Header */}
       <div className={styles.header}>
         <div>
-          {tipoConfig && (
+          {ficha?.tipo && ficha.tipo.length > 0 && (
             <div className={styles.badges}>
-              <span className={styles.tipoBadge} style={{ borderColor: tipoConfig.color, color: tipoConfig.color }}>
-                {ficha?.tipo}
-              </span>
+              {ficha.tipo.map((t, idx) => {
+                const tipoConfig = getTipoConfig(t);
+                return (
+                  <span
+                    key={idx}
+                    className={styles.tipoBadge}
+                    style={{ borderColor: tipoConfig.color, color: tipoConfig.color }}
+                  >
+                    {t}
+                  </span>
+                );
+              })}
               {ficha?.enfoque_principal && (
                 <span className={styles.enfoqueBadge}>
                   {formatLabel(ficha.enfoque_principal)}
