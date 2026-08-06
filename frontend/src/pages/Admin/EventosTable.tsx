@@ -15,6 +15,13 @@ import type { Organizacion } from '../../services/adminApi';
 import type { Evento, EventoCreate, ETLStatus } from '../../types';
 import { formatFechaEvento, formatHorario } from '../../utils/format';
 import styles from './Admin.module.css';
+import formStyles from './AdminForm.module.css';
+
+const TIPOS_EVENTO = ['Talleres', 'Cursos', 'Bootcamp', 'Campamento', 'Conferencia', 'Eventos'];
+const ENFOQUES_EVENTO = [
+  'Ciencia', 'Tecnologia', 'Ingenieria', 'Matematicas', 'Robotica',
+  'Inteligencia artificial', 'Medio ambiente', 'Finanzas', 'Emprendimiento',
+];
 
 // ── Form de evento ────────────────────────────────────────────────────────────
 
@@ -152,11 +159,19 @@ function EventoFormFields({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
         <div style={row}>
           <label style={label}>Tipo</label>
-          <input style={input} value={value.tipo} onChange={set('tipo')} placeholder="Ej: Taller, Conferencia…" />
+          {/* className en vez de style inline: los estilos inline no pueden
+              alcanzar los <option> hijos, por eso salían blanco sobre blanco */}
+          <select className={formStyles.select} value={value.tipo} onChange={set('tipo')}>
+            <option value="">Seleccionar...</option>
+            {TIPOS_EVENTO.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
         </div>
         <div style={row}>
           <label style={label}>Enfoque</label>
-          <input style={input} value={value.enfoque} onChange={set('enfoque')} placeholder="Ej: STEM, Género…" />
+          <select className={formStyles.select} value={value.enfoque} onChange={set('enfoque')}>
+            <option value="">Seleccionar...</option>
+            {ENFOQUES_EVENTO.map((e) => <option key={e} value={e}>{e}</option>)}
+          </select>
         </div>
       </div>
       <div style={row}>
