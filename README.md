@@ -1,10 +1,10 @@
 # STEM Ecosystem Dashboard — Ciudad Juárez
 Developed for **Frente Norte / FICOSEC** · STEM Ecosystem Observatory
 
-<a href="https://dashboard-frente-norte.vercel.app" target="_blank">
+<a href="https://www.borderstem.com/" target="_blank">
   <img src="https://img.shields.io/badge/Website-Deployed-success?style=for-the-badge&logo=vercel" alt="Website" />
 </a>
-<a href="https://dashboard-frente-norte.onrender.com/docs" target="_blank">
+<a href="https://api.borderstem.com/" target="_blank">
   <img src="https://img.shields.io/badge/API-Swagger_Docs-blue?style=for-the-badge&logo=fastapi" alt="API Docs" />
 </a>
 
@@ -27,7 +27,6 @@ This repository contains the source code for the **STEM Ecosystem Dashboard of C
   <img src="https://img.shields.io/badge/FastAPI-009485.svg?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
   <img src="https://img.shields.io/badge/SQLAlchemy-D71F00?style=for-the-badge&logo=python&logoColor=white" alt="SQLAlchemy" />
   <img src="https://img.shields.io/badge/postgresql-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
-  <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
   <img src="https://img.shields.io/badge/JWT-black?style=for-the-badge&logo=JSON%20web%20tokens" alt="JWT" />
   <img src="https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
 </div>
@@ -101,7 +100,7 @@ cp backend/.env.example backend/.env
 **2. From the project root, build and start the containers:**
 
 ```bash
-docker-compose up -d --build
+docker-compose -f docker-compose-dev.yml up --build
 ```
 
 **3. Access the services:**
