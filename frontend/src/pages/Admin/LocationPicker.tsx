@@ -6,9 +6,10 @@ interface LocationPickerProps {
   latitud?: number;
   longitud?: number;
   onChange: (lat: number | undefined, lng: number | undefined) => void;
+  readOnly?: boolean;
 }
 
-export function LocationPicker({ latitud, longitud, onChange }: LocationPickerProps) {
+export function LocationPicker({ latitud, longitud, onChange, readOnly = false }: LocationPickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('leaflet').Map | null>(null);
   const markerRef = useRef<import('leaflet').Marker | null>(null);
@@ -24,11 +25,13 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
     if (markerRef.current) {
       markerRef.current.setLatLng(pos);
     } else {
-      markerRef.current = L.marker(pos, { draggable: true }).addTo(map);
-      markerRef.current.on('dragend', () => {
-        const p = markerRef.current!.getLatLng();
-        onChange(parseFloat(p.lat.toFixed(6)), parseFloat(p.lng.toFixed(6)));
-      });
+      markerRef.current = L.marker(pos, { draggable: !readOnly }).addTo(map);
+      if (!readOnly) {
+        markerRef.current.on('dragend', () => {
+          const p = markerRef.current!.getLatLng();
+          onChange(parseFloat(p.lat.toFixed(6)), parseFloat(p.lng.toFixed(6)));
+        });
+      }
     }
   }
 
@@ -42,8 +45,14 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
       const map = L.map(containerRef.current!, {
         center: (latitud && longitud) ? [latitud, longitud] : JUAREZ_CENTER,
         zoom: (latitud && longitud) ? 15 : 13,
-        zoomControl: true,
+        zoomControl: !readOnly,
         attributionControl: false,
+        dragging: !readOnly,
+        touchZoom: !readOnly,
+        doubleClickZoom: !readOnly,
+        scrollWheelZoom: !readOnly,
+        boxZoom: !readOnly,
+        keyboard: !readOnly,
       });
 
       L.tileLayer(
@@ -56,13 +65,15 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
       // Colocar pin inicial si ya hay coordenadas
       if (latitud && longitud) placeMarker(latitud, longitud);
 
-      // Click en el mapa → colocar/mover pin
-      map.on('click', (e) => {
-        const lat = parseFloat(e.latlng.lat.toFixed(6));
-        const lng = parseFloat(e.latlng.lng.toFixed(6));
-        placeMarker(lat, lng);
-        onChange(lat, lng);
-      });
+      // Click en el mapa → colocar/mover pin (solo si no es readOnly)
+      if (!readOnly) {
+        map.on('click', (e) => {
+          const lat = parseFloat(e.latlng.lat.toFixed(6));
+          const lng = parseFloat(e.latlng.lng.toFixed(6));
+          placeMarker(lat, lng);
+          onChange(lat, lng);
+        });
+      }
 
       setTimeout(() => map.invalidateSize(), 150);
     });
@@ -93,7 +104,9 @@ export function LocationPicker({ latitud, longitud, onChange }: LocationPickerPr
   return (
     <div className={styles.wrapper}>
       <p className={styles.hint}>
-        Haz clic en el mapa para colocar el pin, escribe las coordenadas manualmente o arrastra el pin para ajustar.
+        {readOnly
+          ? 'Vista previa de la ubicación. Escribe las coordenadas manualmente para modificarla.'
+          : 'Haz clic en el mapa para colocar el pin, escribe las coordenadas manualmente o arrastra el pin para ajustar.'}
       </p>
 
       <div ref={containerRef} className={styles.mapContainer} />

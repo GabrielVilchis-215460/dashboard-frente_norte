@@ -172,6 +172,7 @@ export function OrgForm({ value, onChange }: OrgFormProps) {
           latitud={value.latitud}
           longitud={value.longitud}
           onChange={(lat, lng) => onChange({ ...value, latitud: lat, longitud: lng })}
+          readOnly
         />
       </div>
       <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
