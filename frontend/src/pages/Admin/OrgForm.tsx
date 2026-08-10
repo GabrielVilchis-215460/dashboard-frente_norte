@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import styles from './AdminForm.module.css';
 import { LocationPicker } from './LocationPicker';
+import { adminApi } from '../../services/adminApi';
 import type { Organizacion, OrganizacionCreate } from '../../services/adminApi';
 
 const TIPOS = [
@@ -52,6 +54,24 @@ function toggleItem(arr: string[], item: string): string[] {
 
 export function OrgForm({ value, onChange }: OrgFormProps) {
   const set = (key: keyof FormData, val: unknown) => onChange({ ...value, [key]: val });
+
+  const [mapsUrl, setMapsUrl] = useState('');
+  const [parseando, setParseando] = useState(false);
+  const [urlError, setUrlError] = useState('');
+
+  async function handleExtraerCoords() {
+    if (!mapsUrl.trim()) return;
+    setParseando(true);
+    setUrlError('');
+    try {
+      const { latitud, longitud } = await adminApi.parseGoogleMapsUrl(mapsUrl);
+      onChange({ ...value, latitud, longitud });
+    } catch (err) {
+      setUrlError(err instanceof Error ? err.message : 'No se pudo procesar el link.');
+    } finally {
+      setParseando(false);
+    }
+  }
 
   return (
     <div className={styles.grid}>
@@ -130,6 +150,23 @@ export function OrgForm({ value, onChange }: OrgFormProps) {
       </div>
 
       <span className={styles.sectionTitle}>Geolocalización</span>
+
+      <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
+        <label className={styles.label}>Link de Google Maps</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            className={styles.input}
+            value={mapsUrl}
+            onChange={(e) => setMapsUrl(e.target.value)}
+            placeholder="Pega el link de Google Maps aquí"
+          />
+          <button type="button" onClick={handleExtraerCoords} disabled={parseando || !mapsUrl.trim()}>
+            {parseando ? 'Buscando...' : 'Extraer coordenadas'}
+          </button>
+        </div>
+        {urlError && <span className={styles.errorText}>{urlError}</span>}
+      </div>
+
       <div className={styles.fullWidth}>
         <LocationPicker
           latitud={value.latitud}

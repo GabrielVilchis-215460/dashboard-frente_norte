@@ -39,6 +39,11 @@ export interface Organizacion {
 
 export interface OrganizacionCreate extends Omit<Organizacion, 'id' | 'created_at' | 'updated_at'> {}
 
+export interface Coordenadas {
+  latitud: number;
+  longitud: number;
+}
+
 export interface Programa {
   id: number;
   nombre?: string;
@@ -135,7 +140,9 @@ export const adminApi = {
 
   toggleOrganizacion: (id: number) =>
     adminClient.patch<Organizacion>(`/api/panel_admin/organizaciones/${id}/toggle`).then((r) => r.data),
-
+  
+  parseGoogleMapsUrl: (url: string) =>
+    adminClient.post<Coordenadas>('/api/panel_admin/organizaciones/parse-maps-url', { url }).then((r) => r.data),
   // Programas
   getProgramas: () =>
     adminClient.get<Programa[]>('/api/panel_admin/programas').then((r) => r.data),

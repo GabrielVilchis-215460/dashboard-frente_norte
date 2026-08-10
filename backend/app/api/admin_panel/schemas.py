@@ -2,6 +2,12 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 
+class GoogleMapsUrlIn(BaseModel):
+    url: str = Field(..., min_length=1)
+
+class CoordenadasOut(BaseModel):
+    latitud: float
+    longitud: float
 
 class ProgramaBase(BaseModel):
     nombre: Optional[str] = None

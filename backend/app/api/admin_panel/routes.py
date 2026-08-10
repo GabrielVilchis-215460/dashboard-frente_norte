@@ -14,8 +14,11 @@ from app.api.admin_panel.schemas import (
     OrganizacionMapPin,
     OrganizacionOut,
     OrganizacionUpdate,
+    GoogleMapsUrlIn, 
+    CoordenadasOut
 )
 from app.api.auth.service import get_current_admin
+from app.utils.geo_utils import extract_coords_from_url
 
 # Todos los endpoints de este router requieren JWT válido
 router = APIRouter(
@@ -177,5 +180,13 @@ def toggle_programa(prog_id: int, db: Session = Depends(get_db)):
     db.refresh(prog)
     return prog
 
-
-
+@router.post("/organizaciones/parse-maps-url", response_model=CoordenadasOut)
+def parse_maps_url(data: GoogleMapsUrlIn):
+    coords = extract_coords_from_url(data.url)
+    if not coords:
+        raise HTTPException(
+            status_code=422,
+            detail="No se pudieron extraer coordenadas de esa URL. Intenta con el link largo (clic derecho > copiar dirección del enlace)."
+        )
+    lat, lng = coords
+    return CoordenadasOut(latitud=lat, longitud=lng)
