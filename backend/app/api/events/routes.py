@@ -224,25 +224,32 @@ async def admin_upload_imagen(
     }
     ext = _CONTENT_TYPE_EXT.get(file.content_type, "jpg")
     filename = f"eventos/{uuid.uuid4()}.{ext}"
+    bucket_name = "stem-fn"
 
     try:
         import httpx
-        upload_url = f"{settings.SUPABASE_URL}/storage/v1/object/imagenes/{filename}"
+        upload_url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket_name}/{filename}"
+        
+        headers = {
+            "apikey": settings.SUPABASE_SECRET_KEY,
+            "Authorization": f"Bearer {settings.SUPABASE_SECRET_KEY}",
+            "Content-Type": file.content_type or "application/octet-stream",
+        }
+        
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 upload_url,
                 content=contents,
-                headers={
-                    "Authorization": f"Bearer {settings.SUPABASE_SECRET_KEY}",
-                    "Content-Type": file.content_type or "application/octet-stream",
-                },
+                headers=headers,
             )
+
         if resp.status_code not in (200, 201):
             logger.error("Supabase upload %s: %s", resp.status_code, resp.text)
-            raise HTTPException(status_code=502, detail="Error al subir la imagen")
+            raise HTTPException(status_code=502, detail="Error al subir la imagen a Supabase")
 
-        public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/imagenes/{filename}"
+        public_url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{bucket_name}/{filename}"
         return {"url": public_url}
+        
     except HTTPException:
         raise
     except Exception as e:
