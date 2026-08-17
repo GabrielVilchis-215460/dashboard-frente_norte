@@ -6,11 +6,16 @@ definidas en app/api/auth/service.py.
 """
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import uuid
 
 import bcrypt as _bcrypt
 from jose import jwt
 
 from app.core.config import settings
+
+# Blacklist en memoria de JTIs revocados (jti → tiempo de expiración).
+# Se limpia automáticamente al verificar tokens para no crecer indefinidamente.
+_revoked_jtis: dict[str, datetime] = {}
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -22,39 +27,43 @@ def hash_password(password: str) -> str:
 
 
 def create_access_token(subject: str, rol: str, expires_delta: Optional[timedelta] = None) -> str:
-    """
-    Crea un JWT firmado con el subject (username) y el rol del usuario.
-
-    Args:
-        subject: Identificador del usuario (username).
-        rol: Rol del usuario ("admin" | "viewer"), embebido como claim.
-        expires_delta: Tiempo de vida del token. Si no se proporciona,
-                       usa ACCESS_TOKEN_EXPIRE_MINUTES de la configuración.
-
-    Returns:
-        Token JWT como string.
-    """
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    payload = {"sub": subject, "rol": rol, "exp": expire}
+    payload = {"sub": subject, "rol": rol, "exp": expire, "jti": str(uuid.uuid4())}
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def decode_access_token(token: str) -> Optional[dict]:
-    """
-    Decodifica y valida un JWT.
+def revoke_token(token: str) -> None:
+    """Agrega el jti del token a la blacklist hasta que expire."""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        jti = payload.get("jti")
+        exp = payload.get("exp")
+        if jti and exp:
+            _revoked_jtis[jti] = datetime.fromtimestamp(exp, tz=timezone.utc)
+    except Exception:
+        pass
 
-    Returns:
-        Un dict {"username": str, "rol": str} si el token es válido,
-        None si expiró o es inválido.
-    """
+
+def decode_access_token(token: str) -> Optional[dict]:
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         username = payload.get("sub")
         rol = payload.get("rol")
+        jti = payload.get("jti")
         if username is None or rol is None:
             return None
-        return {"username": username, "rol": rol}
+
+        # Limpiar jtis expirados y verificar blacklist
+        now = datetime.now(timezone.utc)
+        expired_jtis = [j for j, exp in _revoked_jtis.items() if exp <= now]
+        for j in expired_jtis:
+            del _revoked_jtis[j]
+
+        if jti and jti in _revoked_jtis:
+            return None
+
+        return {"username": username, "rol": rol, "jti": jti}
     except Exception:
         return None

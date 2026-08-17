@@ -18,7 +18,7 @@ class PinMapa(BaseModel):
 
 
 class FichaActor(BaseModel):
-    """Ficha descriptiva completa de un actor, mostrada al hacer clic en su pin."""
+    """Ficha descriptiva pública de un actor — sin datos de contacto (PII)."""
     id: int
     nombre: str
     tipo: List[str] = []
@@ -26,9 +26,6 @@ class FichaActor(BaseModel):
     areas_stem: List[str] = []
     enfoque_principal: Optional[str]
     sitio_web: Optional[str]
-    contacto_nombre: Optional[str]
-    contacto_email: Optional[str]
-    contacto_telefono: Optional[str]
     direccion: Optional[str]
     zona: Optional[str]
     colonias: List[str] = []

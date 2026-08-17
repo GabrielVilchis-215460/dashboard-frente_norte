@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., description="Nombre de usuario")
-    password: str = Field(..., description="Contraseña")
+    username: str = Field(..., min_length=1, max_length=150, description="Nombre de usuario")
+    password: str = Field(..., min_length=1, max_length=128, description="Contraseña")
 
 
 class TokenResponse(BaseModel):

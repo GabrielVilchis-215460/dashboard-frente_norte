@@ -190,6 +190,15 @@ export const adminApi = {
   toggleEvento: (id: number) =>
     adminClient.patch<import('../types').Evento>(`/api/eventos/admin/${id}/toggle`).then((r) => r.data),
 
+  deleteEvento: (id: number) =>
+    adminClient.delete(`/api/eventos/admin/${id}`),
+
+  limpiarInactivos: () =>
+    adminClient.delete<{ eliminados: number }>('/api/eventos/admin/limpiar/inactivos').then((r) => r.data),
+
+  getDuplicados: () =>
+    adminClient.get<{ evento_a_id: number; evento_a: string; evento_b_id: number; evento_b: string; fecha: string; similitud: number }[]>('/api/eventos/admin/duplicados').then((r) => r.data),
+
   uploadImagenEvento: async (file: File): Promise<string> => {
     const form = new FormData();
     form.append('file', file);

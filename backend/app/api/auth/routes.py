@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.api.auth.schemas import LoginRequest, TokenResponse
 from app.api.auth.service import authenticate_user
 from app.core.config import settings
-from app.core.security import create_access_token
+from app.core.security import create_access_token, revoke_token
 from app.core.limiter import limiter
 from app.db.session import get_db
+
+_bearer = HTTPBearer(auto_error=False)
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
 
@@ -46,3 +49,11 @@ def login(request: Request, credentials: LoginRequest, db: Session = Depends(get
         expires_in=expires_in,
         rol=usuario.rol,
     )
+
+
+@router.post("/logout", summary="Cerrar sesión", status_code=status.HTTP_204_NO_CONTENT)
+def logout(credentials: HTTPAuthorizationCredentials = Depends(_bearer)):
+    """Invalida el token JWT actual antes de que expire."""
+    if credentials:
+        revoke_token(credentials.credentials)
+
