@@ -207,7 +207,8 @@ async def admin_upload_imagen(
     file: UploadFile = File(...),
     _: str = Depends(get_current_admin),
 ):
-    import os, aiofiles
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SECRET_KEY:
+        raise HTTPException(status_code=503, detail="Almacenamiento no configurado")
 
     allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
     if file.content_type not in allowed:
@@ -222,21 +223,28 @@ async def admin_upload_imagen(
         "image/webp": "webp", "image/gif": "gif",
     }
     ext = _CONTENT_TYPE_EXT.get(file.content_type, "jpg")
-    nombre_archivo = f"{uuid.uuid4()}.{ext}"
-
-    # Guardar en /app/imagenes/eventos/ (volumen Docker compartido con Nginx)
-    directorio = "/app/imagenes/eventos"
-    os.makedirs(directorio, exist_ok=True)
-    ruta_disco = os.path.join(directorio, nombre_archivo)
+    filename = f"eventos/{uuid.uuid4()}.{ext}"
 
     try:
-        async with aiofiles.open(ruta_disco, "wb") as f_out:
-            await f_out.write(contents)
-    except Exception as e:
-        logger.error("Error al guardar imagen en disco: %s", e)
-        raise HTTPException(status_code=500, detail="Error al guardar la imagen")
+        import httpx
+        upload_url = f"{settings.SUPABASE_URL}/storage/v1/object/imagenes/{filename}"
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                upload_url,
+                content=contents,
+                headers={
+                    "Authorization": f"Bearer {settings.SUPABASE_SECRET_KEY}",
+                    "Content-Type": file.content_type or "application/octet-stream",
+                },
+            )
+        if resp.status_code not in (200, 201):
+            logger.error("Supabase upload %s: %s", resp.status_code, resp.text)
+            raise HTTPException(status_code=502, detail="Error al subir la imagen")
 
-    # URL pública servida por Nginx en /imagenes/eventos/<archivo>
-    base_url = settings.IMAGES_BASE_URL.rstrip("/")
-    public_url = f"{base_url}/eventos/{nombre_archivo}"
-    return {"url": public_url}
+        public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/imagenes/{filename}"
+        return {"url": public_url}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Upload error: %s", e)
+        raise HTTPException(status_code=500, detail="Error interno al procesar la imagen")

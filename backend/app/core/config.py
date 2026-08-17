@@ -24,9 +24,10 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD_HASH: str = ""
 
-    # ── Almacenamiento de imágenes ─────────────────────────────────────────────
-    # URL pública base donde Nginx sirve las imágenes subidas (sin slash al final)
-    IMAGES_BASE_URL: str = "https://borderstem.com/imagenes"
+    # ── Supabase ───────────────────────────────────────────────────────────────
+    # Requeridas para usar la API REST de Supabase (Storage, RLS, Data API, etc.)
+    SUPABASE_URL: str = ""
+    SUPABASE_SECRET_KEY: str = ""
 
     # ── Entorno y CORS ─────────────────────────────────────────────────────────
     ENVIRONMENT: str = "development"

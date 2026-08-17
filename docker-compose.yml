@@ -20,15 +20,13 @@ services:
     container_name: stem-backend
     build:
       context: ./backend
-      dockerfile: DockerFile
+      dockerfile: DockerFile 
     # Puerto 8000 solo accesible internamente vía Nginx — no expuesto al host.
     env_file:
       - ./backend/.env
     environment:
       CORS_ORIGINS: '["https://borderstem.com", "https://www.borderstem.com"]'
       ENVIRONMENT: "production"
-    volumes:
-      - imagenes-data:/app/imagenes
     #healthcheck:
      # test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       #interval: 15s
@@ -50,7 +48,6 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./certbot/conf:/etc/letsencrypt
       - ./certbot/www:/var/www/certbot
-      - imagenes-data:/var/www/imagenes
     depends_on:
       - stem-backend
     networks:
@@ -68,7 +65,6 @@ services:
 
 volumes:
   postgres-data:
-  imagenes-data:
 
 networks:
   stem-net:
