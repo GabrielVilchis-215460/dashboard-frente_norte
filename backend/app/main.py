@@ -17,9 +17,6 @@ app = FastAPI(
     title="Dashboard STEM Ciudad Juárez — API",
     description="Backend del Observatorio del Ecosistema STEM de Ciudad Juárez. Desarrollado para Frente Norte.",
     version="1.0.0",
-    docs_url=None,
-    redoc_url=None,
-    openapi_url=None,
 )
 
 # Registra el limiter y su manejador de error en la app
@@ -66,9 +63,8 @@ def _startup():
         replace_existing=True,
     )
     scheduler.start()
-    
     msg = "Scheduler ETL activado: lunes 08:00 hora Juárez"
-    print(f"INFO:     {msg}")
+    print(f"INFO:     {msg}", flush=True)
     logger.info(msg)
 
 @app.get("/", tags=["Health"])
