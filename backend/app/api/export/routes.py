@@ -25,18 +25,29 @@ router = APIRouter(
 )
 
 
+def _sanitize_csv(value) -> str:
+    """Neutraliza fórmulas de CSV injection prefijando con apóstrofe."""
+    if value is None:
+        return ""
+    s = str(value)
+    if s and s[0] in ('=', '+', '-', '@', '\t', '\r'):
+        return "'" + s
+    return s
+
+
 def _csv_response(filename: str, headers: list, rows: list) -> StreamingResponse:
     """Genera una respuesta CSV en memoria lista para descarga."""
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(headers)
-    writer.writerows(rows)
+    sanitized = [[_sanitize_csv(cell) for cell in row] for row in rows]
+    writer.writerows(sanitized)
     output.seek(0)
 
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -193,6 +193,56 @@ def toggle_evento(db: Session, evento_id: int) -> Optional[Evento]:
     return evento
 
 
+def eliminar_evento(db: Session, evento_id: int) -> bool:
+    evento = db.query(Evento).filter(Evento.id == evento_id).first()
+    if not evento:
+        return False
+    db.delete(evento)
+    db.commit()
+    return True
+
+
+def limpiar_inactivos(db: Session) -> int:
+    """Elimina permanentemente todos los eventos inactivos. Retorna cuántos se borraron."""
+    inactivos = db.query(Evento).filter(Evento.activo == False).all()
+    count = len(inactivos)
+    for ev in inactivos:
+        db.delete(ev)
+    db.commit()
+    return count
+
+
+def detectar_duplicados_activos(db: Session) -> list[dict]:
+    """
+    Devuelve pares de eventos activos con mismo nombre (>80% similitud) y misma fecha.
+    Útil para revisión manual antes de limpiar.
+    """
+    from difflib import SequenceMatcher
+    import unicodedata
+
+    def _norm(t: str) -> str:
+        t = t.lower().strip()
+        t = unicodedata.normalize("NFD", t)
+        return "".join(c for c in t if unicodedata.category(c) != "Mn")
+
+    eventos = db.query(Evento).filter(Evento.activo == True).order_by(Evento.fecha).all()
+    duplicados = []
+    visto = set()
+    for i, a in enumerate(eventos):
+        for b in eventos[i + 1:]:
+            if a.fecha != b.fecha:
+                break  # están ordenados por fecha, ya no hay más con misma fecha
+            if (a.id, b.id) in visto:
+                continue
+            sim = SequenceMatcher(None, _norm(a.nombre), _norm(b.nombre)).ratio()
+            if sim > 0.80:
+                visto.add((a.id, b.id))
+                duplicados.append({"evento_a_id": a.id, "evento_a": a.nombre,
+                                    "evento_b_id": b.id, "evento_b": b.nombre,
+                                    "fecha": str(a.fecha), "similitud": round(sim, 2)})
+    return duplicados
+
+
 def obtener_evento_por_id(db: Session, evento_id: int) -> Optional[Evento]:
     return (
         db.query(Evento)

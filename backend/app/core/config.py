@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     # Genera uno seguro con: openssl rand -hex 32
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 horas
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60  # 1 hora
 
     # ── Credenciales del administrador ─────────────────────────────────────────
     # ADMIN_PASSWORD_HASH: hash bcrypt de la contraseña.

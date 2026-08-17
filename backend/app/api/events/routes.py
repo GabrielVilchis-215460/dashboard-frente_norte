@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.api.auth.service import get_current_admin
 from app.api.events import service, etl_runner
+from app.api.events.service import eliminar_evento, limpiar_inactivos, detectar_duplicados_activos
 from app.api.events.schemas import (
     EventoResponse, EventoCreate, EventoUpdate, EventoMapPoint,
     MetricasEventos, EventosPublicoResponse, ETLStatusResponse,
@@ -147,6 +148,36 @@ def admin_toggle_evento(
     return ev
 
 
+@router.delete("/admin/{evento_id}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_eliminar_evento(
+    evento_id: int,
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Elimina permanentemente un evento de la BD."""
+    if not eliminar_evento(db, evento_id):
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+
+
+@router.delete("/admin/limpiar/inactivos", status_code=status.HTTP_200_OK)
+def admin_limpiar_inactivos(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Elimina permanentemente todos los eventos inactivos para depurar duplicados."""
+    eliminados = limpiar_inactivos(db)
+    return {"eliminados": eliminados}
+
+
+@router.get("/admin/duplicados", status_code=status.HTTP_200_OK)
+def admin_ver_duplicados(
+    db: Session = Depends(get_db),
+    _: str = Depends(get_current_admin),
+):
+    """Detecta eventos activos con nombre similar en la misma fecha."""
+    return detectar_duplicados_activos(db)
+
+
 @router.post("/admin/etl/run", response_model=ETLStatusResponse, status_code=status.HTTP_202_ACCEPTED)
 def admin_run_etl(_: str = Depends(get_current_admin)):
     """
@@ -187,27 +218,38 @@ async def admin_upload_imagen(
     if len(contents) > 5 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="La imagen no debe superar 5 MB")
 
-    ext = file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "jpg"
+    _CONTENT_TYPE_EXT = {
+        "image/jpeg": "jpg", "image/png": "png",
+        "image/webp": "webp", "image/gif": "gif",
+    }
+    ext = _CONTENT_TYPE_EXT.get(file.content_type, "jpg")
     filename = f"eventos/{uuid.uuid4()}.{ext}"
+    bucket_name = "stem-fn"
 
     try:
         import httpx
-        upload_url = f"{settings.SUPABASE_URL}/storage/v1/object/imagenes/{filename}"
+        upload_url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/object/{bucket_name}/{filename}"
+        
+        headers = {
+            "apikey": settings.SUPABASE_SECRET_KEY,
+            "Authorization": f"Bearer {settings.SUPABASE_SECRET_KEY}",
+            "Content-Type": file.content_type or "application/octet-stream",
+        }
+        
         async with httpx.AsyncClient() as client:
             resp = await client.post(
                 upload_url,
                 content=contents,
-                headers={
-                    "Authorization": f"Bearer {settings.SUPABASE_SECRET_KEY}",
-                    "Content-Type": file.content_type or "application/octet-stream",
-                },
+                headers=headers,
             )
+
         if resp.status_code not in (200, 201):
             logger.error("Supabase upload %s: %s", resp.status_code, resp.text)
-            raise HTTPException(status_code=502, detail="Error al subir la imagen")
+            raise HTTPException(status_code=502, detail="Error al subir la imagen a Supabase")
 
-        public_url = f"{settings.SUPABASE_URL}/storage/v1/object/public/imagenes/{filename}"
+        public_url = f"{settings.SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{bucket_name}/{filename}"
         return {"url": public_url}
+        
     except HTTPException:
         raise
     except Exception as e:

@@ -33,6 +33,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
 # Copiar el código fuente del proyecto
 COPY . .
 
+# Correr como usuario no-root para limitar daño en caso de vulnerabilidad
+RUN useradd --no-create-home --shell /bin/false stemapp \
+    && chown -R stemapp:stemapp /app
+USER stemapp
+
 EXPOSE 8000
 
 # Entorno por defecto configurado para producción

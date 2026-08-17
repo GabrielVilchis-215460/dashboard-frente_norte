@@ -7,8 +7,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"  # Expuesto para que conectarse mediante pgadmin o alguna herramienta a fin
+    # Puerto 5432 NO expuesto al host — acceso solo interno vía stem-net.
+    # Para pgAdmin: conectar al contenedor con: docker exec -it stem-postgres psql -U root stem_db
+    # O usar un túnel SSH: ssh -L 5432:localhost:5432 usuario@servidor
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./backend/app/db/backup.sql:/docker-entrypoint-initdb.d/init.sql
@@ -20,12 +21,11 @@ services:
     build:
       context: ./backend
       dockerfile: DockerFile 
-    ports:
-      - "8000:8000"
+    # Puerto 8000 solo accesible internamente vía Nginx — no expuesto al host.
     env_file:
       - ./backend/.env
     environment:
-      CORS_ORIGINS: '["http://localhost", "https://borderstem.com", "https://www.borderstem.com"]'
+      CORS_ORIGINS: '["https://borderstem.com", "https://www.borderstem.com"]'
       ENVIRONMENT: "production"
     #healthcheck:
      # test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

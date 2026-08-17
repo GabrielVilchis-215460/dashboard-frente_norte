@@ -198,6 +198,9 @@ function EventoFormFields({
             onChange={(e) => { const f = e.target.files?.[0]; if (f) onImageUpload(f); }}
           />
         </div>
+        <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-40)', lineHeight: 1.4 }}>
+          El ETL no siempre obtiene imágenes automáticamente ya que tienen cada url de la imagen cuenta con una expiración y suelen desaparecer una vez que pase dicha expiración. Si el evento no tiene imagen, agrégala manualmente pegando una URL o subiendo un archivo.
+        </p>
         {value.imagen_url && (
           <img src={value.imagen_url} alt="preview" style={{ marginTop: 8, height: 80, borderRadius: 6, objectFit: 'cover' }} />
         )}
@@ -499,7 +502,7 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
     setModal('edit');
   }
 
-  function openToggle(ev: Evento) {
+  function openDelete(ev: Evento) {
     setSelected(ev);
     setModal('toggle');
   }
@@ -543,15 +546,15 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
     }
   }
 
-  async function handleToggle() {
+  async function handleDelete() {
     if (!selected) return;
     setSaving(true);
     try {
-      await adminApi.toggleEvento(selected.id);
+      await adminApi.deleteEvento(selected.id);
       setModal(null);
       refetch();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Error al cambiar estado');
+      setFormError(err instanceof Error ? err.message : 'Error al eliminar');
     } finally {
       setSaving(false);
     }
@@ -662,8 +665,8 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
                 <td>
                   <div className={styles.rowActions}>
                     <button className={styles.editBtn} onClick={() => openEdit(ev)}>Editar</button>
-                    <button className={styles.deleteBtn} onClick={() => openToggle(ev)}>
-                      {ev.activo ? 'Desactivar' : 'Activar'}
+                    <button className={styles.deleteBtn} onClick={() => openDelete(ev)}>
+                      Eliminar
                     </button>
                   </div>
                 </td>
@@ -694,17 +697,15 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
 
       {modal === 'toggle' && selected && (
         <Modal
-          title={selected.activo ? 'Desactivar evento' : 'Activar evento'}
+          title="Eliminar evento"
           onClose={() => setModal(null)}
-          onConfirm={handleToggle}
-          confirmLabel={selected.activo ? 'Desactivar' : 'Activar'}
+          onConfirm={handleDelete}
+          confirmLabel="Eliminar"
           loading={saving}
         >
           <p style={{ color: 'var(--text-80)', fontSize: 'var(--text-sm)' }}>
-            {selected.activo
-              ? <>¿Desactivar <strong style={{ color: 'var(--text-100)' }}>{selected.nombre}</strong>? Dejará de aparecer en el dashboard pero se conserva en el historial.</>
-              : <>¿Reactivar <strong style={{ color: 'var(--text-100)' }}>{selected.nombre}</strong>? Volverá a aparecer como evento activo.</>
-            }
+            ¿Eliminar permanentemente <strong style={{ color: 'var(--text-100)' }}>{selected.nombre}</strong>?
+            Esta acción no se puede deshacer.
           </p>
         </Modal>
       )}
