@@ -199,7 +199,7 @@ function EventoFormFields({
           />
         </div>
         <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--text-40)', lineHeight: 1.4 }}>
-          ⚠️ El ETL no siempre obtiene imágenes automáticamente. Si el evento no tiene imagen, agrégala manualmente pegando una URL o subiendo un archivo.
+          El ETL no siempre obtiene imágenes automáticamente ya que tienen cada url de la imagen cuenta con una expiración y suelen desaparecer una vez que pase dicha expiración. Si el evento no tiene imagen, agrégala manualmente pegando una URL o subiendo un archivo.
         </p>
         {value.imagen_url && (
           <img src={value.imagen_url} alt="preview" style={{ marginTop: 8, height: 80, borderRadius: 6, objectFit: 'cover' }} />

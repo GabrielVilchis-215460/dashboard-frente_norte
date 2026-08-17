@@ -66,8 +66,10 @@ def _startup():
         replace_existing=True,
     )
     scheduler.start()
-    logger.info("Scheduler ETL activado: lunes 08:00 hora Juárez.")
-
+    
+    msg = "Scheduler ETL activado: lunes 08:00 hora Juárez"
+    print(f"INFO:     {msg}")
+    logger.info(msg)
 
 @app.get("/", tags=["Health"])
 def root():
