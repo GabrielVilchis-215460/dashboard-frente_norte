@@ -1,6 +1,6 @@
 // Mapa interactivo principal con Leaflet
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import type { PinMapa, EventoMapPoint } from '../../../types';
 import { getTipoConfig } from './mapConfig';
 import { JUAREZ_CENTER, DEFAULT_ZOOM } from './mapConfig';
@@ -78,17 +78,70 @@ export function EcosystemMap({
     if (!containerRef.current) return;
     if ((containerRef.current as any)._leaflet_id) return;
 
-    const map = L.map(containerRef.current, {
+    const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    const container = containerRef.current;
+
+    const map = L.map(container, {
       center: center ?? JUAREZ_CENTER,
       zoom: zoom ?? DEFAULT_ZOOM,
-      zoomControl: true,
-      attributionControl: false,
+      zoomControl: !isTouch,
+      attributionControl: true,
       doubleClickZoom: false,
-    });
+      dragging: !isTouch,
+      tap: false,
+      scrollWheelZoom: false,
+      touchZoom: isTouch,
+      pinchZoom: isTouch,
+    } as any);
+
+    // ── Hint flotante ──────────────────────────────────────────────────────────
+    const hint = document.createElement('div');
+    hint.className = styles.mapHint;
+    container.appendChild(hint);
+
+    let hintTimer: ReturnType<typeof setTimeout>;
+
+    function showHint(msg: string) {
+      hint.textContent = msg;
+      hint.classList.add(styles.mapHintVisible);
+      clearTimeout(hintTimer);
+      hintTimer = setTimeout(() => hint.classList.remove(styles.mapHintVisible), 2000);
+    }
+
+    if (isTouch) {
+      // Móvil/tablet: un dedo → hint, dos dedos → zoom+pan
+      let touchCount = 0;
+      container.addEventListener('touchstart', (e) => {
+        touchCount = e.touches.length;
+        if (touchCount === 1) {
+          showHint('Usa dos dedos para mover el mapa');
+        }
+        if (touchCount >= 2) {
+          map.dragging.enable();
+        }
+      }, { passive: true });
+      container.addEventListener('touchend', () => {
+        touchCount = 0;
+        map.dragging.disable();
+      }, { passive: true });
+    } else {
+      // Desktop: drag libre, Alt+scroll para zoom
+      map.dragging.enable();
+      map.scrollWheelZoom.disable();
+
+      container.addEventListener('wheel', (e: WheelEvent) => {
+        if (e.altKey) {
+          e.preventDefault();
+          map.setZoom(map.getZoom() + (e.deltaY < 0 ? 1 : -1));
+        } else {
+          showHint('Mantén Alt + scroll para hacer zoom');
+        }
+      }, { passive: false });
+    }
 
     L.tileLayer(
-      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      { maxZoom: 19 }
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }
     ).addTo(map);
 
     markerLayerRef.current = L.layerGroup().addTo(map);
@@ -97,6 +150,7 @@ export function EcosystemMap({
     setTimeout(() => map.invalidateSize(), 100);
 
     return () => {
+      clearTimeout(hintTimer);
       map.remove();
       mapRef.current = null;
       markerLayerRef.current = null;
