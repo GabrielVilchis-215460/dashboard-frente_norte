@@ -78,7 +78,7 @@ export function EcosystemMap({
     if (!containerRef.current) return;
     if ((containerRef.current as any)._leaflet_id) return;
 
-    const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    const isTouch = navigator.maxTouchPoints > 0;
     const container = containerRef.current;
 
     const map = L.map(container, {
