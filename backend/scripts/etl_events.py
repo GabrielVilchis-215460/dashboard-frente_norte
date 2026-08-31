@@ -3,7 +3,7 @@ Script ETL (Extract, Transform, Load) para la automatización de eventos.
 
 Descripción:
     Descarga el Bundle unificado de RSS.app y procesa los posts con un modelo
-    de NVIDIA NIM (meta/llama-3.1-70b-instruct) para detectar eventos futuros,
+    de NVIDIA NIM (nvidia/nemotron-3.5-lightning-30b-a3b) para detectar eventos futuros,
     extrayendo: nombre, descripción, ubicación, coordenadas, fecha, horario,
     categoría e imagen.
 
@@ -38,7 +38,8 @@ FALLBACK_JSON_PATH: str = os.path.join(os.path.dirname(__file__), "..", "..", "d
 
 # Modelo y endpoint de NVIDIA NIM (compatible con el SDK de OpenAI)
 NIM_BASE_URL = settings.NIM_BASE_URL
-NIM_MODEL = "meta/llama-3.1-70b-instruct"
+#NIM_MODEL = "meta/llama-3.1-70b-instruct"
+NIM_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b"
 
 # Bounding box de Ciudad Juárez para validar coordenadas extraídas por IA
 # Cualquier valor fuera de este rango se descarta (previene alucinaciones)
@@ -194,7 +195,8 @@ def _call_nim(prompt: str, client: OpenAI) -> object:
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,
-        max_tokens=1000,  # suficiente para ≤8 eventos; menos tokens = respuesta más rápida
+        max_tokens=1000,
+        extra_body={"chat_template_kwargs": {"enable_thinking": False}}, # este modelo cuenta con modo thinking
     )
 
 def _get_nim_client() -> OpenAI:
