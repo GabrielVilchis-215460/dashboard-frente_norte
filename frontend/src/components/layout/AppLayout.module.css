@@ -51,13 +51,137 @@
   .inner { padding: var(--space-6); }
 }
 
+/* ---- Hamburguesa + Drawer (solo móvil) ---- */
+.hamburgerBtn { display: none; }
+.drawer { display: none; }
+.drawerOverlay { display: none; }
+
 @media (max-width: 768px) {
   .shell {
     flex-direction: column;
     padding: 8px;
-    padding-bottom: 80px;
   }
+
   .sidebarWrapper { display: none; }
   .contentGlass { min-height: auto; }
   .inner { padding: var(--space-4); }
+
+  /* Botón hamburguesa flotante */
+  .hamburgerBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 400;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  /* Icono hamburguesa animado */
+  .hamburgerIcon {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 20px;
+  }
+
+  .hamburgerIcon span {
+    display: block;
+    height: 2px;
+    width: 100%;
+    background: var(--text-80);
+    border-radius: 2px;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+    transform-origin: center;
+  }
+
+  .hamburgerOpen span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .hamburgerOpen span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+  .hamburgerOpen span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+  /* Overlay oscuro */
+  .drawerOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Drawer */
+  .drawer {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: 260px;
+    z-index: 350;
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-right: 1px solid var(--glass-border);
+    box-shadow: 4px 0 32px rgba(0,0,0,0.4);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .drawerOpen {
+    transform: translateX(0);
+  }
+
+  /* Forzar layout vertical dentro del drawer (anula el bottom-bar de Sidebar.module.css) */
+  .drawer :global(.leaflet-tile-pane) { filter: none; }
+
+  .drawer :global([class*="sidebar"]) {
+    flex-direction: column !important;
+    height: 100% !important;
+    width: 100% !important;
+    position: static !important;
+    border-top: none !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+  }
+
+  .drawer :global([class*="brand"]) {
+    display: flex !important;
+    padding-top: 60px !important;
+  }
+
+  .drawer :global([class*="nav"]) {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .drawer :global([class*="navItem"]) {
+    flex-direction: row !important;
+    min-width: unset !important;
+    padding: 12px 16px !important;
+  }
+
+  .drawer :global([class*="navLabel"]) {
+    font-size: 14px !important;
+  }
+
+  .drawer :global([class*="footer"]) {
+    display: flex !important;
+  }
 }

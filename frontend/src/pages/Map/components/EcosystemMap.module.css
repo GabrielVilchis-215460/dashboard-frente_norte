@@ -5,6 +5,35 @@
   border-radius: var(--radius-lg);
 }
 
+/* Hint flotante de interacción */
+.mapHint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.mapHintVisible {
+  opacity: 1;
+}
+
+:global(.leaflet-tile-pane) {
+  filter: invert(100%) hue-rotate(180deg) brightness(75%) contrast(110%) saturate(20%);
+}
+
 :global(.leaflet-control-zoom) {
   border: 1px solid var(--glass-border) !important;
   background: rgba(12, 22, 52, 0.85) !important;

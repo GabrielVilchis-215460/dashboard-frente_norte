@@ -39,6 +39,10 @@
 }
 
 /* Pines */
+:global(.leaflet-tile-pane) {
+  filter: invert(100%) hue-rotate(180deg) brightness(75%) contrast(110%) saturate(20%);
+}
+
 :global(.leaflet-div-icon) {
   background: transparent;
   border: none;

@@ -31,15 +31,15 @@ export function MapPreview({ points, loading, className = '' }: Props) {
         center: JUAREZ_CENTER,
         zoom: DEFAULT_ZOOM,
         zoomControl: false,
-        attributionControl: false,
+        attributionControl: true,
         dragging: false,
         scrollWheelZoom: false,
         doubleClickZoom: false,
       });
 
       L.tileLayer(
-        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-        { maxZoom: 19 }
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { maxZoom: 19, attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }
       ).addTo(map);
 
       mapInstanceRef.current = map;

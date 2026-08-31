@@ -1,5 +1,6 @@
 // -- Esqueleto principal de cada pestaña --
 
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
@@ -28,16 +29,47 @@ function getTheme(pathname: string): string {
   return ROUTE_THEME[pathname] ?? 'theme-navy';
 }
 
+function HamburgerIcon({ open }: { open: boolean }) {
+  return (
+    <div className={`${styles.hamburgerIcon} ${open ? styles.hamburgerOpen : ''}`}>
+      <span /><span /><span />
+    </div>
+  );
+}
+
 export function AppLayout() {
   const location = useLocation();
   const theme = getTheme(location.pathname);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Cierra el drawer al navegar
+  useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
 
   return (
     <div className={`${styles.shell} ${theme}`}>
-      {/* Sidebar como tarjeta glass */}
+      {/* Sidebar desktop — tarjeta glass (oculto en móvil vía CSS) */}
       <aside className={styles.sidebarWrapper}>
         <Sidebar />
       </aside>
+
+      {/* Botón hamburguesa — solo móvil */}
+      <button
+        className={styles.hamburgerBtn}
+        onClick={() => setDrawerOpen((o) => !o)}
+        aria-label="Abrir menú"
+      >
+        <HamburgerIcon open={drawerOpen} />
+      </button>
+
+      {/* Overlay oscuro */}
+      {drawerOpen && (
+        <div className={styles.drawerOverlay} onClick={() => setDrawerOpen(false)} />
+      )}
+
+      {/* Drawer deslizable desde la izquierda */}
+      <div className={`${styles.drawer} ${drawerOpen ? styles.drawerOpen : ''}`}>
+        <Sidebar />
+      </div>
 
       {/* Contenido principal como tarjeta glass */}
       <main className={styles.contentGlass}>
