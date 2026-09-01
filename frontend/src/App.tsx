@@ -15,7 +15,7 @@ const Inclusion     = lazy(() => import('./pages/Inclusion').then(m => ({ defaul
 const STEMOffer     = lazy(() => import('./pages/STEMOffer').then(m => ({ default: m.STEMOffer })));
 const Maturity      = lazy(() => import('./pages/Maturity').then(m => ({ default: m.Maturity })));
 const MapPage       = lazy(() => import('./pages/Map').then(m => ({ default: m.MapPage })));
-const Health        = lazy(() => import('./pages/Health').then(m => ({ default: m.Health })));
+// const Health        = lazy(() => import('./pages/Health').then(m => ({ default: m.Health })));
 const Admin         = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 const AdminLogin    = lazy(() => import('./pages/Admin/AdminLogin').then(m => ({ default: m.AdminLogin })));
 const EventsTab     = lazy(() => import('./pages/Events').then(m => ({ default: m.Events })));
@@ -153,6 +153,7 @@ export default function App() {
               </Suspense>
             }
           />
+          {/*}
           <Route
             path={ROUTES.HEALTH}
             element={
@@ -160,7 +161,7 @@ export default function App() {
                 <Health />
               </Suspense>
             }
-          />
+          />{*/}
           <Route
             path={ROUTES.EVENTS_TAB}
             element={

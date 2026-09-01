@@ -25,7 +25,7 @@ api_router.include_router(ofertas_router)
 api_router.include_router(madurez_router)
 api_router.include_router(cobertura_router)
 api_router.include_router(mapa_router)
-api_router.include_router(indice_router)
+# api_router.include_router(indice_router)
 
 # Panel de administración (requiere JWT) 
 api_router.include_router(admin_router)
