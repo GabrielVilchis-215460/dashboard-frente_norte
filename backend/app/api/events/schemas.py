@@ -40,7 +40,7 @@ class EventoResponse(BaseModel):
     fecha_fin: Optional[date] = None
     hora_inicio: Optional[time] = None
     hora_fin: Optional[time] = None
-    enfoque: Optional[str] = None
+    enfoque: Optional[List[str]] = None
     tipo: Optional[str] = None
     imagen_url: Optional[str] = None
     url_original: Optional[str] = None
@@ -58,7 +58,7 @@ class EventoCreate(BaseModel):
     fecha_fin: Optional[date] = None
     hora_inicio: Optional[time] = None
     hora_fin: Optional[time] = None
-    enfoque: Optional[str] = None
+    enfoque: Optional[List[str]] = None
     tipo: Optional[str] = None
     imagen_url: Optional[str] = None
     url_original: Optional[str] = None
@@ -81,7 +81,7 @@ class EventoUpdate(BaseModel):
     fecha_fin: Optional[date] = None
     hora_inicio: Optional[time] = None
     hora_fin: Optional[time] = None
-    enfoque: Optional[str] = None
+    enfoque: Optional[List[str]] = None
     tipo: Optional[str] = None
     imagen_url: Optional[str] = None
     url_original: Optional[str] = None
@@ -103,7 +103,7 @@ class EventosPublicoResponse(BaseModel):
 
 
 class ETLStatusResponse(BaseModel):
-    status: str          # idle | running | completed | failed
+    status: str       # idle | running | completed | failed
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
     tokens: int = 0
