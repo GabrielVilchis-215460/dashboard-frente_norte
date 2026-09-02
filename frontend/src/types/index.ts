@@ -276,7 +276,7 @@ export interface EventoCreate {
   fecha_fin?: string;
   hora_inicio?: string;
   hora_fin?: string;
-  enfoque?: string;
+  enfoque?: string[]
   tipo?: string;
   imagen_url?: string;
   url_original?: string;

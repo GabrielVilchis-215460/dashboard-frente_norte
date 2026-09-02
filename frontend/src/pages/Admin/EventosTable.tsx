@@ -33,7 +33,7 @@ interface EventoForm {
   fecha_fin: string;
   hora_inicio: string;
   hora_fin: string;
-  enfoque: string;
+  enfoque: string[]; // <-- Modificado a arreglo de strings
   tipo: string;
   imagen_url: string;
   url_original: string;
@@ -49,7 +49,7 @@ function defaultEvento(): EventoForm {
     fecha_fin: '',
     hora_inicio: '',
     hora_fin: '',
-    enfoque: '',
+    enfoque: [], // <-- Inicializado como arreglo vacío
     tipo: '',
     imagen_url: '',
     url_original: '',
@@ -58,6 +58,13 @@ function defaultEvento(): EventoForm {
 }
 
 function eventoToForm(ev: Evento): EventoForm {
+  let enfoquesList: string[] = [];
+  if (Array.isArray(ev.enfoque)) {
+    enfoquesList = ev.enfoque;
+  } else if (typeof ev.enfoque === 'string' && ev.enfoque.trim()) {
+    enfoquesList = [ev.enfoque];
+  }
+
   return {
     nombre: ev.nombre ?? '',
     descripcion: ev.descripcion ?? '',
@@ -66,7 +73,7 @@ function eventoToForm(ev: Evento): EventoForm {
     fecha_fin: ev.fecha_fin ?? '',
     hora_inicio: ev.hora_inicio?.slice(0, 5) ?? '',
     hora_fin: ev.hora_fin?.slice(0, 5) ?? '',
-    enfoque: ev.enfoque ?? '',
+    enfoque: enfoquesList,
     tipo: ev.tipo ?? '',
     imagen_url: ev.imagen_url ?? '',
     url_original: ev.url_original ?? '',
@@ -83,7 +90,7 @@ function formToPayload(f: EventoForm): EventoCreate {
     fecha_fin: f.fecha_fin || undefined,
     hora_inicio: f.hora_inicio || undefined,
     hora_fin: f.hora_fin || undefined,
-    enfoque: f.enfoque || undefined,
+    enfoque: f.enfoque.length > 0 ? f.enfoque : undefined, // <-- Envia el arreglo completo
     tipo: f.tipo || undefined,
     imagen_url: f.imagen_url || undefined,
     url_original: f.url_original || undefined,
@@ -109,6 +116,14 @@ function EventoFormFields({
   const fileRef = useRef<HTMLInputElement>(null);
   const set = (k: keyof EventoForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     onChange({ ...value, [k]: e.target.value });
+
+  const toggleEnfoque = (enf: string) => {
+    const exists = value.enfoque.includes(enf);
+    const updated = exists
+      ? value.enfoque.filter((item) => item !== enf)
+      : [...value.enfoque, enf];
+    onChange({ ...value, enfoque: updated });
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
@@ -159,21 +174,46 @@ function EventoFormFields({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
         <div style={row}>
           <label style={label}>Tipo</label>
-          {/* className en vez de style inline: los estilos inline no pueden
-              alcanzar los <option> hijos, por eso salían blanco sobre blanco */}
           <select className={formStyles.select} value={value.tipo} onChange={set('tipo')}>
             <option value="">Seleccionar...</option>
             {TIPOS_EVENTO.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div style={row}>
-          <label style={label}>Enfoque</label>
-          <select className={formStyles.select} value={value.enfoque} onChange={set('enfoque')}>
-            <option value="">Seleccionar...</option>
-            {ENFOQUES_EVENTO.map((e) => <option key={e} value={e}>{e}</option>)}
-          </select>
+          {/* Espacio reservado para alineación si se requiere */}
         </div>
       </div>
+
+      {/* Selector de Enfoques Múltiples */}
+      <div style={row}>
+        <label style={label}>Enfoques (Selecciona uno o más)</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+          {ENFOQUES_EVENTO.map((enf) => {
+            const selected = value.enfoque.includes(enf);
+            return (
+              <button
+                key={enf}
+                type="button"
+                onClick={() => toggleEnfoque(enf)}
+                style={{
+                  background: selected ? 'rgba(56,189,248,0.2)' : 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${selected ? 'var(--accent-a)' : 'var(--glass-border)'}`,
+                  color: selected ? '#38bdf8' : 'var(--text-80)',
+                  padding: '6px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: 12,
+                  fontWeight: selected ? 600 : 400,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {selected ? `✓ ${enf}` : `+ ${enf}`}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div style={row}>
         <label style={label}>Enlace publicación</label>
         <input style={input} value={value.url_original} onChange={set('url_original')} placeholder="https://…" />
@@ -295,7 +335,6 @@ export function ETLPanel({ onComplete }: { onComplete: (status: ETLStatus) => vo
   }, [stopPolling, onComplete]);
 
   useEffect(() => {
-    // Carga el estado inicial al montar
     adminApi.getETLStatus().then(setEtl).catch(() => {});
     return stopPolling;
   }, [stopPolling]);
@@ -360,19 +399,17 @@ export function ETLPanel({ onComplete }: { onComplete: (status: ETLStatus) => vo
         <button
           onClick={handleRun}
           disabled={isBusy}
-          style={actionBtnStyle} // Aplicando el estilo actualizado
+          style={actionBtnStyle}
         >
           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {launching || isRunning
               ? <IconLoader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
-              // El color del icono se ajusta automáticamente al heredar el color del texto (color: #FFFFFF)
               : <IconPlayerPlay size={14} />}
             {launching ? 'Iniciando…' : isRunning ? 'Ejecutando…' : 'Ejecutar ETL'}
           </span>
         </button>
       </div>
 
-      {/* Barra de progreso animada cuando está corriendo */}
       {isRunning && (
         <div style={{ background: etl?.phase === 'waiting_quota' ? 'rgba(139,92,246,0.15)' : 'rgba(245,158,11,0.15)', borderRadius: 4, overflow: 'hidden', height: 4 }}>
           <div style={{
@@ -386,7 +423,6 @@ export function ETLPanel({ onComplete }: { onComplete: (status: ETLStatus) => vo
         </div>
       )}
 
-      {/* Mensaje de estado */}
       {etl && etl.status !== 'idle' && (
         <div style={{
           background: etl.status === 'completed' ? 'rgba(16,185,129,0.1)'
@@ -614,16 +650,18 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
               <th>Horario</th>
               <th>Organización</th>
               <th>Tipo</th>
+              <th>Enfoque(s)</th>
               <th>Estado</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
-              <tr><td colSpan={7} className={styles.empty}>No hay eventos</td></tr>
+              <tr><td colSpan={8} className={styles.empty}>No hay eventos</td></tr>
             )}
             {filtered.map((ev) => {
               const esNuevo = nuevosSet.has(ev.id);
+              const enfoquesArr = Array.isArray(ev.enfoque) ? ev.enfoque : ev.enfoque ? [ev.enfoque] : [];
               return (
               <tr key={ev.id} style={esNuevo ? { background: 'rgba(16,185,129,0.05)' } : undefined}>
                 <td style={{ color: 'var(--text-100)', fontWeight: 500, maxWidth: 220 }}>
@@ -657,6 +695,17 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
                 <td style={{ whiteSpace: 'nowrap' }}>{formatHorario(ev.hora_inicio, ev.hora_fin) || '—'}</td>
                 <td>{ev.organizacion?.nombre ?? '—'}</td>
                 <td>{ev.tipo ?? '—'}</td>
+                <td>
+                  {enfoquesArr.length > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {enfoquesArr.map((enf, idx) => (
+                        <span key={idx} style={{ fontSize: 11, background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>
+                          {enf}
+                        </span>
+                      ))}
+                    </div>
+                  ) : '—'}
+                </td>
                 <td>
                   <span className={`${styles.pill} ${ev.activo ? styles.pillActive : styles.pillInactive}`}>
                     {ev.activo ? 'Activo' : 'Inactivo'}
