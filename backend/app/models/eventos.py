@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, ForeignKey, Text, Float
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, ForeignKey, Text, Float, ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.session import Base
@@ -21,7 +21,8 @@ class Evento(Base):
     hora_fin = Column(Time, nullable=True)
 
     # Clasificación
-    enfoque = Column(String(100), nullable=True)
+    # enfoque = Column(String(100), nullable=True)
+    enfoque = Column(ARRAY(String), nullable=True, default=[])
     tipo = Column(String(100), nullable=True)
 
     # Coordenadas del evento (extraídas por IA, opcionales)
