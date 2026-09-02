@@ -68,6 +68,7 @@ _TIPOS_VALIDOS = {"Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia",
 # Cap de seguridad: máximo de eventos extraíbles de un solo post.
 # Previene que el modelo "alucine" listas largas de eventos inventados.
 _MAX_EVENTOS_POR_POST = 8
+_MAX_ENFOQUES_POR_EVENTO = 3
 
 # Claves que algunos modelos usan para envolver el array de resultados
 _WRAPPER_KEYS = ("eventos", "events", "items", "data", "results", "lista")
@@ -239,9 +240,14 @@ Convierte siempre a formato 24h (HH:MM).
 Ejemplos: "12:15 PM" → "12:15", "8:30 AM" → "08:30", "4 PM" → "16:00", "10am" → "10:00".
 Si no se menciona hora, pon null.
 
-REGLA 5 — CATEGORIZACIÓN (usa exactamente estos valores o null, sin variaciones)
-ENFOQUE: "Ciencia" | "Tecnologia" | "Ingenieria" | "Matematicas" | "Robotica" | "Inteligencia artificial" | "Medio ambiente" | "Finanzas" | "Emprendimiento"
-TIPO: "Talleres" | "Cursos" | "Campamento" | "Bootcamp" | "Conferencia" | "Eventos"
+REGLA 5 — CATEGORIZACIÓN (usa exactamente estos valores, sin variaciones)
+ENFOQUE: un array con UNO O MÁS valores de la siguiente lista (máximo 3), según los temas que
+realmente aborde el evento. Si el evento combina disciplinas, inclúyelas todas. Si no aplica
+ninguna, usa un array vacío [].
+Valores permitidos: "Ciencia" | "Tecnologia" | "Ingenieria" | "Matematicas" | "Robotica" | "Inteligencia artificial" | "Medio ambiente" | "Finanzas" | "Emprendimiento"
+TIPO: "Talleres" | "Cursos" | "Campamento" | "Bootcamp" | "Conferencia" | "Eventos" (un solo valor, no array)
+Ejemplo: un hackathon de robótica enfocado en negocios → ["Robotica", "Emprendimiento"]
+No repitas valores ni inventes combinaciones fuera de la lista.
 
 REGLA 6 — DESCRIPCIÓN
 Máximo 2 oraciones por evento, basadas únicamente en el texto del post. No inventes detalles.
@@ -264,7 +270,7 @@ Estructura de cada objeto (todos los campos son obligatorios, usa null cuando no
     "fecha_fin": "YYYY-MM-DD o null",
     "hora_inicio": "HH:MM o null",
     "hora_fin": "HH:MM o null",
-    "enfoque": "valor_exacto o null",
+    "enfoque": ["valor_exacto", "..."],
     "tipo": "valor_exacto o null",
     "imagen_url": "URL o null"
   }}
@@ -308,6 +314,45 @@ def _validar_fecha(fecha_str: str | None) -> "date | None":
             continue
     return None
 
+def _validar_enfoques(raw: object, prefijo: str, nombre: str) -> list[str]:
+    """
+    Normaliza el campo 'enfoque' devuelto por NIM a una lista de valores válidos.
+    Acepta tanto un string único (compatibilidad hacia atrás, por si el modelo
+    ignora la instrucción de array) como una lista. Descarta valores no
+    reconocidos, elimina duplicados conservando el orden, y aplica el cap
+    de seguridad para prevenir listas infladas por alucinación del modelo.
+    """
+    if not raw:
+        return []
+
+    if isinstance(raw, str):
+        raw = [raw]
+
+    if not isinstance(raw, list):
+        logger.warning("%s Enfoque con formato inesperado (%s); se descarta.", prefijo, type(raw).__name__)
+        return []
+
+    vistos: set[str] = set()
+    validos: list[str] = []
+    for val in raw:
+        if not isinstance(val, str):
+            continue
+        val = val.strip()
+        if val not in _ENFOQUES_VALIDOS:
+            logger.warning("%s Enfoque '%s' no reconocido; se descarta.", prefijo, val)
+            continue
+        if val not in vistos:
+            vistos.add(val)
+            validos.append(val)
+
+    if len(validos) > _MAX_ENFOQUES_POR_EVENTO:
+        logger.warning(
+            "%s '%s' con %d enfoques (máx %d); truncando.",
+            prefijo, nombre, len(validos), _MAX_ENFOQUES_POR_EVENTO,
+        )
+        validos = validos[:_MAX_ENFOQUES_POR_EVENTO]
+
+    return validos
 
 def _normalizar_respuesta_nim(parsed: object) -> list[dict]:
     """
@@ -647,10 +692,12 @@ def process_posts(posts: list, client: OpenAI, phase_callback=None) -> tuple[int
                     lat, lng = None, None
 
                 # ── Validar enfoque y tipo contra listas permitidas ───────────
-                enfoque = datos.get("enfoque")
-                if enfoque and enfoque not in _ENFOQUES_VALIDOS:
-                    logger.warning("%s Enfoque '%s' no reconocido; se descarta.", prefijo, enfoque)
-                    enfoque = None
+               # enfoque = datos.get("enfoque")
+                #if enfoque and enfoque not in _ENFOQUES_VALIDOS:
+                 #   logger.warning("%s Enfoque '%s' no reconocido; se descarta.", prefijo, enfoque)
+                  #  enfoque = None
+                # ── Validar enfoques (lista) y tipo contra listas permitidas ──
+                enfoque = _validar_enfoques(datos.get("enfoque"), prefijo, nombre)
 
                 tipo = datos.get("tipo")
                 if tipo and tipo not in _TIPOS_VALIDOS:
