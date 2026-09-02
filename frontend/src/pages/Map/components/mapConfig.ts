@@ -50,14 +50,15 @@ export const TIPO_MAP: Array<{ keywords: string[]; config: TipoConfig }> = [
 
 const DEFAULT_CONFIG: TipoConfig = { label: 'Organización', color: '#94a3b8' };
 
-function normalize(s: string): string {
-  return s
+function normalize(s: string | string[]): string {
+  const text = Array.isArray(s) ? (s[0] || '') : s;
+  return String(text)
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
 }
 
-export function getTipoConfig(tipo: string): TipoConfig {
+export function getTipoConfig(tipo: string | string[]): TipoConfig {
   const norm = normalize(tipo);
   for (const entry of TIPO_MAP) {
     if (entry.keywords.some((kw) => norm.includes(kw))) {
