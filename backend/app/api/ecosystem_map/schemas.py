@@ -6,7 +6,7 @@ class PinMapa(BaseModel):
     """Datos mínimos para renderizar un pin en el mapa interactivo."""
     id: int
     nombre: str
-    tipo: List[str] = []
+    tipo: list[str] | str | None = None
     areas_stem: List[str] = []
     latitud: Optional[float]
     longitud: Optional[float]
