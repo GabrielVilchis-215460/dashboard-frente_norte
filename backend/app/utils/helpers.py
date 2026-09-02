@@ -79,17 +79,24 @@ def coverage_level(programs_num: int) -> str:
 def count_by_field(items: list[Any], field: str) -> dict[str, int]:
     """
     Genera un conteo de ocurrencias de un campo de texto o lista en una lista de objetos.
-    Omite valores None y listas/strings vacíos.
+    Aplana automáticamente listas anidadas y omite nulos o vacíos.
     """
     values = []
+    
+    def flatten_val(x):
+        if isinstance(x, list):
+            for sub in x:
+                yield from flatten_val(sub)
+        elif isinstance(x, str) and x.strip():
+            yield x.strip()
+        elif x is not None and not isinstance(x, (list, dict)):
+            yield str(x)
+
     for item in items:
         val = getattr(item, field, None)
         if val is not None:
-            # Si el campo es una lista (ej. tipo con múltiples valores), extraemos cada elemento
-            if isinstance(val, list):
-                values.extend([v for v in val if v])
-            elif isinstance(val, str) and val.strip():
-                values.append(val)
+            for v in flatten_val(val):
+                values.append(v)
                 
     contador = Counter(values)
     return dict(contador.most_common())
