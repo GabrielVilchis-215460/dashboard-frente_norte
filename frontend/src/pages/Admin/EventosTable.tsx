@@ -642,7 +642,17 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
           <button className={styles.addBtn} onClick={openCreate}>+ Nuevo evento</button>
         </div>
 
-        <table className={styles.table}>
+        <table className={`${styles.table} ${styles.tableFixed}`}>
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '14%' }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Evento</th>
@@ -662,15 +672,19 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
             {filtered.map((ev) => {
               const esNuevo = nuevosSet.has(ev.id);
               const enfoquesArr = Array.isArray(ev.enfoque) ? ev.enfoque : ev.enfoque ? [ev.enfoque] : [];
+              const enfoquesStr = enfoquesArr.length > 0 ? enfoquesArr.join(', ') : '—';
               return (
               <tr key={ev.id} style={esNuevo ? { background: 'rgba(16,185,129,0.05)' } : undefined}>
-                <td style={{ color: 'var(--text-100)', fontWeight: 500, maxWidth: 220 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <td style={{ color: 'var(--text-100)', fontWeight: 500 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                     {ev.imagen_url && (
                       <img src={ev.imagen_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
                     )}
-                    <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                      <span
+                        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={ev.nombre}
+                      >
                         {ev.nombre}
                       </span>
                       {esNuevo && (
@@ -691,12 +705,24 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
                     </div>
                   </div>
                 </td>
-                <td style={{ whiteSpace: 'nowrap' }}>{formatFechaEvento(ev.fecha, ev.fecha_fin)}</td>
+                <td style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {formatFechaEvento(ev.fecha, ev.fecha_fin)}
+                </td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatHorario(ev.hora_inicio, ev.hora_fin) || '—'}</td>
-                <td>{ev.organizacion?.nombre ?? '—'}</td>
-                <td>{ev.tipo ?? '—'}</td>
-                <td>
-                  {enfoquesArr.length > 0 ? enfoquesArr.join(', ') : '—'}
+                <td
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={ev.organizacion?.nombre}
+                >
+                  {ev.organizacion?.nombre ?? '—'}
+                </td>
+                <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {ev.tipo ?? '—'}
+                </td>
+                <td
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={enfoquesStr}
+                >
+                  {enfoquesStr}
                 </td>
                 <td>
                   <span className={`${styles.pill} ${ev.activo ? styles.pillActive : styles.pillInactive}`}>
