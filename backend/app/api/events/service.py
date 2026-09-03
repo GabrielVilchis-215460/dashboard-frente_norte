@@ -304,10 +304,24 @@ def obtener_distribucion(db: Session, columna_modelo):
     resultados = db.query(columna_modelo, func.count(Evento.id)).filter(
         columna_modelo.isnot(None), Evento.activo == True
     ).group_by(columna_modelo).all()
-    return [
-        {"label": nombre, "count": cnt, "porcentaje": round(cnt / total * 100, 2)}
-        for nombre, cnt in resultados
-    ]
+    
+    # ahora gestionar los tags de los eventos de string a ahora listas o arrays
+    distribucion_limpia = []
+    for nombre, cnt in resultados:
+        if isinstance(nombre, list):
+            label_str = ", ".join(str(item).strip('"') for item in nombre) if nombre else "Sin especificar"
+        elif nombre is None:
+            label_str = "Sin especificar"
+        else:
+            label_str = str(nombre).strip('"')
+
+        distribucion_limpia.append({
+            "label": label_str, 
+            "count": cnt, 
+            "porcentaje": round(cnt / total * 100, 2)
+        })
+        
+    return distribucion_limpia
 
 def obtener_historico_trimestral(db: Session):
     hoy = date.today()
