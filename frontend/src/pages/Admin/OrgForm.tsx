@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import styles from './AdminForm.module.css';
 import { LocationPicker } from './LocationPicker';
 import { adminApi } from '../../services/adminApi';
@@ -58,6 +58,10 @@ export function OrgForm({ value, onChange }: OrgFormProps) {
   const [mapsUrl, setMapsUrl] = useState('');
   const [parseando, setParseando] = useState(false);
   const [urlError, setUrlError] = useState('');
+  // Estados para la subida de logo
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [logoError, setLogoError] = useState('');
 
   async function handleExtraerCoords() {
     if (!mapsUrl.trim()) return;
@@ -73,11 +77,84 @@ export function OrgForm({ value, onChange }: OrgFormProps) {
     }
   }
 
+  async function handleLogoUpload(file: File) {
+    setUploadingLogo(true);
+    setLogoError('');
+    try {
+      const url = await adminApi.uploadImagenEvento(file);
+      onChange({ ...value, logo_url: url });
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : 'Error al subir la imagen.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
+
   return (
     <div className={styles.grid}>
       <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
         <label className={styles.label}>Nombre *</label>
         <input className={styles.input} value={value.nombre ?? ''} onChange={(e) => set('nombre', e.target.value)} placeholder="Nombre de la organización" required />
+      </div>
+
+      {/* Sección de Logo con Subida y Preview */}
+      <span className={styles.sectionTitle}>Logo de la organización</span>
+      <div className={`${styles.fieldGroup} ${styles.fullWidth}`}>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+          <input
+            className={styles.input}
+            value={value.logo_url ?? ''}
+            onChange={(e) => set('logo_url', e.target.value)}
+            placeholder="URL del logo o sube una imagen"
+            style={{ flex: 1 }}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploadingLogo}
+            style={{
+              background: 'rgba(56,189,248,0.15)',
+              border: '1px solid var(--accent-a)',
+              color: 'var(--accent-a)',
+              borderRadius: 'var(--radius-md)',
+              padding: '8px 14px',
+              fontSize: 13,
+              cursor: uploadingLogo ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {uploadingLogo ? 'Subiendo…' : '↑ Subir logo'}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleLogoUpload(f);
+            }}
+          />
+        </div>
+        {logoError && <span className={styles.errorText}>{logoError}</span>}
+        
+        {/* Vista previa del logo */}
+        {value.logo_url && (
+          <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(255,255,255,0.03)', padding: 8, borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
+            <img
+              src={value.logo_url}
+              alt="Vista previa logo"
+              style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--glass-border)' }}
+            />
+            <button
+              type="button"
+              onClick={() => set('logo_url', undefined)}
+              style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: 12, cursor: 'pointer', padding: '4px 8px' }}
+            >
+              Quitar logo
+            </button>
+          </div>
+        )}
       </div>
 
       <span className={styles.sectionTitle}>Tipos de Organización *</span>
