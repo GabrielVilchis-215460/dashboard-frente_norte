@@ -33,7 +33,7 @@ interface EventoForm {
   fecha_fin: string;
   hora_inicio: string;
   hora_fin: string;
-  enfoque: string[]; // <-- Modificado a arreglo de strings
+  enfoque: string[]; 
   tipo: string;
   imagen_url: string;
   url_original: string;
@@ -49,7 +49,7 @@ function defaultEvento(): EventoForm {
     fecha_fin: '',
     hora_inicio: '',
     hora_fin: '',
-    enfoque: [], // <-- Inicializado como arreglo vacío
+    enfoque: [], 
     tipo: '',
     imagen_url: '',
     url_original: '',
@@ -90,7 +90,7 @@ function formToPayload(f: EventoForm): EventoCreate {
     fecha_fin: f.fecha_fin || undefined,
     hora_inicio: f.hora_inicio || undefined,
     hora_fin: f.hora_fin || undefined,
-    enfoque: f.enfoque.length > 0 ? f.enfoque : undefined, // <-- Envia el arreglo completo
+    enfoque: f.enfoque.length > 0 ? f.enfoque : undefined,
     tipo: f.tipo || undefined,
     imagen_url: f.imagen_url || undefined,
     url_original: f.url_original || undefined,
@@ -696,15 +696,7 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
                 <td>{ev.organizacion?.nombre ?? '—'}</td>
                 <td>{ev.tipo ?? '—'}</td>
                 <td>
-                  {enfoquesArr.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {enfoquesArr.map((enf, idx) => (
-                        <span key={idx} style={{ fontSize: 11, background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>
-                          {enf}
-                        </span>
-                      ))}
-                    </div>
-                  ) : '—'}
+                  {enfoquesArr.length > 0 ? enfoquesArr.join(', ') : '—'}
                 </td>
                 <td>
                   <span className={`${styles.pill} ${ev.activo ? styles.pillActive : styles.pillInactive}`}>
