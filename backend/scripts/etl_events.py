@@ -196,7 +196,7 @@ def _call_nim(prompt: str, client: OpenAI) -> object:
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,
-        max_tokens=1000,
+        max_tokens=2000,
         extra_body={"chat_template_kwargs": {"enable_thinking": False}}, # este modelo cuenta con modo thinking
     )
 
@@ -225,7 +225,9 @@ Si un evento lo organiza OTRA entidad (repost, mención, colaboración externa),
 Excepción: si "{org_name}" es co-organizador explícito ("by the Hub in collaboration with…"), inclúyelo.
 
 REGLA 2 — FECHA OBLIGATORIA
-Incluye solo eventos con fecha explícita en el texto. No inventes ni inferras fechas.
+Incluye solo eventos con fecha EXPLÍCITA y VERIFICABLE en el texto (día y mes, o día de la semana
++ referencia clara). Si el post NO menciona ninguna fecha concreta, NO inventes una ni asumas
+la fecha de publicación — devuelve [] para ese evento
 Formato: "YYYY-MM-DD". Si el texto dice solo mes y día, usa el año {date_today[:4]}.
 Si el año inferido produce una fecha pasada de más de 30 días, usa {int(date_today[:4]) + 1}.
 
@@ -255,6 +257,29 @@ Si no hay información suficiente, pon null.
 
 REGLA 7 — IMAGEN
 Extrae la URL de imagen solo si aparece explícitamente en el texto. Si no, null.
+
+REGLA 8 — NO CONVOCATORIAS DE RECLUTAMIENTO CONTINUO
+Excluye posts que buscan candidatos para un programa permanente o continuo (servicio social,
+vacantes, "sé parte de nuestro equipo", voluntariado sin fecha de inicio fija). Estos no son
+eventos con fecha/hora a los que el público asiste una sola vez.
+
+REGLA 9 — SOLO INVITACIONES A FUTURO, NUNCA RECAPS
+Muchos posts son un RESUMEN o AGRADECIMIENTO sobre algo que YA OCURRIÓ, no una invitación.
+Debes EXCLUIR estos posts aunque mencionen fecha, lugar o nombre de evento.
+
+Señales de RECAP (excluir, devolver [] para ese evento):
+- Verbos en pretérito narrando la actividad: "fuimos sede de...", "participamos en...",
+  "se reunieron para...", "tuvimos el honor de...", "agradecemos a quienes asistieron...",
+  "el pasado [día] se llevó a cabo...", "seguimos abriendo espacios para...", "recibimos a..."
+- El post describe QUIÉNES asistieron o QUÉ se discutió/logró, sin invitar al lector a nada.
+- No hay ningún mecanismo para que el público asista o se registre.
+
+Señales de INVITACIÓN válida (incluir):
+- Verbos en futuro/imperativo dirigidos al lector: "te invitamos", "regístrate", "inscríbete",
+  "no te lo pierdas", "acompáñanos el [fecha futura]", "próximamente".
+- Fecha/hora futura a la que el público puede asistir, con forma de participar.
+
+Si el post es ambiguo entre recap e invitación, trátalo como RECAP y devuelve [].
 
 FORMATO DE RESPUESTA
 Devuelve ÚNICAMENTE el array JSON, sin markdown, sin texto antes ni después.
@@ -450,7 +475,7 @@ def extract_events_data(text_post: str, org_name: str, client: OpenAI, phase_cal
             logger.error("Error al procesar post con NIM: %s", e)
             return [], 0
 
-    return [], 0  # no debería llegar aquí
+    return [], 0  
 
 
 # Funciones auxilares
@@ -691,11 +716,6 @@ def process_posts(posts: list, client: OpenAI, phase_callback=None) -> tuple[int
                 if not _coords_validas(lat, lng):
                     lat, lng = None, None
 
-                # ── Validar enfoque y tipo contra listas permitidas ───────────
-               # enfoque = datos.get("enfoque")
-                #if enfoque and enfoque not in _ENFOQUES_VALIDOS:
-                 #   logger.warning("%s Enfoque '%s' no reconocido; se descarta.", prefijo, enfoque)
-                  #  enfoque = None
                 # ── Validar enfoques (lista) y tipo contra listas permitidas ──
                 enfoque = _validar_enfoques(datos.get("enfoque"), prefijo, nombre)
 
