@@ -51,10 +51,12 @@ export function EventGridCard({ evento }: Props) {
           )}
         </div>
 
-        {(evento.tipo || evento.enfoque) && (
+        {(evento.tipo || (evento.enfoque && evento.enfoque.length > 0)) && (
           <div className={styles.tags}>
             {evento.tipo && <EventTag label={evento.tipo} variant="tipo" />}
-            {evento.enfoque && <EventTag label={evento.enfoque} variant="enfoque" />}
+            {evento.enfoque?.map((e) => (
+              <EventTag key={e} label={e} variant="enfoque" />
+            ))}
           </div>
         )}
       </div>

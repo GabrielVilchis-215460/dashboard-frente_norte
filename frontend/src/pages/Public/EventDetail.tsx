@@ -72,7 +72,9 @@ export function EventDetail() {
           <div className={styles.subRow}>
             {evento.organizacion && <span className={styles.org}>{evento.organizacion.nombre}</span>}
             {evento.tipo && <EventTag label={evento.tipo} variant="tipo" />}
-            {evento.enfoque && <EventTag label={evento.enfoque} variant="enfoque" />}
+            {evento.enfoque?.map((e) => (
+              <EventTag key={e} label={e} variant="enfoque" />
+            ))}
           </div>
         </div>
       </div>
