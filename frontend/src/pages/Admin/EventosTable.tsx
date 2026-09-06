@@ -58,12 +58,7 @@ function defaultEvento(): EventoForm {
 }
 
 function eventoToForm(ev: Evento): EventoForm {
-  let enfoquesList: string[] = [];
-  if (Array.isArray(ev.enfoque)) {
-    enfoquesList = ev.enfoque;
-  } else if (typeof ev.enfoque === 'string' && ev.enfoque.trim()) {
-    enfoquesList = [ev.enfoque];
-  }
+  const enfoquesList: string[] = ev.enfoque ?? [];
 
   return {
     nombre: ev.nombre ?? '',

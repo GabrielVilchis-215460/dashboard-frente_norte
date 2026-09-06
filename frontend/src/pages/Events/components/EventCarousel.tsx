@@ -102,7 +102,9 @@ export function EventCarousel({ eventos, loading }: Props) {
             {(ev.tipo || ev.enfoque) && (
               <div className={styles.tags}>
                 {ev.tipo && <EventTag label={ev.tipo} variant="tipo" />}
-                {ev.enfoque && <EventTag label={ev.enfoque} variant="enfoque" />}
+                {ev.enfoque?.map((e) => (
+                  <EventTag key={e} label={e} variant="enfoque" />
+                ))}
               </div>
             )}
           </div>
