@@ -107,11 +107,13 @@ adminClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Redirigir a /admin/login en 401
+// Redirigir a /admin/login en 401 (excepto 401 del login)
 adminClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const esLogin = error.config?.url?.includes('/auth/login');
+ 
+    if (error.response?.status === 401 && !esLogin) {
       authStorage.clearAll();
       window.location.href = '/login';
     }
