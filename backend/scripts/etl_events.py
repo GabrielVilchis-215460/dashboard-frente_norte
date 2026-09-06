@@ -62,8 +62,10 @@ _FECHA_MAX_FUTURO_DIAS = 730  # eventos a más de 2 años se descartan (posible 
 
 # Valores permitidos para validación post-extracción
 _ENFOQUES_VALIDOS = {"Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica",
-                     "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento"}
-_TIPOS_VALIDOS = {"Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos"}
+                     "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento",
+                     "Educacion", "Cultura"}
+_TIPOS_VALIDOS = {"Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia",
+                   "Evento Social", "Competencia", "Expo"}
 
 # Cap de seguridad: máximo de eventos extraíbles de un solo post.
 # Previene que el modelo "alucine" listas largas de eventos inventados.
@@ -80,6 +82,10 @@ _PALABRAS_EVENTO = {
     # Tipos de actividad
     "taller", "talleres", "curso", "cursos", "clase", "clases",
     "conferencia", "conferencias", "webinar", "webinars", "seminario",
+    "bootcamp", "hackathon", "campamento", "feria", "simposio",
+    "workshop", "training", "capacitación", "charla", "ponencia",
+    "open house", "demo day", "pitch", "concurso", "competencia",
+    "expo", "exposición", "concierto", "muestra",
     "bootcamp", "hackathon", "campamento", "feria", "simposio",
     "workshop", "training", "capacitación", "charla", "ponencia",
     "open house", "demo day", "pitch", "concurso", "competencia",
@@ -246,8 +252,8 @@ REGLA 5 — CATEGORIZACIÓN (usa exactamente estos valores, sin variaciones)
 ENFOQUE: un array con UNO O MÁS valores de la siguiente lista (máximo 3), según los temas que
 realmente aborde el evento. Si el evento combina disciplinas, inclúyelas todas. Si no aplica
 ninguna, usa un array vacío [].
-Valores permitidos: "Ciencia" | "Tecnologia" | "Ingenieria" | "Matematicas" | "Robotica" | "Inteligencia artificial" | "Medio ambiente" | "Finanzas" | "Emprendimiento"
-TIPO: "Talleres" | "Cursos" | "Campamento" | "Bootcamp" | "Conferencia" | "Eventos" (un solo valor, no array)
+Valores permitidos: "Ciencia" | "Tecnologia" | "Ingenieria" | "Matematicas" | "Robotica" | "Inteligencia artificial" | "Medio ambiente" | "Finanzas" | "Emprendimiento" | "Educacion" | "Cultura"
+TIPO: "Talleres" | "Cursos" | "Campamento" | "Bootcamp" | "Conferencia" | "Evento Social" | "Competencia" | "Expo" (un solo valor, no array)
 Ejemplo: un hackathon de robótica enfocado en negocios → ["Robotica", "Emprendimiento"]
 No repitas valores ni inventes combinaciones fuera de la lista.
 
