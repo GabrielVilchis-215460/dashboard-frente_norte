@@ -17,10 +17,10 @@ import { formatFechaEvento, formatHorario } from '../../utils/format';
 import styles from './Admin.module.css';
 import formStyles from './AdminForm.module.css';
 
-const TIPOS_EVENTO = ['Talleres', 'Cursos', 'Bootcamp', 'Campamento', 'Conferencia', 'Eventos'];
+const TIPOS_EVENTO = ['Talleres', 'Cursos', 'Bootcamp', 'Campamento', 'Conferencia', 'Evento Social', 'Competencia', 'Expo'];
 const ENFOQUES_EVENTO = [
   'Ciencia', 'Tecnologia', 'Ingenieria', 'Matematicas', 'Robotica',
-  'Inteligencia artificial', 'Medio ambiente', 'Finanzas', 'Emprendimiento',
+  'Inteligencia artificial', 'Medio ambiente', 'Finanzas', 'Emprendimiento', 'Cultura', 'Educacion'
 ];
 
 // ── Form de evento ────────────────────────────────────────────────────────────

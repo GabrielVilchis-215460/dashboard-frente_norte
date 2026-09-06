@@ -45,7 +45,7 @@ def obtener_historial_eventos(
     if tipo:
         q = q.filter(Evento.tipo == tipo)
     if enfoque:
-        q = q.filter(Evento.enfoque == enfoque)
+        q = q.filter(Evento.enfoque.any(enfoque))
     return q.order_by(Evento.fecha.desc()).offset(skip).limit(limit).all()
 
 def obtener_eventos_mapa(db: Session) -> List[EventoMapPoint]:
@@ -143,7 +143,7 @@ def obtener_eventos_publico(
     if tipo:
         query = query.filter(Evento.tipo == tipo)
     if enfoque:
-        query = query.filter(Evento.enfoque == enfoque)
+        query = query.filter(Evento.enfoque.any(enfoque))
  
     total = query.count()
  

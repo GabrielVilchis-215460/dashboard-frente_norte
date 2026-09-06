@@ -1,7 +1,8 @@
 .row {
-  display: grid;
-  grid-template-columns: repeat(9, 1fr);
-  gap: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-5);
   padding: var(--space-6) 0;
 }
 
@@ -13,14 +14,9 @@
   background: none;
   border: none;
   cursor: pointer;
-  width: 100%;
-}
 
-@media (max-width: 900px) {
-  .row { grid-template-columns: repeat(5, 1fr); row-gap: var(--space-5); }
-}
-@media (max-width: 520px) {
-  .row { grid-template-columns: repeat(3, 1fr); }
+  flex: 0 0 auto;
+  width: 88px;
 }
 
 .iconCircle {
@@ -45,4 +41,15 @@
   color: var(--text-80);
   text-align: center;
   line-height: 1.2;
+}
+
+/* Móvil: ícono un poco más chico para que la fila se sienta menos apretada */
+@media (max-width: 480px) {
+  .item {
+    width: 76px;
+  }
+  .iconCircle {
+    width: 56px;
+    height: 56px;
+  }
 }
