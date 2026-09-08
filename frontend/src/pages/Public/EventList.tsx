@@ -8,10 +8,10 @@ import { ROUTES } from '../../constants/routes';
 import type { Evento } from '../../types';
 import styles from './EventList.module.css';
 
-const TIPOS = ['Talleres', 'Cursos', 'Bootcamp', 'Campamento', 'Eventos', 'Conferencias'];
+const TIPOS = ['Talleres', 'Cursos', 'Bootcamp', 'Campamento', 'Evento Social', 'Conferencia', 'Competencia', 'Expo'];
 const ENFOQUES = [
   'Ciencia', 'Tecnologia', 'Ingenieria', 'Matematicas', 'Robotica',
-  'Inteligencia artificial', 'Medio ambiente', 'Finanzas', 'Emprendimiento',
+  'Inteligencia artificial', 'Educacion', 'Medio ambiente', 'Finanzas', 'Emprendimiento', 'Cultura', 
 ];
 
 export function EventList() {

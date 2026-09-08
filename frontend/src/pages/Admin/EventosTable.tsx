@@ -17,10 +17,10 @@ import { formatFechaEvento, formatHorario } from '../../utils/format';
 import styles from './Admin.module.css';
 import formStyles from './AdminForm.module.css';
 
-const TIPOS_EVENTO = ['Talleres', 'Cursos', 'Bootcamp', 'Campamento', 'Conferencia', 'Eventos'];
+const TIPOS_EVENTO = ['Talleres', 'Cursos', 'Bootcamp', 'Campamento', 'Conferencia', 'Evento Social', 'Competencia', 'Expo'];
 const ENFOQUES_EVENTO = [
   'Ciencia', 'Tecnologia', 'Ingenieria', 'Matematicas', 'Robotica',
-  'Inteligencia artificial', 'Medio ambiente', 'Finanzas', 'Emprendimiento',
+  'Inteligencia artificial', 'Medio ambiente', 'Finanzas', 'Emprendimiento', 'Cultura', 'Educacion'
 ];
 
 // ── Form de evento ────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ interface EventoForm {
   fecha_fin: string;
   hora_inicio: string;
   hora_fin: string;
-  enfoque: string[]; // <-- Modificado a arreglo de strings
+  enfoque: string[]; 
   tipo: string;
   imagen_url: string;
   url_original: string;
@@ -49,7 +49,7 @@ function defaultEvento(): EventoForm {
     fecha_fin: '',
     hora_inicio: '',
     hora_fin: '',
-    enfoque: [], // <-- Inicializado como arreglo vacío
+    enfoque: [], 
     tipo: '',
     imagen_url: '',
     url_original: '',
@@ -58,12 +58,7 @@ function defaultEvento(): EventoForm {
 }
 
 function eventoToForm(ev: Evento): EventoForm {
-  let enfoquesList: string[] = [];
-  if (Array.isArray(ev.enfoque)) {
-    enfoquesList = ev.enfoque;
-  } else if (typeof ev.enfoque === 'string' && ev.enfoque.trim()) {
-    enfoquesList = [ev.enfoque];
-  }
+  const enfoquesList: string[] = ev.enfoque ?? [];
 
   return {
     nombre: ev.nombre ?? '',
@@ -90,7 +85,7 @@ function formToPayload(f: EventoForm): EventoCreate {
     fecha_fin: f.fecha_fin || undefined,
     hora_inicio: f.hora_inicio || undefined,
     hora_fin: f.hora_fin || undefined,
-    enfoque: f.enfoque.length > 0 ? f.enfoque : undefined, // <-- Envia el arreglo completo
+    enfoque: f.enfoque.length > 0 ? f.enfoque : undefined,
     tipo: f.tipo || undefined,
     imagen_url: f.imagen_url || undefined,
     url_original: f.url_original || undefined,
@@ -642,7 +637,17 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
           <button className={styles.addBtn} onClick={openCreate}>+ Nuevo evento</button>
         </div>
 
-        <table className={styles.table}>
+        <table className={`${styles.table} ${styles.tableFixed}`}>
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '15%' }} />
+            <col style={{ width: '7%' }} />
+            <col style={{ width: '14%' }} />
+          </colgroup>
           <thead>
             <tr>
               <th>Evento</th>
@@ -662,15 +667,19 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
             {filtered.map((ev) => {
               const esNuevo = nuevosSet.has(ev.id);
               const enfoquesArr = Array.isArray(ev.enfoque) ? ev.enfoque : ev.enfoque ? [ev.enfoque] : [];
+              const enfoquesStr = enfoquesArr.length > 0 ? enfoquesArr.join(', ') : '—';
               return (
               <tr key={ev.id} style={esNuevo ? { background: 'rgba(16,185,129,0.05)' } : undefined}>
-                <td style={{ color: 'var(--text-100)', fontWeight: 500, maxWidth: 220 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <td style={{ color: 'var(--text-100)', fontWeight: 500 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
                     {ev.imagen_url && (
                       <img src={ev.imagen_url} alt="" style={{ width: 32, height: 32, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
                     )}
-                    <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                      <span
+                        style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        title={ev.nombre}
+                      >
                         {ev.nombre}
                       </span>
                       {esNuevo && (
@@ -691,20 +700,24 @@ export function EventosTable({ refreshKey = 0, nuevosIds = [] }: { refreshKey?: 
                     </div>
                   </div>
                 </td>
-                <td style={{ whiteSpace: 'nowrap' }}>{formatFechaEvento(ev.fecha, ev.fecha_fin)}</td>
+                <td style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {formatFechaEvento(ev.fecha, ev.fecha_fin)}
+                </td>
                 <td style={{ whiteSpace: 'nowrap' }}>{formatHorario(ev.hora_inicio, ev.hora_fin) || '—'}</td>
-                <td>{ev.organizacion?.nombre ?? '—'}</td>
-                <td>{ev.tipo ?? '—'}</td>
-                <td>
-                  {enfoquesArr.length > 0 ? (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {enfoquesArr.map((enf, idx) => (
-                        <span key={idx} style={{ fontSize: 11, background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: 4 }}>
-                          {enf}
-                        </span>
-                      ))}
-                    </div>
-                  ) : '—'}
+                <td
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={ev.organizacion?.nombre}
+                >
+                  {ev.organizacion?.nombre ?? '—'}
+                </td>
+                <td style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {ev.tipo ?? '—'}
+                </td>
+                <td
+                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  title={enfoquesStr}
+                >
+                  {enfoquesStr}
                 </td>
                 <td>
                   <span className={`${styles.pill} ${ev.activo ? styles.pillActive : styles.pillInactive}`}>

@@ -72,20 +72,11 @@ export function EventDetail() {
           <div className={styles.subRow}>
             {evento.organizacion && <span className={styles.org}>{evento.organizacion.nombre}</span>}
             {evento.tipo && <EventTag label={evento.tipo} variant="tipo" />}
-            {evento.enfoque && <EventTag label={evento.enfoque} variant="enfoque" />}
+            {evento.enfoque?.map((e) => (
+              <EventTag key={e} label={e} variant="enfoque" />
+            ))}
           </div>
         </div>
-
-        {evento.url_original && (
-          <a
-            href={evento.url_original}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.verPublicacion}
-          >
-            Ver publicación <IconExternalLink size={16} stroke={1.8} />
-          </a>
-        )}
       </div>
 
       {evento.imagen_url && (
@@ -103,6 +94,17 @@ export function EventDetail() {
           <p className={styles.description}>
             {evento.descripcion || 'Este evento no tiene una descripción disponible.'}
           </p>
+
+          {evento.url_original && (
+            <a
+              href={evento.url_original}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.verPublicacionBtn}
+            >
+              Ver publicación <IconExternalLink size={18} stroke={1.8} />
+            </a>
+          )}
         </div>
 
         <aside className={styles.infoPanel}>

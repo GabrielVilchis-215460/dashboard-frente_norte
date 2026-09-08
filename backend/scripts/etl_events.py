@@ -62,12 +62,15 @@ _FECHA_MAX_FUTURO_DIAS = 730  # eventos a más de 2 años se descartan (posible 
 
 # Valores permitidos para validación post-extracción
 _ENFOQUES_VALIDOS = {"Ciencia", "Tecnologia", "Ingenieria", "Matematicas", "Robotica",
-                     "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento"}
-_TIPOS_VALIDOS = {"Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia", "Eventos"}
+                     "Inteligencia artificial", "Medio ambiente", "Finanzas", "Emprendimiento",
+                     "Educacion", "Cultura"}
+_TIPOS_VALIDOS = {"Talleres", "Cursos", "Campamento", "Bootcamp", "Conferencia",
+                   "Evento Social", "Competencia", "Expo"}
 
 # Cap de seguridad: máximo de eventos extraíbles de un solo post.
 # Previene que el modelo "alucine" listas largas de eventos inventados.
 _MAX_EVENTOS_POR_POST = 8
+_MAX_ENFOQUES_POR_EVENTO = 3
 
 # Claves que algunos modelos usan para envolver el array de resultados
 _WRAPPER_KEYS = ("eventos", "events", "items", "data", "results", "lista")
@@ -79,6 +82,10 @@ _PALABRAS_EVENTO = {
     # Tipos de actividad
     "taller", "talleres", "curso", "cursos", "clase", "clases",
     "conferencia", "conferencias", "webinar", "webinars", "seminario",
+    "bootcamp", "hackathon", "campamento", "feria", "simposio",
+    "workshop", "training", "capacitación", "charla", "ponencia",
+    "open house", "demo day", "pitch", "concurso", "competencia",
+    "expo", "exposición", "concierto", "muestra",
     "bootcamp", "hackathon", "campamento", "feria", "simposio",
     "workshop", "training", "capacitación", "charla", "ponencia",
     "open house", "demo day", "pitch", "concurso", "competencia",
@@ -195,7 +202,7 @@ def _call_nim(prompt: str, client: OpenAI) -> object:
             {"role": "user", "content": prompt},
         ],
         temperature=0.1,
-        max_tokens=1000,
+        max_tokens=2000,
         extra_body={"chat_template_kwargs": {"enable_thinking": False}}, # este modelo cuenta con modo thinking
     )
 
@@ -224,7 +231,9 @@ Si un evento lo organiza OTRA entidad (repost, mención, colaboración externa),
 Excepción: si "{org_name}" es co-organizador explícito ("by the Hub in collaboration with…"), inclúyelo.
 
 REGLA 2 — FECHA OBLIGATORIA
-Incluye solo eventos con fecha explícita en el texto. No inventes ni inferras fechas.
+Incluye solo eventos con fecha EXPLÍCITA y VERIFICABLE en el texto (día y mes, o día de la semana
++ referencia clara). Si el post NO menciona ninguna fecha concreta, NO inventes una ni asumas
+la fecha de publicación — devuelve [] para ese evento
 Formato: "YYYY-MM-DD". Si el texto dice solo mes y día, usa el año {date_today[:4]}.
 Si el año inferido produce una fecha pasada de más de 30 días, usa {int(date_today[:4]) + 1}.
 
@@ -239,9 +248,14 @@ Convierte siempre a formato 24h (HH:MM).
 Ejemplos: "12:15 PM" → "12:15", "8:30 AM" → "08:30", "4 PM" → "16:00", "10am" → "10:00".
 Si no se menciona hora, pon null.
 
-REGLA 5 — CATEGORIZACIÓN (usa exactamente estos valores o null, sin variaciones)
-ENFOQUE: "Ciencia" | "Tecnologia" | "Ingenieria" | "Matematicas" | "Robotica" | "Inteligencia artificial" | "Medio ambiente" | "Finanzas" | "Emprendimiento"
-TIPO: "Talleres" | "Cursos" | "Campamento" | "Bootcamp" | "Conferencia" | "Eventos"
+REGLA 5 — CATEGORIZACIÓN (usa exactamente estos valores, sin variaciones)
+ENFOQUE: un array con UNO O MÁS valores de la siguiente lista (máximo 3), según los temas que
+realmente aborde el evento. Si el evento combina disciplinas, inclúyelas todas. Si no aplica
+ninguna, usa un array vacío [].
+Valores permitidos: "Ciencia" | "Tecnologia" | "Ingenieria" | "Matematicas" | "Robotica" | "Inteligencia artificial" | "Medio ambiente" | "Finanzas" | "Emprendimiento" | "Educacion" | "Cultura"
+TIPO: "Talleres" | "Cursos" | "Campamento" | "Bootcamp" | "Conferencia" | "Evento Social" | "Competencia" | "Expo" (un solo valor, no array)
+Ejemplo: un hackathon de robótica enfocado en negocios → ["Robotica", "Emprendimiento"]
+No repitas valores ni inventes combinaciones fuera de la lista.
 
 REGLA 6 — DESCRIPCIÓN
 Máximo 2 oraciones por evento, basadas únicamente en el texto del post. No inventes detalles.
@@ -249,6 +263,29 @@ Si no hay información suficiente, pon null.
 
 REGLA 7 — IMAGEN
 Extrae la URL de imagen solo si aparece explícitamente en el texto. Si no, null.
+
+REGLA 8 — NO CONVOCATORIAS DE RECLUTAMIENTO CONTINUO
+Excluye posts que buscan candidatos para un programa permanente o continuo (servicio social,
+vacantes, "sé parte de nuestro equipo", voluntariado sin fecha de inicio fija). Estos no son
+eventos con fecha/hora a los que el público asiste una sola vez.
+
+REGLA 9 — SOLO INVITACIONES A FUTURO, NUNCA RECAPS
+Muchos posts son un RESUMEN o AGRADECIMIENTO sobre algo que YA OCURRIÓ, no una invitación.
+Debes EXCLUIR estos posts aunque mencionen fecha, lugar o nombre de evento.
+
+Señales de RECAP (excluir, devolver [] para ese evento):
+- Verbos en pretérito narrando la actividad: "fuimos sede de...", "participamos en...",
+  "se reunieron para...", "tuvimos el honor de...", "agradecemos a quienes asistieron...",
+  "el pasado [día] se llevó a cabo...", "seguimos abriendo espacios para...", "recibimos a..."
+- El post describe QUIÉNES asistieron o QUÉ se discutió/logró, sin invitar al lector a nada.
+- No hay ningún mecanismo para que el público asista o se registre.
+
+Señales de INVITACIÓN válida (incluir):
+- Verbos en futuro/imperativo dirigidos al lector: "te invitamos", "regístrate", "inscríbete",
+  "no te lo pierdas", "acompáñanos el [fecha futura]", "próximamente".
+- Fecha/hora futura a la que el público puede asistir, con forma de participar.
+
+Si el post es ambiguo entre recap e invitación, trátalo como RECAP y devuelve [].
 
 FORMATO DE RESPUESTA
 Devuelve ÚNICAMENTE el array JSON, sin markdown, sin texto antes ni después.
@@ -264,7 +301,7 @@ Estructura de cada objeto (todos los campos son obligatorios, usa null cuando no
     "fecha_fin": "YYYY-MM-DD o null",
     "hora_inicio": "HH:MM o null",
     "hora_fin": "HH:MM o null",
-    "enfoque": "valor_exacto o null",
+    "enfoque": ["valor_exacto", "..."],
     "tipo": "valor_exacto o null",
     "imagen_url": "URL o null"
   }}
@@ -308,6 +345,45 @@ def _validar_fecha(fecha_str: str | None) -> "date | None":
             continue
     return None
 
+def _validar_enfoques(raw: object, prefijo: str, nombre: str) -> list[str]:
+    """
+    Normaliza el campo 'enfoque' devuelto por NIM a una lista de valores válidos.
+    Acepta tanto un string único (compatibilidad hacia atrás, por si el modelo
+    ignora la instrucción de array) como una lista. Descarta valores no
+    reconocidos, elimina duplicados conservando el orden, y aplica el cap
+    de seguridad para prevenir listas infladas por alucinación del modelo.
+    """
+    if not raw:
+        return []
+
+    if isinstance(raw, str):
+        raw = [raw]
+
+    if not isinstance(raw, list):
+        logger.warning("%s Enfoque con formato inesperado (%s); se descarta.", prefijo, type(raw).__name__)
+        return []
+
+    vistos: set[str] = set()
+    validos: list[str] = []
+    for val in raw:
+        if not isinstance(val, str):
+            continue
+        val = val.strip()
+        if val not in _ENFOQUES_VALIDOS:
+            logger.warning("%s Enfoque '%s' no reconocido; se descarta.", prefijo, val)
+            continue
+        if val not in vistos:
+            vistos.add(val)
+            validos.append(val)
+
+    if len(validos) > _MAX_ENFOQUES_POR_EVENTO:
+        logger.warning(
+            "%s '%s' con %d enfoques (máx %d); truncando.",
+            prefijo, nombre, len(validos), _MAX_ENFOQUES_POR_EVENTO,
+        )
+        validos = validos[:_MAX_ENFOQUES_POR_EVENTO]
+
+    return validos
 
 def _normalizar_respuesta_nim(parsed: object) -> list[dict]:
     """
@@ -405,7 +481,7 @@ def extract_events_data(text_post: str, org_name: str, client: OpenAI, phase_cal
             logger.error("Error al procesar post con NIM: %s", e)
             return [], 0
 
-    return [], 0  # no debería llegar aquí
+    return [], 0  
 
 
 # Funciones auxilares
@@ -646,11 +722,8 @@ def process_posts(posts: list, client: OpenAI, phase_callback=None) -> tuple[int
                 if not _coords_validas(lat, lng):
                     lat, lng = None, None
 
-                # ── Validar enfoque y tipo contra listas permitidas ───────────
-                enfoque = datos.get("enfoque")
-                if enfoque and enfoque not in _ENFOQUES_VALIDOS:
-                    logger.warning("%s Enfoque '%s' no reconocido; se descarta.", prefijo, enfoque)
-                    enfoque = None
+                # ── Validar enfoques (lista) y tipo contra listas permitidas ──
+                enfoque = _validar_enfoques(datos.get("enfoque"), prefijo, nombre)
 
                 tipo = datos.get("tipo")
                 if tipo and tipo not in _TIPOS_VALIDOS:

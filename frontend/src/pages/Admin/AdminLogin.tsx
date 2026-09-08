@@ -32,7 +32,7 @@ export function AdminLogin() {
     <div className={`${styles.wrapper} theme-cyan`}>
       <div className={styles.card}>
         <Link to={ROUTES.HOME} className={styles.backLink} aria-label="Volver al sitio">
-          <IconArrowLeft size={16} stroke={1.8} />
+          <IconArrowLeft size={20} stroke={1.8} />
         </Link>
 
         <div className={styles.logo}>

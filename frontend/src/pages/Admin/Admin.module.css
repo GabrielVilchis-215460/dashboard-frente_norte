@@ -225,3 +225,13 @@
 }
 .exportBtn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.13); }
 .exportBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.tableFixed {
+  table-layout: fixed;
+}
+
+@media (max-width: 768px) {
+  .tableFixed {
+    min-width: 760px;
+  }
+}

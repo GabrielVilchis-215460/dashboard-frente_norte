@@ -45,13 +45,13 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Mapa del Ecosistema',
     path: ROUTES.MAP,
     icon: 'IconMap',
-  },
+  },/*
   {
     key: 'health',
     label: 'Índice de Salud',
     path: ROUTES.HEALTH,
     icon: 'IconActivity',
-  },
+  },*/
   {
     key: 'events',
     label: 'Eventos',

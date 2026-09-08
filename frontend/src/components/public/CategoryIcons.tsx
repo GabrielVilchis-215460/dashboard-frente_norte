@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import {
   IconMicroscope, IconCpu, IconTool, IconAbacus, IconRobot, IconSparkle,
-  IconLeaf, IconCoin, IconRocket,
+  IconLeaf, IconCoin, IconRocket, IconGlobe, IconSchool,
 } from '@tabler/icons-react';
 import { ROUTES } from '../../constants/routes';
 import styles from './CategoryIcons.module.css';
@@ -13,9 +13,11 @@ const CATEGORIAS = [
   { label: 'Matematicas', icon: IconAbacus },
   { label: 'Robotica', icon: IconRobot },
   { label: 'Inteligencia artificial', icon: IconSparkle },
+  { label: 'Educacion', icon: IconSchool},
   { label: 'Medio ambiente', icon: IconLeaf },
   { label: 'Finanzas', icon: IconCoin },
   { label: 'Emprendimiento', icon: IconRocket },
+  { label: 'Cultura', icon: IconGlobe },
 ];
 
 export function CategoryIcons() {

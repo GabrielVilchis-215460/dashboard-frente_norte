@@ -1,16 +1,16 @@
 // Tag de tipo/enfoque del evento
 import {
-  IconTools, IconBook, IconTent, IconCode, IconMicrophone, IconCalendarEvent,
-  IconFlask, IconCpu, IconTool, IconMath, IconRobot, IconBrain,
-  IconLeaf, IconCoin, IconRocket, IconTag,
+  IconTools, IconBook, IconTent, IconCode, IconMicrophone, IconUsersGroup, IconAward, IconPresentation,
+  IconMicroscope, IconCpu, IconTool, IconAbacus, IconRobot, IconSparkle,
+  IconLeaf, IconCoin, IconRocket, IconTag, IconSchool, IconGlobe,
 } from '@tabler/icons-react';
 import { TIPO_ICON, ENFOQUE_ICON } from './eventConfig';
 import styles from './EventTag.module.css';
 
 const ICON_MAP: Record<string, React.ComponentType<{ size?: number | string; stroke?: number | string }>> = {
-  IconTools, IconBook, IconTent, IconCode, IconMicrophone, IconCalendarEvent,
-  IconFlask, IconCpu, IconTool, IconMath, IconRobot, IconBrain,
-  IconLeaf, IconCoin, IconRocket, IconTag,
+  IconTools, IconBook, IconTent, IconCode, IconMicrophone, IconUsersGroup, IconAward, IconPresentation,
+  IconMicroscope, IconCpu, IconTool, IconAbacus, IconRobot, IconSparkle,
+  IconLeaf, IconCoin, IconRocket, IconTag, IconSchool, IconGlobe,
 };
 
 interface Props {

@@ -15,8 +15,8 @@ export const STAGES: StageConfig[] = [
   {
     key: 'exploracion',
     label: 'Exploración',
-    color: '#689df3',
-    funnelColor: '#3b82f6',
+    color: '#5ac0ff',
+    funnelColor: '#249df5',
     icon: 'IconRocket',
     description:
       'Programas en fase de diseño o piloto. Están probando su modelo de impacto, definiendo la metodología y validando con grupos pequeños de beneficiarios.',

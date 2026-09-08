@@ -1,104 +1,47 @@
 .layout {
   display: grid;
-  grid-template-columns: 1fr 1.3fr;
-  gap: var(--space-6);
-  align-items: center;
+  grid-template-columns: 1fr 1.4fr;
+  grid-template-rows: repeat(3, auto);
+  gap: var(--space-4) var(--space-6);
+  align-items: stretch;
 }
 
-/* ---- Embudo SVG ---- */
-.funnelWrap {
-  position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.funnelSvg {
-  width: 100%;
-  max-width: 340px;
-  height: auto;
-  overflow: visible;
-}
-
-.segment {
-  cursor: pointer;
-  transition: opacity var(--transition-base), filter var(--transition-base);
-}
-
-.segment:hover {
-  filter: brightness(1.1) drop-shadow(0 0 12px currentColor);
-}
-
-/* Tooltip flotante */
-.tooltip {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid;
-  box-shadow: var(--glass-shadow);
-  pointer-events: none;
-  white-space: nowrap;
-  animation: fadeIn 150ms ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-.tooltipTitle {
-  font-family: var(--font-display);
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--text-100);
-  margin-bottom: 2px;
-}
-
-.tooltipRow {
-  font-size: var(--text-sm);
-  color: var(--text-80);
-}
-
-.tooltipRow strong {
-  color: var(--text-100);
-  font-weight: 700;
-}
-
-/* ---- Bloques de detalle ---- */
-.details {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
+/* ---- Columna de tarjetas (izquierda) ---- */
+.cardsCol {
+  display: grid;
+  grid-row: 1 / span 3;
+  grid-column: 1;
+  grid-template-rows: subgrid;
+  gap: inherit;
 }
 
 .detailBlock {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--glass-border);
   animation-fill-mode: both;
-  transition: background var(--transition-base);
+  transition: background var(--transition-base), opacity var(--transition-base);
 }
 
 .detailBlock:hover {
   background: rgba(255, 255, 255, 0.09);
 }
 
+/* Mismo resaltado que :hover, pero disparado desde el estado */
+.detailBlockActive {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
 .detailHeader {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .detailIcon {
@@ -114,38 +57,101 @@
   color: var(--text-100);
 }
 
-.metrics {
-  display: flex;
-  gap: var(--space-8);
-  margin-bottom: var(--space-3);
-}
-
-.metric {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.metricValue {
-  font-family: var(--font-display);
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.metricLabel {
-  font-size: var(--text-xs);
-  color: var(--text-60);
-}
-
 .detailDesc {
   font-size: var(--text-sm);
   color: var(--text-80);
   line-height: 1.6;
 }
 
+/* ---- Columna de la gráfica (derecha) ---- */
+.chartCol {
+  display: grid;
+  grid-row: 1 / span 3;
+  grid-column: 2;
+  grid-template-rows: subgrid;
+  gap: inherit;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+}
+
+.barRow {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  transition: opacity var(--transition-base);
+}
+
+.barRowLabel {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-100);
+}
+
+/* Track de las barras */
+.barTrack {
+  width: 100%;
+  height: 16px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 99px;
+  transform-origin: left;
+  animation: growLeftToRight 700ms ease-out both;
+  transition: filter var(--transition-fast);
+}
+
+@keyframes growLeftToRight {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.barRowValues {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.barRowValues strong {
+  font-family: var(--font-display);
+  font-size: var(--text-base);
+}
+
+.barRowSecondary {
+  color: var(--text-60);
+  font-size: var(--text-xs);
+}
+
+/* ---- Fallback para navegadores sin soporte de subgrid ---- */
+@supports not (grid-template-rows: subgrid) {
+  .cardsCol,
+  .chartCol {
+    grid-template-rows: none;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 1000px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+  .cardsCol,
+  .chartCol {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-rows: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .chartCol {
+    margin-top: var(--space-2);
   }
 }

@@ -242,7 +242,7 @@ export interface Evento {
   fecha_fin?: string | null;
   hora_inicio?: string | null;  // "HH:MM:SS"
   hora_fin?: string | null;
-  enfoque?: string | null;
+  enfoque?: string[] | null;
   tipo?: string | null;
   imagen_url?: string | null;
   url_original?: string | null;
@@ -276,7 +276,7 @@ export interface EventoCreate {
   fecha_fin?: string;
   hora_inicio?: string;
   hora_fin?: string;
-  enfoque?: string[]
+  enfoque?: string[];
   tipo?: string;
   imagen_url?: string;
   url_original?: string;

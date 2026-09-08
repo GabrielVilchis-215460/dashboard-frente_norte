@@ -45,7 +45,7 @@ def obtener_historial_eventos(
     if tipo:
         q = q.filter(Evento.tipo == tipo)
     if enfoque:
-        q = q.filter(Evento.enfoque == enfoque)
+        q = q.filter(Evento.enfoque.any(enfoque))
     return q.order_by(Evento.fecha.desc()).offset(skip).limit(limit).all()
 
 def obtener_eventos_mapa(db: Session) -> List[EventoMapPoint]:
@@ -143,7 +143,7 @@ def obtener_eventos_publico(
     if tipo:
         query = query.filter(Evento.tipo == tipo)
     if enfoque:
-        query = query.filter(Evento.enfoque == enfoque)
+        query = query.filter(Evento.enfoque.any(enfoque))
  
     total = query.count()
  
@@ -304,10 +304,24 @@ def obtener_distribucion(db: Session, columna_modelo):
     resultados = db.query(columna_modelo, func.count(Evento.id)).filter(
         columna_modelo.isnot(None), Evento.activo == True
     ).group_by(columna_modelo).all()
-    return [
-        {"label": nombre, "count": cnt, "porcentaje": round(cnt / total * 100, 2)}
-        for nombre, cnt in resultados
-    ]
+    
+    # ahora gestionar los tags de los eventos de string a ahora listas o arrays
+    distribucion_limpia = []
+    for nombre, cnt in resultados:
+        if isinstance(nombre, list):
+            label_str = ", ".join(str(item).strip('"') for item in nombre) if nombre else "Sin especificar"
+        elif nombre is None:
+            label_str = "Sin especificar"
+        else:
+            label_str = str(nombre).strip('"')
+
+        distribucion_limpia.append({
+            "label": label_str, 
+            "count": cnt, 
+            "porcentaje": round(cnt / total * 100, 2)
+        })
+        
+    return distribucion_limpia
 
 def obtener_historico_trimestral(db: Session):
     hoy = date.today()

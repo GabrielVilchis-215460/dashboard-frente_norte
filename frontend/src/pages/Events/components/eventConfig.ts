@@ -5,23 +5,28 @@ export const TIPO_ICON: Record<string, string> = {
   Campamento:   'IconTent',
   Bootcamp:     'IconCode',
   Conferencia:  'IconMicrophone',
-  Eventos:      'IconCalendarEvent',
+  'Evento Social':   'IconUsersGroup',
+  Competencia:  'IconAward',
+  Expo:         'IconPresentation',
 };
 
 export const ENFOQUE_ICON: Record<string, string> = {
-  Ciencia:                 'IconFlask',
+  Ciencia:                 'IconMicroscope',
   Tecnologia:              'IconCpu',
   'Tecnología':            'IconCpu',
   Ingenieria:              'IconTool',
   'Ingeniería':            'IconTool',
-  Matematicas:             'IconMath',
-  'Matemáticas':           'IconMath',
+  Matematicas:             'IconAbacus',
+  'Matemáticas':           'IconAbacus',
   Robotica:                'IconRobot',
   'Robótica':              'IconRobot',
-  'Inteligencia artificial': 'IconBrain',
+  'Inteligencia artificial': 'IconSparkle',
+  Educacion:               'IconSchool',
+  'Educación':             'IconSchool',
   'Medio ambiente':        'IconLeaf',
   Finanzas:                'IconCoin',
   Emprendimiento:          'IconRocket',
+  Cultura:                 'IconGlobe',
 };
 
 // Colores para las pills
