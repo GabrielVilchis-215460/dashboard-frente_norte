@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_, and_
 from datetime import date
 from typing import Optional, List, Tuple
-
+from collections import Counter
 from app.models.eventos import Evento
 from app.models.organizacion import Organizacion
 from app.api.events.schemas import EventoCreate, EventoUpdate, EventoMapPoint, EventoResponse
@@ -296,29 +296,36 @@ def contar_organizaciones_con_eventos_activos(db: Session) -> int:
     )
 
 def obtener_distribucion(db: Session, columna_modelo):
-    total = db.query(Evento).filter(
+    filas = db.query(columna_modelo).filter(
         columna_modelo.isnot(None), Evento.activo == True
-    ).count()
-    if total == 0:
-        return []
-    resultados = db.query(columna_modelo, func.count(Evento.id)).filter(
-        columna_modelo.isnot(None), Evento.activo == True
-    ).group_by(columna_modelo).all()
+    ).all()
     
-    # ahora gestionar los tags de los eventos de string a ahora listas o arrays
-    distribucion_limpia = []
-    for nombre, cnt in resultados:
-        if isinstance(nombre, list):
-            label_str = ", ".join(str(item).strip('"') for item in nombre) if nombre else "Sin especificar"
-        elif nombre is None:
-            label_str = "Sin especificar"
+    total_eventos = len(filas)
+    if total_eventos == 0:
+        return []
+        
+    contador = Counter()
+    for fila in filas:
+        valor = fila[0]
+        
+        if isinstance(valor, list):
+            elementos = valor
+        elif isinstance(valor, str):
+            elementos = [v.strip() for v in valor.replace('[', '').replace(']', '').replace('"', '').split(',')]
         else:
-            label_str = str(nombre).strip('"')
-
+            elementos = [valor]
+            
+        for item in elementos:
+            limpio = str(item).strip('"\' ')
+            if limpio:
+                contador[limpio] += 1
+                
+    distribucion_limpia = []
+    for tag, cnt in contador.most_common():
         distribucion_limpia.append({
-            "label": label_str, 
-            "count": cnt, 
-            "porcentaje": round(cnt / total * 100, 2)
+            "label": tag,
+            "count": cnt,
+            "porcentaje": round(cnt / total_eventos * 100, 2)
         })
         
     return distribucion_limpia

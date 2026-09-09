@@ -13,14 +13,12 @@ from app.api.routes import api_router
 
 logger = logging.getLogger(__name__)
 
-is_dev = settings.ENVIRONMENT != "production"
-
 app = FastAPI(
     title="Dashboard STEM Ciudad Juárez — API",
-    description="Backend del Observatorio del Ecosistema STEM de Ciudad Juárez. Desarrollado para Frente Norte.",
+    description="...",
     version="3.0.0",
-    docs_url="/docs" if is_dev else None,
-    openapi_url="/openapi.json" if is_dev else None,
+    docs_url="/docs",
+    openapi_url="/openapi.json",
 )
 
 # Registra el limiter y su manejador de error en la app
