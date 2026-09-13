@@ -137,3 +137,12 @@ class BenchmarkValorOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class IndicadorOut(BaseModel):
+    id: int
+    clave: str
+    nombre: str
+    unidad: str
+ 
+    class Config:
+        from_attributes = True

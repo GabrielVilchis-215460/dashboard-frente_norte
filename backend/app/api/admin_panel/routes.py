@@ -6,6 +6,7 @@ from app.models.organizacion import Organizacion
 from app.models.programa import Programa
 from app.models.ecosistema import Ecosistema
 from app.models.benchmark_valores import BenchmarkValor
+from app.models.indicadores import Indicador
 from app.api.admin_panel.schemas import (
     ProgramaBase,
     ProgramaOut,
@@ -22,7 +23,8 @@ from app.api.admin_panel.schemas import (
     EcosistemaOut,
     EcosistemaUpdate,
     BenchmarkValorUpdateBatch,
-    BenchmarkValorOut
+    BenchmarkValorOut,
+    IndicadorOut,
 )
 from app.api.auth.service import get_current_admin
 from app.utils.geo_utils import extract_coords_from_url
@@ -321,3 +323,10 @@ def guardar_o_actualizar_benchmarks(
         db.refresh(res)
         
     return resultados
+
+@router.get("/indicadores", response_model=List[IndicadorOut])
+def listar_indicadores(db: Session = Depends(get_db)):
+    """
+    Lista los indicadores del Índice de Salud (id, clave, nombre, unidad).
+    """
+    return db.query(Indicador).order_by(Indicador.id).all()
