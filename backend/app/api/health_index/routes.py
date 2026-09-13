@@ -2,44 +2,143 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.api.health_index.schemas import IndiceSaludEcosistema
-from app.api.health_index.service import get_indice_salud
+from app.api.health_index.schemas import EcosistemaResponse, IndiceSaludResponse
+from app.api.health_index.service import calcular_brechas, get_indice
+from app.models.ecosistema import Ecosistema
+from app.models.indicadores import Indicador
+from app.models.benchmark_valores import BenchmarkValor
+from sqlalchemy import text
 
 router = APIRouter(prefix="/indice_salud", tags=["Indice de Salud del Ecosistema"])
 
 logger = logging.getLogger("stem_api.indice_salud")
 
-@router.get(
-    "/indice-salud",
-    response_model=IndiceSaludEcosistema,
-    summary="Índice de Salud del Ecosistema STEM (ISE)",
-    description="""
-Calcula el Índice de Salud del Ecosistema STEM de Ciudad Juárez.
+@router.get("", response_model=IndiceSaludResponse)
+def get_indice_salud(anio: int = 2026, db: Session = Depends(get_db)):
+    """
+    Endpoint principal que obtiene los KPIs, evolución y benchmark 
+    para el ecosistema Ciudad Juárez de forma automática.
+    """
+    logger.info(f"Ejecutando get_indice para el ecosistema local en el año {anio}")
+    return get_indice(anio_actual=anio, db=db)
 
-**Fórmula:**
-`ISE = Cobertura×0.25 + Diversidad×0.20 + Inclusión×0.20 + Alcance×0.20 + Madurez×0.15`
+@router.get("/{ecosistema_id}/brechas", response_model=EcosistemaResponse)
+def obtener_brechas(ecosistema_id: int, anio: int = 2026, db: Session = Depends(get_db)):
+    """
+    Endpoint para consultar las brechas y fortalezas del ecosistema STEM 
+    comparado con sus referentes.
+    """
+    logger.info(f"Consultando brechas y fortalezas para el ecosistema_id={ecosistema_id} en el año {anio}")
+    
+    return calcular_brechas(ecosistema_id=ecosistema_id, anio=anio, db=db)
 
-**Justificación de pesos:**
-Los pesos fueron definidos para priorizar el impacto territorial y la diversidad de la oferta educativa, 
-asegurando un equilibrio entre la presencia física en colonias y la calidad de los programas ofrecidos en la ciudad.
+@router.post("/seed-test-data")
+def poblar_datos_sinteticos(db: Session = Depends(get_db)):
+    """
+    Carga los ecosistemas faltantes (Guadalajara, Tijuana, Monterrey y Ciudad Juárez) 
+    y sus valores de benchmark para 2026, reutilizando los indicadores existentes sin alterarlos[cite: 1].
+    """
+    # 1. Definir los ecosistemas requeridos (locales, referentes y pares)
+    ecosistemas_data = [
+        {"nombre": "Ciudad Juárez", "rol": "local"},
+        {"nombre": "Monterrey", "rol": "referente"},
+        {"nombre": "Guadalajara", "rol": "referente"},
+        {"nombre": "Tijuana", "rol": "par"}
+    ]
+    
+    ecosistemas_objs = {}
+    for eco_info in ecosistemas_data:
+        eco = db.query(Ecosistema).filter(Ecosistema.nombre == eco_info["nombre"]).first()
+        if not eco:
+            eco = Ecosistema(nombre=eco_info["nombre"], rol=eco_info["rol"])
+            db.add(eco)
+            db.commit()
+            db.refresh(eco)
+        ecosistemas_objs[eco_info["nombre"]] = eco
 
-**Niveles:**
-- EXCELENTE: ≥ 75
-- BUENO: ≥ 50
-- EN DESARROLLO: ≥ 25
-- CRÍTICO: < 25
+    # 2. Obtener los indicadores existentes (no se crean ni alteran)
+    claves_indicadores = ["egresados_stem", "mujeres_stem", "empleo_stem", "salario_stem", "centros_investigacion"]
+    indicadores_objs = {}
+    for clave in claves_indicadores:
+        ind = db.query(Indicador).filter(Indicador.clave == clave).first()
+        if not ind:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Falta el indicador con clave '{clave}' en la base de datos. Asegúrate de crearlos previamente[cite: 1]."
+            )
+        indicadores_objs[clave] = ind
 
-Alimenta el **Módulo 8 — Índice de Salud** del dashboard.
-    """,
-    responses={
-        200: {"description": "ISE calculado exitosamente"},
-        500: {"description": "Error interno al calcular el ISE"},
-    },
-)
-def indice_salud(db: Session = Depends(get_db)) -> IndiceSaludEcosistema:
-    """Indicador estratégico — Índice de Salud del Ecosistema STEM."""
+    # 3. Asignar valores de benchmark para cada ecosistema en el año 2026
+    valores_prueba = [
+        # Ciudad Juárez
+        {"ecosistema": "Ciudad Juárez", "indicador_clave": "egresados_stem", "valor": 34.0},
+        {"ecosistema": "Ciudad Juárez", "indicador_clave": "mujeres_stem", "valor": 28.0},
+        {"ecosistema": "Ciudad Juárez", "indicador_clave": "empleo_stem", "valor": 43.0},
+        {"ecosistema": "Ciudad Juárez", "indicador_clave": "salario_stem", "valor": 24000.0},
+        {"ecosistema": "Ciudad Juárez", "indicador_clave": "centros_investigacion", "valor": 1.6},
+        
+        # Monterrey
+        {"ecosistema": "Monterrey", "indicador_clave": "egresados_stem", "valor": 45.0},
+        {"ecosistema": "Monterrey", "indicador_clave": "mujeres_stem", "valor": 42.0},
+        {"ecosistema": "Monterrey", "indicador_clave": "empleo_stem", "valor": 38.0},
+        {"ecosistema": "Monterrey", "indicador_clave": "salario_stem", "valor": 32000.0},
+        {"ecosistema": "Monterrey", "indicador_clave": "centros_investigacion", "valor": 3.5},
+
+        # Guadalajara
+        {"ecosistema": "Guadalajara", "indicador_clave": "egresados_stem", "valor": 42.0},
+        {"ecosistema": "Guadalajara", "indicador_clave": "mujeres_stem", "valor": 40.0},
+        {"ecosistema": "Guadalajara", "indicador_clave": "empleo_stem", "valor": 40.0},
+        {"ecosistema": "Guadalajara", "indicador_clave": "salario_stem", "valor": 30000.0},
+        {"ecosistema": "Guadalajara", "indicador_clave": "centros_investigacion", "valor": 3.0},
+
+        # Tijuana
+        {"ecosistema": "Tijuana", "indicador_clave": "egresados_stem", "valor": 30.0},
+        {"ecosistema": "Tijuana", "indicador_clave": "mujeres_stem", "valor": 25.0},
+        {"ecosistema": "Tijuana", "indicador_clave": "empleo_stem", "valor": 35.0},
+        {"ecosistema": "Tijuana", "indicador_clave": "salario_stem", "valor": 21000.0},
+        {"ecosistema": "Tijuana", "indicador_clave": "centros_investigacion", "valor": 1.2},
+    ]
+
+    for item in valores_prueba:
+        eco_obj = ecosistemas_objs[item["ecosistema"]]
+        ind_obj = indicadores_objs[item["indicador_clave"]]
+        
+        existe = db.query(BenchmarkValor).filter(
+            BenchmarkValor.ecosistema_id == eco_obj.id,
+            BenchmarkValor.indicador_id == ind_obj.id,
+            BenchmarkValor.anio == 2026
+        ).first()
+
+        if not existe:
+            val = BenchmarkValor(
+                ecosistema_id=eco_obj.id,
+                indicador_id=ind_obj.id,
+                anio=2026,
+                valor=item["valor"]
+            )
+            db.add(val)
+
+    db.commit()
+
+    return {
+        "mensaje": "Ciudades y benchmarks agregados correctamente, respetando los indicadores existentes."
+    }
+
+@router.delete("/seed-test-data")
+def limpiar_datos_sinteticos(db: Session = Depends(get_db)):
+    """
+    Elimina los ecosistemas y sus benchmarks, y reinicia los contadores 
+    de ID de ambas tablas a 1, conservando intactos los indicadores[cite: 1, 2, 3].
+    """
     try:
-        return get_indice_salud(db)
-    except Exception as exc:
-        logger.error("Error en /metricas/indice-salud: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="Error al calcular el Índice de Salud.")
+        # TRUNCATE con CASCADE limpia las tablas y RESTART IDENTITY reinicia los IDs a 1.
+        # Respetamos la tabla 'indicadores' para que no sea tocada.
+        db.execute(text("TRUNCATE TABLE benchmark_valores, ecosistemas RESTART IDENTITY CASCADE;"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al limpiar y reiniciar IDs: {str(e)}")
+
+    return {
+        "mensaje": "¡Datos depurados con éxito y contadores de ID reiniciados a 1!"
+    }
