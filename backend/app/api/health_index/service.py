@@ -5,6 +5,7 @@ from app.models.indicadores import Indicador
 from app.models.ecosistema import Ecosistema
 from app.models.benchmark_valores import BenchmarkValor
 from fastapi import HTTPException
+from sqlalchemy import func
 
 logger = logging.getLogger("stem_api.indice_salud")
 
@@ -61,7 +62,12 @@ PLANTILLAS_FORTALEZAS = {
     )
 }
 
-def get_indice(anio_actual: int, db: Session):
+def get_indice(db: Session):
+    # detección automática del año mas reciente con datos registrados
+    anio_actual = db.query(func.max(BenchmarkValor.anio)).scalar()
+    if not anio_actual:
+        raise HTTPException(status_code=404, detail="No hay datos de benchmark registrados en el sistema.")
+
     ecosistema_actual = db.query(Ecosistema).filter(Ecosistema.rol == "local").first()
     if not ecosistema_actual:
         raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
@@ -151,17 +157,22 @@ def get_indice(anio_actual: int, db: Session):
     }
 
 
-def calcular_brechas(ecosistema_id: int, anio: int, db: Session) -> dict:
+def calcular_brechas(db: Session) -> dict:
+    anio = db.query(func.max(BenchmarkValor.anio)).scalar()
+    if not anio:
+        raise HTTPException(status_code=404, detail="No hay datos de benchmark registrados en el sistema.")
+
+    ecosistema_actual = db.query(Ecosistema).filter(Ecosistema.rol == "local").first()
+    if not ecosistema_actual:
+        raise HTTPException(status_code=404, detail="No se encontró un ecosistema local configurado.")
+
+    ecosistema_id = ecosistema_actual.id
 
     cache_key = f"brechas_ecosistema_{ecosistema_id}_{anio}"
     
     cached = ttl_cache.get(cache_key, _CACHE_TTL)
     if cached:
         return cached
-
-    ecosistema_actual = db.query(Ecosistema).filter(Ecosistema.id == ecosistema_id).first()
-    if not ecosistema_actual:
-        raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
 
     indicadores = db.query(Indicador).all()
     resultados_analisis = []

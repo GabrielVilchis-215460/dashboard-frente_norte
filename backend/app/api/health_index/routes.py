@@ -14,23 +14,20 @@ router = APIRouter(prefix="/indice_salud", tags=["Indice de Salud del Ecosistema
 logger = logging.getLogger("stem_api.indice_salud")
 
 @router.get("", response_model=IndiceSaludResponse)
-def get_indice_salud(anio: int = 2026, db: Session = Depends(get_db)):
+def get_indice_salud(db: Session = Depends(get_db)):
     """
     Endpoint principal que obtiene los KPIs, evolución y benchmark 
     para el ecosistema Ciudad Juárez de forma automática.
     """
-    logger.info(f"Ejecutando get_indice para el ecosistema local en el año {anio}")
-    return get_indice(anio_actual=anio, db=db)
+    return get_indice(db=db)
 
 @router.get("/{ecosistema_id}/brechas", response_model=EcosistemaResponse)
-def obtener_brechas(ecosistema_id: int, anio: int = 2026, db: Session = Depends(get_db)):
+def obtener_brechas(db: Session = Depends(get_db)):
     """
     Endpoint para consultar las brechas y fortalezas del ecosistema STEM 
     comparado con sus referentes.
     """
-    logger.info(f"Consultando brechas y fortalezas para el ecosistema_id={ecosistema_id} en el año {anio}")
-    
-    return calcular_brechas(ecosistema_id=ecosistema_id, anio=anio, db=db)
+    return calcular_brechas(db=db)
 
 @router.post("/seed-test-data")
 def poblar_datos_sinteticos(db: Session = Depends(get_db)):
