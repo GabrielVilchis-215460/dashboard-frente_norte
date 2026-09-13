@@ -1,0 +1,35 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.icon {
+  color: var(--text-60);
+  transition: color var(--transition-fast);
+}
+.wrapper:hover .icon {
+  color: var(--text-100);
+}
+
+.popover {
+  position: fixed; /* coordenadas calculadas con getBoundingClientRect, viewport-relative */
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: max-content;
+  max-width: 200px;
+  padding: var(--space-3) var(--space-4);
+  background: rgba(15, 25, 45, 0.97);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--glass-shadow);
+  color: var(--text-80);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  animation: fadeIn 120ms ease;
+}
