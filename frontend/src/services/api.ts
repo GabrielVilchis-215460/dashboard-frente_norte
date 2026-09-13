@@ -90,7 +90,7 @@ export const api = {
     // --- Índice de Salud del Ecosistema ---
   getIndiceSalud: () =>
     client
-      .get<IndiceSaludResponse>('/api/indice_salud/indice-salud')
+      .get<IndiceSaludResponse>('/api/indice_salud')
       .then((r) => r.data),
       
   // --- Eventos ---

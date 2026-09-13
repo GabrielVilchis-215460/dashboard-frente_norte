@@ -193,17 +193,44 @@ export interface MapFilters {
 
 // Índice de Salud del Ecosistema (ISE) 
  
-export interface DimensionISE {
+export interface KPIIndicador {
+  clave: string;
   nombre: string;
-  score: number;
-  peso: number;
-  descripcion: string;
+  valor_actual: number;
+  unidad: string;
+  cambio_porcentual: number | null;
+}
+ 
+export interface PuntoEvolucionAnio {
+  anio: number;
+  valor: number;
+}
+ 
+export interface SlideEvolucionIndicador {
+  indicador_clave: string;
+  indicador_nombre: string;
+  unidad: string;
+  serie_historica: PuntoEvolucionAnio[];
+}
+ 
+export interface ValorBenchmarkEcosistema {
+  ecosistema: string;
+  rol: string;
+  valor: number;
+}
+ 
+export interface SlideBenchmarkIndicador {
+  indicador_clave: string;
+  indicador_nombre: string;
+  unidad: string;
+  comparativa_ecosistemas: ValorBenchmarkEcosistema[];
 }
  
 export interface IndiceSaludResponse {
-  score_global: number;
-  nivel: string;
-  dimensiones: DimensionISE[];
+  ecosistema_actual: string;
+  kpis: KPIIndicador[];
+  carrusel_evolucion: SlideEvolucionIndicador[];
+  carrusel_benchmark: SlideBenchmarkIndicador[];
 }
 
 // UI
