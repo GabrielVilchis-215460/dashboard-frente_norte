@@ -76,6 +76,45 @@ export interface Programa {
 
 export interface ProgramaCreate extends Omit<Programa, 'id' | 'created_at' | 'updated_at'> {}
 
+export interface Ecosistema {
+  id: number;
+  nombre: string;
+  rol: 'local' | 'referente' | 'par';
+}
+ 
+export interface EcosistemaCreate {
+  nombre: string;
+  rol: 'local' | 'referente' | 'par';
+}
+ 
+export interface EcosistemaUpdate extends Partial<EcosistemaCreate> {}
+ 
+export interface Indicador {
+  id: number;
+  clave: string;
+  nombre: string;
+  unidad: string;
+}
+ 
+export interface BenchmarkValorItem {
+  indicador_id: number;
+  anio: number;
+  valor: number;
+}
+ 
+export interface BenchmarkValorUpdateBatch {
+  anio: number;
+  valores: BenchmarkValorItem[];
+}
+ 
+export interface BenchmarkValorOut {
+  id: number;
+  indicador_id: number;
+  ecosistema_id: number;
+  anio: number;
+  valor: number;
+}
+
 const TOKEN_KEY = 'admin_token';
 const ROL_KEY = 'admin_rol';
 
@@ -216,4 +255,37 @@ export const adminApi = {
 
   getETLStatus: () =>
     adminClient.get<import('../types').ETLStatus>('/api/eventos/admin/etl/status').then((r) => r.data),
+
+  // Ecosistemas (indice de salud)
+  getEcosistemas: (rol?: string) =>
+    adminClient.get<Ecosistema[]>('/api/panel_admin/ecosistemas', { params: rol ? { rol } : undefined }).then((r) => r.data),
+ 
+  createEcosistema: (data: EcosistemaCreate) =>
+    adminClient.post<Ecosistema>('/api/panel_admin/ecosistemas/create', data).then((r) => r.data),
+ 
+  updateEcosistema: (id: number, data: EcosistemaUpdate) =>
+    adminClient.put<Ecosistema>(`/api/panel_admin/ecosistemas/${id}`, data).then((r) => r.data),
+ 
+  deleteEcosistema: (id: number) =>
+    adminClient.delete(`/api/panel_admin/ecosistemas/${id}`),
+ 
+  // Indicadores (solo lectura)
+  getIndicadores: () =>
+    adminClient.get<Indicador[]>('/api/panel_admin/indicadores').then((r) => r.data),
+ 
+  // Valores de benchmark
+  getBenchmarksEcosistema: (ecosistemaId: number, anio?: number) =>
+    adminClient
+      .get<BenchmarkValorOut[]>(`/api/panel_admin/ecosistemas/${ecosistemaId}/benchmarks`, {
+        params: anio ? { anio } : undefined,
+      })
+      .then((r) => r.data),
+ 
+  guardarBenchmarks: (ecosistemaId: number, data: BenchmarkValorUpdateBatch) =>
+    adminClient
+      .post<BenchmarkValorOut[]>(`/api/panel_admin/ecosistemas/${ecosistemaId}/benchmarks`, data)
+      .then((r) => r.data),
+
+  deleteBenchmarkValor: (ecosistemaId: number, benchmarkId: number) =>
+    adminClient.delete(`/api/panel_admin/ecosistemas/${ecosistemaId}/benchmarks/${benchmarkId}`),
 };

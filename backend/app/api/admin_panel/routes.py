@@ -324,6 +324,19 @@ def guardar_o_actualizar_benchmarks(
         
     return resultados
 
+@router.delete("/ecosistemas/{ecosistema_id}/benchmarks/{benchmark_id}", status_code=204)
+def eliminar_benchmark(ecosistema_id: int, benchmark_id: int, db: Session = Depends(get_db)):
+    """Elimina un único valor de benchmark puntual (sin afectar los demás)."""
+    val = db.query(BenchmarkValor).filter(
+        BenchmarkValor.id == benchmark_id,
+        BenchmarkValor.ecosistema_id == ecosistema_id,
+    ).first()
+    if not val:
+        raise HTTPException(status_code=404, detail="Valor de benchmark no encontrado")
+    db.delete(val)
+    db.commit()
+    return None
+
 @router.get("/indicadores", response_model=List[IndicadorOut])
 def listar_indicadores(db: Session = Depends(get_db)):
     """

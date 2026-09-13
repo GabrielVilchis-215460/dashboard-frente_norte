@@ -26,6 +26,12 @@ function formatConUnidad(valor: number, unidad: string, clave: string): string {
   return unidad.trim() === '%' ? `${prefijo}${v}%` : `${prefijo}${v} ${unidad}`;
 }
 
+// Diferencia puntual
+function formatDelta(delta: number, unidad: string, clave: string): string {
+  const signo = delta > 0 ? '+' : '';
+  return `${signo}${formatConUnidad(delta, unidad, clave)}`;
+}
+
 interface ItemProps {
   kpi: KPIIndicador;
 }
@@ -35,7 +41,7 @@ function KPICardItem({ kpi }: ItemProps) {
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
 
-  const cambio = kpi.cambio_porcentual;
+  const cambio = kpi.cambio_porcentual; // ahora es diferencia directa, no %
   const esPositivo = cambio !== null && cambio > 0;
   const esNegativo = cambio !== null && cambio < 0;
 
@@ -69,7 +75,7 @@ function KPICardItem({ kpi }: ItemProps) {
         {esPositivo && <IconTrendingUp size={12} stroke={2} />}
         {esNegativo && <IconTrendingDown size={12} stroke={2} />}
         {cambio === null && <IconMinus size={12} stroke={2} />}
-        {cambio !== null ? `${Math.abs(cambio)}%` : 'Sin cambio'}
+        {cambio !== null ? formatDelta(cambio, kpi.unidad, kpi.clave) : 'Sin cambio'}
       </span>
 
       {open &&

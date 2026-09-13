@@ -97,9 +97,9 @@ def get_indice(db: Session):
         ).first()
 
         cambio = None
-        if val_anterior and float(val_anterior.valor) > 0:
+        if val_anterior:
             v_ant = float(val_anterior.valor)
-            cambio = round(((v_actual - v_ant) / v_ant) * 100, 1)
+            cambio = round(v_actual - v_ant, 1) # el cambio es puntual no porcentual
 
         kpis.append({
             "clave": ind.clave,
