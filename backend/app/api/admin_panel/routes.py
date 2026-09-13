@@ -4,6 +4,8 @@ from typing import List, Optional
 from app.db.session import get_db
 from app.models.organizacion import Organizacion
 from app.models.programa import Programa
+from app.models.ecosistema import Ecosistema
+from app.models.benchmark_valores import BenchmarkValor
 from app.api.admin_panel.schemas import (
     ProgramaBase,
     ProgramaOut,
@@ -15,12 +17,16 @@ from app.api.admin_panel.schemas import (
     OrganizacionOut,
     OrganizacionUpdate,
     GoogleMapsUrlIn, 
-    CoordenadasOut
+    CoordenadasOut,
+    EcosistemaCreate,
+    EcosistemaOut,
+    EcosistemaUpdate,
+    BenchmarkValorUpdateBatch,
+    BenchmarkValorOut
 )
 from app.api.auth.service import get_current_admin
 from app.utils.geo_utils import extract_coords_from_url
 
-# Todos los endpoints de este router requieren JWT válido
 router = APIRouter(
     prefix="/panel_admin",
     tags=["Panel de Administración"],
@@ -190,3 +196,128 @@ def parse_maps_url(data: GoogleMapsUrlIn):
         )
     lat, lng = coords
     return CoordenadasOut(latitud=lat, longitud=lng)
+
+@router.get("/ecosistemas", response_model=List[EcosistemaOut])
+def listar_ecosistemas(
+    rol: Optional[str] = Query(None, description="Filtrar por rol: local, referente, par"),
+    skip: int = 0, limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    """Lista todos los ecosistemas registrados."""
+    q = db.query(Ecosistema)
+    if rol:
+        q = q.filter(Ecosistema.rol == rol)
+    return q.order_by(Ecosistema.nombre).offset(skip).limit(limit).all()
+
+@router.get("/ecosistemas/{ecosistema_id}", response_model=EcosistemaOut)
+def detalle_ecosistema(ecosistema_id: int, db: Session = Depends(get_db)):
+    """Obtiene el detalle de un ecosistema por su ID."""
+    eco = db.query(Ecosistema).filter(Ecosistema.id == ecosistema_id).first()
+    if not eco:
+        raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
+    return eco
+
+@router.post("/ecosistemas/create", response_model=EcosistemaOut, status_code=201)
+def crear_ecosistema(data: EcosistemaCreate, db: Session = Depends(get_db)):
+    """Crea un nuevo ecosistema asegurando que el nombre sea único."""
+    existente = db.query(Ecosistema).filter(
+        Ecosistema.nombre.ilike(data.nombre)
+    ).first()
+    if existente:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ya existe un ecosistema con el nombre '{existente.nombre}'"
+        )
+    eco = Ecosistema(**data.model_dump())
+    db.add(eco)
+    db.commit()
+    db.refresh(eco)
+    return eco
+
+@router.put("/ecosistemas/{ecosistema_id}", response_model=EcosistemaOut)
+def actualizar_ecosistema(
+    ecosistema_id: int, data: EcosistemaUpdate, db: Session = Depends(get_db)
+):
+    """Actualiza la información de un ecosistema."""
+    eco = db.query(Ecosistema).filter(Ecosistema.id == ecosistema_id).first()
+    if not eco:
+        raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
+    
+    for k, v in data.model_dump(exclude_unset=True).items():
+        setattr(eco, k, v)
+    
+    db.commit()
+    db.refresh(eco)
+    return eco
+
+@router.delete("/ecosistemas/{ecosistema_id}", status_code=204)
+def eliminar_ecosistema(ecosistema_id: int, db: Session = Depends(get_db)):
+    """Elimina un ecosistema (y sus valores de benchmark asociados por cascada)."""
+    eco = db.query(Ecosistema).filter(Ecosistema.id == ecosistema_id).first()
+    if not eco:
+        raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
+    
+    db.delete(eco)
+    db.commit()
+    return None
+
+@router.get("/ecosistemas/{ecosistema_id}/benchmarks", response_model=List[BenchmarkValorOut])
+def listar_benchmarks_ecosistema(
+    ecosistema_id: int, 
+    anio: Optional[int] = Query(None, description="Filtrar por año específico"),
+    db: Session = Depends(get_db)
+):
+    """Obtiene todos los valores de benchmark registrados para un ecosistema."""
+    eco = db.query(Ecosistema).filter(Ecosistema.id == ecosistema_id).first()
+    if not eco:
+        raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
+    
+    q = db.query(BenchmarkValor).filter(BenchmarkValor.ecosistema_id == ecosistema_id)
+    if anio:
+        q = q.filter(BenchmarkValor.anio == anio)
+    return q.all()
+
+@router.post("/ecosistemas/{ecosistema_id}/benchmarks", response_model=List[BenchmarkValorOut])
+def guardar_o_actualizar_benchmarks(
+    ecosistema_id: int, 
+    data: BenchmarkValorUpdateBatch, 
+    db: Session = Depends(get_db)
+):
+    """
+    Registra o actualiza de forma masiva (Upsert) los valores de benchmark 
+    para un ecosistema y un año determinado.
+    """
+    eco = db.query(Ecosistema).filter(Ecosistema.id == ecosistema_id).first()
+    if not eco:
+        raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
+
+    resultados = []
+    for item in data.valores:
+        # Busca si ya existe un registro para esa combinación (ecosistema, indicador, año)
+        benchmark_existente = db.query(BenchmarkValor).filter(
+            BenchmarkValor.ecosistema_id == ecosistema_id,
+            BenchmarkValor.indicador_id == item.indicador_id,
+            BenchmarkValor.anio == data.anio
+        ).first()
+
+        if benchmark_existente:
+            # Actualiza el valor existente
+            benchmark_existente.valor = item.valor
+            db.add(benchmark_existente)
+            resultados.append(benchmark_existente)
+        else:
+            # Crea un registro nuevo
+            nuevo_benchmark = BenchmarkValor(
+                ecosistema_id=ecosistema_id,
+                indicador_id=item.indicador_id,
+                anio=data.anio,
+                valor=item.valor
+            )
+            db.add(nuevo_benchmark)
+            resultados.append(nuevo_benchmark)
+
+    db.commit()
+    for res in resultados:
+        db.refresh(res)
+        
+    return resultados
