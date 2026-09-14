@@ -107,7 +107,7 @@
   flex-shrink: 0;
 }
 .logoImg {
-  height: 32px;
+  height: 50px;
   width: auto;
 }
 
@@ -162,7 +162,7 @@
   gap: var(--space-3);
 }
 .footerLogoImg {
-  height: 20px;
+  height: 50px;
   width: auto;
 }
 .footerTitle {

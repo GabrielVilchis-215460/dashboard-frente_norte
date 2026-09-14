@@ -135,19 +135,6 @@ def admin_actualizar_evento(
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     return ev
 
-
-@router.patch("/admin/{evento_id}/toggle", response_model=EventoResponse)
-def admin_toggle_evento(
-    evento_id: int,
-    db: Session = Depends(get_db),
-    _: str = Depends(get_current_admin),
-):
-    ev = service.toggle_evento(db, evento_id)
-    if not ev:
-        raise HTTPException(status_code=404, detail="Evento no encontrado")
-    return ev
-
-
 @router.delete("/admin/{evento_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_eliminar_evento(
     evento_id: int,
@@ -157,26 +144,6 @@ def admin_eliminar_evento(
     """Elimina permanentemente un evento de la BD."""
     if not eliminar_evento(db, evento_id):
         raise HTTPException(status_code=404, detail="Evento no encontrado")
-
-
-@router.delete("/admin/limpiar/inactivos", status_code=status.HTTP_200_OK)
-def admin_limpiar_inactivos(
-    db: Session = Depends(get_db),
-    _: str = Depends(get_current_admin),
-):
-    """Elimina permanentemente todos los eventos inactivos para depurar duplicados."""
-    eliminados = limpiar_inactivos(db)
-    return {"eliminados": eliminados}
-
-
-@router.get("/admin/duplicados", status_code=status.HTTP_200_OK)
-def admin_ver_duplicados(
-    db: Session = Depends(get_db),
-    _: str = Depends(get_current_admin),
-):
-    """Detecta eventos activos con nombre similar en la misma fecha."""
-    return detectar_duplicados_activos(db)
-
 
 @router.post("/admin/etl/run", response_model=ETLStatusResponse, status_code=status.HTTP_202_ACCEPTED)
 def admin_run_etl(_: str = Depends(get_current_admin)):

@@ -11,18 +11,22 @@ import { Skeleton } from '../../../components/ui';
 import { STAGES, normalizeStage } from './stageConfig';
 import type { MadurezResponse } from '../../../types';
 import styles from './MaturityFunnel.module.css';
- 
+
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   IconRocket,
   IconPlant,
   IconTrendingUp,
 };
- 
+
 interface Props {
   data?: MadurezResponse;
   loading: boolean;
 }
- 
+
+function labelProgramas(n: number): string {
+  return n === 1 ? 'programa' : 'programas';
+}
+
 export function MaturityFunnel({ data, loading }: Props) {
   const [hovered, setHovered] = useState<number | null>(null);
  
@@ -82,6 +86,22 @@ export function MaturityFunnel({ data, loading }: Props) {
                 </span>
                 <h4 className={styles.detailTitle}>{stage.label}</h4>
               </div>
+
+              <div className={styles.metrics}>
+                <div className={styles.metric}>
+                  <span className={styles.metricValue} style={{ color: stage.color }}>
+                    {stage.programas}
+                  </span>
+                  <span className={styles.metricLabel}>{labelProgramas(stage.programas)}</span>
+                </div>
+                <div className={styles.metric}>
+                  <span className={styles.metricValue} style={{ color: stage.color }}>
+                    {stage.beneficiarios.toLocaleString('es-MX')}
+                  </span>
+                  <span className={styles.metricLabel}>beneficiarios</span>
+                </div>
+              </div>
+
               <p className={styles.detailDesc}>{stage.description}</p>
             </div>
           );
@@ -102,7 +122,7 @@ export function MaturityFunnel({ data, loading }: Props) {
               onMouseLeave={() => setHovered(null)}
             >
               <span className={styles.barRowLabel}>{stage.label}</span>
- 
+
               <div className={styles.barTrack}>
                 <div
                   className={`${styles.barFill} animate-fade-in`}
@@ -114,13 +134,10 @@ export function MaturityFunnel({ data, loading }: Props) {
                   }}
                 />
               </div>
- 
+
               <div className={styles.barRowValues}>
                 <span style={{ color: stage.color }}>
-                  <strong>{stage.programas}</strong> programas
-                </span>
-                <span className={styles.barRowSecondary}>
-                  {stage.beneficiarios.toLocaleString('es-MX')} beneficiarios
+                  <strong>{stage.programas}</strong> {labelProgramas(stage.programas)}
                 </span>
               </div>
             </div>

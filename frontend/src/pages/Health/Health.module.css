@@ -34,48 +34,24 @@
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* Fila superior: frasco (angosto) + dimensiones (ancho) */
-.topGrid {
-  display: grid;
-  grid-template-columns: 1fr 1.6fr;
-  gap: var(--space-4);
+.kpiCard {
   margin-bottom: var(--space-4);
+  overflow: visible;
 }
 
-.flaskCard {
-  min-height: 420px;
-  min-width: 0;
-}
-
-.flaskContent {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+.bottomGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
-  height: 100%;
 }
 
-.iseDesc {
-  font-size: var(--text-sm);
-  color: var(--text-60);
-  line-height: 1.6;
-  text-align: center;
-}
-
-.dimCard {
-  min-height: 420px;
+.chartCard {
   min-width: 0;
-}
-
-.formulaCard {
-  /* hereda glass */
+  overflow: visible;
 }
 
 @media (max-width: 1000px) {
-  .topGrid { grid-template-columns: 1fr; }
-}
-
-@media (max-width: 640px) {
-  .flaskCard, .dimCard { min-height: 300px; }
+  .bottomGrid {
+    grid-template-columns: 1fr;
+  }
 }

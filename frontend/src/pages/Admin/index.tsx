@@ -9,9 +9,10 @@ import { Modal } from './Modal';
 import { OrgForm, defaultOrg, orgToForm } from './OrgForm';
 import { ProgramaForm, defaultPrograma, programaToForm } from './ProgramaForm';
 import { EventosTable, ETLPanel } from './EventosTable';
+import { EcosistemasTable } from './EcosistemasTable';
 import styles from './Admin.module.css';
 
-type Tab = 'organizaciones' | 'programas' | 'eventos';
+type Tab = 'organizaciones' | 'programas' | 'eventos' | 'indice_salud';
 
 // ── Tabla de Organizaciones ───────────────────────────────────────────────────
 
@@ -401,11 +402,15 @@ export function Admin() {
         <button className={`${styles.tab} ${tab === 'eventos' ? styles.tabActive : ''}`} onClick={() => setTab('eventos')}>
           Eventos
         </button>
+        <button className={`${styles.tab} ${tab === 'indice_salud' ? styles.tabActive : ''}`} onClick={() => setTab('indice_salud')}>
+          Índice de Salud
+        </button>
       </div>
 
       {tab === 'organizaciones' && <OrgsTable />}
       {tab === 'programas' && <ProgramasTable />}
       {tab === 'eventos' && <EventosTable refreshKey={eventsRefreshKey} nuevosIds={etlNuevosIds} />}
+      {tab === 'indice_salud' && <EcosistemasTable />}
     </div>
   );
 }

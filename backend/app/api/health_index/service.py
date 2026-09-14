@@ -1,122 +1,240 @@
 import logging
-from app.api.health_index.schemas import IndiceSaludEcosistema, DimensionISE
 from sqlalchemy.orm import Session
-from app.utils.constants import (
-    #TOTAL_COLONIAS_JUAREZ,
-    TOTAL_AREAS_STEM,
-    META_BENEFICIARIOS_SEMESTRE,
-    ISE_PESOS
-)
-from app.utils.helpers import ise_level
 from app.utils import ttl_cache
-from app.api.woman_inclusion.service import get_inclusion_femenina
-from app.api.overview.service import get_panorama
-from app.api.ecosystem_maturity.service import get_madurez
+from app.models.indicadores import Indicador
+from app.models.ecosistema import Ecosistema
+from app.models.benchmark_valores import BenchmarkValor
+from fastapi import HTTPException
+from sqlalchemy import func
 
 logger = logging.getLogger("stem_api.indice_salud")
-
 
 _CACHE_KEY = "indice_salud"
 _CACHE_TTL = 300
 
-def get_indice_salud(db: Session) -> IndiceSaludEcosistema:
-    cached = ttl_cache.get(_CACHE_KEY, _CACHE_TTL)
+PLANTILLAS_BRECHAS = {
+    "egresados_stem": (
+        "El porcentaje de egresados STEM ({valor_juarez}{unidad}) se encuentra por debajo "
+        "del referente {ecosistema_referente} ({valor_referente}{unidad}). Se recomienda intensificar convenios "
+        "entre la industria local y las universidades para ofrecer becas focalizadas."
+    ),
+    "mujeres_stem": (
+        "La participación de mujeres en el egreso STEM es del {valor_juarez}{unidad}, distanciándose del líder "
+        "{ecosistema_referente} ({valor_referente}{unidad}). Se sugiere implementar programas de mentoría temprana y "
+        "campañas vocacionales en preparatorias."
+    ),
+    "empleo_stem": (
+        "El empleo formal en áreas STEM representa el {valor_juarez}{unidad}, en contraste con el "
+        "{valor_referente}{unidad} de {ecosistema_referente}. Es necesario detonar hubs de innovación y "
+        "políticas de atracción de inversiones de alta tecnología."
+    ),
+    "salario_stem": (
+        "El salario promedio en ocupaciones STEM es de ${valor_juarez:,.1f} {unidad}, mientras que en {ecosistema_referente} "
+        "alcanza los ${valor_referente:,.1f} {unidad}. Se recomienda impulsar la certificación de competencias avanzadas "
+        "y la transición hacia la Industria 4.0."
+    ),
+    "centros_investigacion": (
+        "Se cuenta con {valor_juarez} {unidad}, un valor bajo frente a los {valor_referente} {unidad} de {ecosistema_referente}. "
+        "Se aconseja fomentar la triple hélice (Gobierno-Academia-Industria) para establecer laboratorios de investigación aplicada."
+    )
+}
+
+PLANTILLAS_FORTALEZAS = {
+    "egresados_stem": (
+        "El ecosistema destaca con un {valor_juarez}{unidad} en egresados STEM, superando al referente {ecosistema_referente} "
+        "({valor_referente}{unidad}). Se sugiere capitalizar este volumen de talento con programas de retención local."
+    ),
+    "mujeres_stem": (
+        "En participación de mujeres STEM, se registra un sólido {valor_juarez}{unidad} frente al {valor_referente}{unidad} "
+        "de {ecosistema_referente}. Es una oportunidad clave para posicionar a la ciudad como referente en equidad tecnológica."
+    ),
+    "empleo_stem": (
+        "Se muestra un liderazgo sobresaliente en empleo formal STEM ({valor_juarez}{unidad} vs {valor_referente}{unidad} de {ecosistema_referente}). "
+        "El siguiente paso estratégico es consolidar clústeres de diseño e ingeniería avanzada."
+    ),
+    "salario_stem": (
+        "El salario promedio STEM (${valor_juarez:,.1f} {unidad}) supera al de {ecosistema_referente} (${valor_referente:,.1f} {unidad}). "
+        "Esto refleja una alta competitividad salarial que debe mantenerse impulsando proyectos de I+D."
+    ),
+    "centros_investigacion": (
+        "Se lidera con {valor_juarez} {unidad} superando a {ecosistema_referente} ({valor_referente} {unidad}). "
+        "Se recomienda potenciar la vinculación de estos centros con la industria local para acelerar la transferencia tecnológica."
+    )
+}
+
+def get_indice(db: Session):
+    # detección automática del año mas reciente con datos registrados
+    anio_actual = db.query(func.max(BenchmarkValor.anio)).scalar()
+    if not anio_actual:
+        raise HTTPException(status_code=404, detail="No hay datos de benchmark registrados en el sistema.")
+
+    ecosistema_actual = db.query(Ecosistema).filter(Ecosistema.rol == "local").first()
+    if not ecosistema_actual:
+        raise HTTPException(status_code=404, detail="Ecosistema no encontrado")
+
+    indicadores = db.query(Indicador).all()
+    ecosistema_id = ecosistema_actual.id
+
+    kpis = []
+    evolucion = []
+    benchmark = []
+
+    for ind in indicadores:
+        # valor actual del indicador para el año consultado del ecosistema
+        val_actual = db.query(BenchmarkValor).filter(
+            BenchmarkValor.ecosistema_id == ecosistema_id,
+            BenchmarkValor.indicador_id == ind.id,
+            BenchmarkValor.anio == anio_actual
+        ).first()
+
+        v_actual = float(val_actual.valor) if val_actual else 0.0
+
+        # cambio porcentual vs año anterior para los KPIs
+        val_anterior = db.query(BenchmarkValor).filter(
+            BenchmarkValor.ecosistema_id == ecosistema_id,
+            BenchmarkValor.indicador_id == ind.id,
+            BenchmarkValor.anio == anio_actual - 1
+        ).first()
+
+        cambio = None
+        if val_anterior:
+            v_ant = float(val_anterior.valor)
+            cambio = round(v_actual - v_ant, 1) # el cambio es puntual no porcentual
+
+        kpis.append({
+            "clave": ind.clave,
+            "nombre": ind.nombre,
+            "valor_actual": v_actual,
+            "unidad": ind.unidad,
+            "cambio_porcentual": cambio
+        })
+
+        # primer carrusel de graficas
+        registros_historicos = db.query(BenchmarkValor).filter(
+            BenchmarkValor.ecosistema_id == ecosistema_id,
+            BenchmarkValor.indicador_id == ind.id
+        ).order_by(BenchmarkValor.anio.asc()).all()
+
+        serie_historica = [
+            {"anio": reg.anio, "valor": float(reg.valor)} 
+            for reg in registros_historicos
+        ]
+
+        evolucion.append({
+            "indicador_clave": ind.clave,
+            "indicador_nombre": ind.nombre,
+            "unidad": ind.unidad,
+            "serie_historica": serie_historica
+        })
+
+        # segundo carrusel de graficas
+        valores_ecosistemas = db.query(BenchmarkValor, Ecosistema).join(Ecosistema).filter(
+            BenchmarkValor.indicador_id == ind.id,
+            BenchmarkValor.anio == anio_actual
+        ).order_by(BenchmarkValor.valor.desc()).all()
+
+        comparativa_ecosistemas = [
+            {
+                "ecosistema": eco.nombre,
+                "rol": eco.rol,
+                "valor": float(val.valor)
+            }
+            for val, eco in valores_ecosistemas
+        ]
+
+        benchmark.append({
+            "indicador_clave": ind.clave,
+            "indicador_nombre": ind.nombre,
+            "unidad": ind.unidad,
+            "comparativa_ecosistemas": comparativa_ecosistemas
+        })
+
+    return {
+        "ecosistema_actual": ecosistema_actual.nombre,
+        "kpis": kpis,
+        "carrusel_evolucion" : evolucion,
+        "carrusel_benchmark": benchmark
+    }
+
+
+def calcular_brechas(db: Session) -> dict:
+    anio = db.query(func.max(BenchmarkValor.anio)).scalar()
+    if not anio:
+        raise HTTPException(status_code=404, detail="No hay datos de benchmark registrados en el sistema.")
+
+    ecosistema_actual = db.query(Ecosistema).filter(Ecosistema.rol == "local").first()
+    if not ecosistema_actual:
+        raise HTTPException(status_code=404, detail="No se encontró un ecosistema local configurado.")
+
+    ecosistema_id = ecosistema_actual.id
+
+    cache_key = f"brechas_ecosistema_{ecosistema_id}_{anio}"
+    
+    cached = ttl_cache.get(cache_key, _CACHE_TTL)
     if cached:
         return cached
 
-    """
-    Calcula el Índice de Salud del Ecosistema STEM (ISE).
+    indicadores = db.query(Indicador).all()
+    resultados_analisis = []
 
-    Fórmula:
-        ISE = Cobertura×0.25 + Diversidad×0.20 + Inclusión×0.20
-              + Alcance×0.20 + Madurez×0.15
+    for ind in indicadores:
+        valor_actual_obj = db.query(BenchmarkValor).filter(
+            BenchmarkValor.ecosistema_id == ecosistema_id,
+            BenchmarkValor.indicador_id == ind.id,
+            BenchmarkValor.anio == anio
+        ).first()
 
-    Cada dimensión se normaliza a escala 0-100 antes de aplicar los pesos.
+        if not valor_actual_obj:
+            continue
 
-    Args:
-        db: Sesión activa de SQLAlchemy.
+        v_actual = float(valor_actual_obj.valor)
 
-    Returns:
-        IndiceSaludEcosistema: Score global, nivel cualitativo y 5 dimensiones.
-    """
-    logger.info("Calculando Índice de Salud del Ecosistema STEM")
+        mejor_referente = db.query(BenchmarkValor, Ecosistema).join(Ecosistema).filter(
+            BenchmarkValor.indicador_id == ind.id,
+            BenchmarkValor.anio == anio,
+            BenchmarkValor.ecosistema_id != ecosistema_id
+        ).order_by(BenchmarkValor.valor.desc()).first()
 
-    # Reutilizar cálculos de otros módulos
-    panorama = get_panorama(db)
-    inclusion = get_inclusion_femenina(db)
-    madurez_d = get_madurez(db)
+        if not mejor_referente:
+            continue
 
-    # Dimensión 1: Cobertura territorial 
-    # Colonias impactadas como porcentaje del total de colonias de Cd. Juárez
-    #d_cobertura = min(100.0, (panorama.colonias_impactadas / TOTAL_COLONIAS_JUAREZ) * 100)
-    d_cobertura = min(100.0, (panorama.colonias_impactadas / 20) * 100)
+        val_ref_obj, ecosistema_ref_obj = mejor_referente
+        v_ref = float(val_ref_obj.valor)
+        nombre_ref = ecosistema_ref_obj.nombre
 
-    # Dimensión 2: Diversidad de oferta STEM 
-    # Áreas STEM cubiertas como porcentaje de las 8 áreas posibles
-    d_diversidad = min(100.0, (len(panorama.areas_stem_representadas) / TOTAL_AREAS_STEM) * 100)
+        diferencia = v_actual - v_ref
 
-    # Dimensión 3: Inclusión femenina 
-    # Porcentaje promedio de mujeres en los programas (ya está en escala 0-100)
-    d_inclusion = min(100.0, inclusion.pct_promedio_mujeres)
+        if diferencia >= 0:
+            tipo = "fortaleza"
+            plantilla = PLANTILLAS_FORTALEZAS.get(ind.clave, "Se muestra un rendimiento competitivo en {nombre}.")
+        else:
+            tipo = "brecha"
+            plantilla = PLANTILLAS_BRECHAS.get(ind.clave, "Se detectó un área de mejora en este indicador.")
 
-    # Dimensión 4: Alcance de beneficiarios 
-    d_alcance = min(100.0, (panorama.beneficiarios_semestre / META_BENEFICIARIOS_SEMESTRE) * 100)
+        texto_generado = plantilla.format(
+            valor_juarez=v_actual,
+            valor_referente=v_ref,
+            ecosistema_referente=nombre_ref,
+            unidad=ind.unidad or ""
+        )
 
-    # Dimensión 5: Madurez de programas
-    # Ponderación: Escalamiento=1.0, Implementación=0.5, Exploración=0.0
-    total_prog = sum(madurez_d.por_etapa.values()) or 1
-    escala = madurez_d.por_etapa.get("Escalamiento", 0)
-    impleme = madurez_d.por_etapa.get("Implementación", 0)
-    d_madurez = min(100.0, ((escala * 1.0 + impleme * 0.5) / total_prog) * 100)
+        resultados_analisis.append({
+            "indicador_clave": ind.clave,
+            "indicador_nombre": ind.nombre,
+            "tipo": tipo,
+            "valor_actual": v_actual,
+            "valor_referente": v_ref,
+            "referente": nombre_ref,
+            "diferencia": round(abs(diferencia), 2),
+            "mensaje": texto_generado
+        })
 
-    # Score global ponderado
-    score = (
-        d_cobertura  * ISE_PESOS["cobertura"]  +
-        d_diversidad * ISE_PESOS["diversidad"] +
-        d_inclusion  * ISE_PESOS["inclusion"]  +
-        d_alcance    * ISE_PESOS["alcance"]    +
-        d_madurez    * ISE_PESOS["madurez"]
-    )
+    result = {
+        "ecosistema": ecosistema_actual.nombre,
+        "rol": ecosistema_actual.rol,
+        "anio": anio,
+        "analisis": resultados_analisis
+    }
 
-    nivel = ise_level(score)
-    logger.info("ISE score: %.1f — nivel: %s", score, nivel)
-
-    result = IndiceSaludEcosistema(
-        score_global=round(score, 1),
-        nivel=nivel,
-        dimensiones=[
-            DimensionISE(
-                nombre="Cobertura territorial",
-                score=round(d_cobertura, 1),
-                peso=ISE_PESOS["cobertura"],
-                descripcion=f"Presencia activa en {panorama.colonias_impactadas} colonias de Ciudad Juárez",
-            ),
-            DimensionISE(
-                nombre="Diversidad de oferta STEM",
-                score=round(d_diversidad, 1),
-                peso=ISE_PESOS["diversidad"],
-                descripcion=f"Áreas STEM cubiertas de {TOTAL_AREAS_STEM} posibles",
-            ),
-            DimensionISE(
-                nombre="Inclusión femenina",
-                score=round(d_inclusion, 1),
-                peso=ISE_PESOS["inclusion"],
-                descripcion="Promedio de participación de mujeres en los programas",
-            ),
-            DimensionISE(
-                nombre="Alcance de beneficiarios",
-                score=round(d_alcance, 1),
-                peso=ISE_PESOS["alcance"],
-                #descripcion=f"Beneficiarios semestre vs. meta de {META_BENEFICIARIOS_SEMESTRE:,}",
-                descripcion="Beneficiarios únicos registrados en el semestre actual",
-            ),
-            DimensionISE(
-                nombre="Madurez de programas",
-                score=round(d_madurez, 1),
-                peso=ISE_PESOS["madurez"],
-                descripcion="% de programas en Implementación o Escalamiento",
-            ),
-        ],
-    )
-    ttl_cache.put(_CACHE_KEY, result)
+    ttl_cache.put(cache_key, result)
     return result

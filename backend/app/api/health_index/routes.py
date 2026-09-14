@@ -2,44 +2,48 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.api.health_index.schemas import IndiceSaludEcosistema
-from app.api.health_index.service import get_indice_salud
+from app.api.health_index.schemas import EcosistemaResponse, IndiceSaludResponse
+from app.api.health_index.service import calcular_brechas, get_indice
+from app.models.ecosistema import Ecosistema
+from app.models.indicadores import Indicador
+from app.models.benchmark_valores import BenchmarkValor
+from sqlalchemy import text
 
 router = APIRouter(prefix="/indice_salud", tags=["Indice de Salud del Ecosistema"])
 
 logger = logging.getLogger("stem_api.indice_salud")
 
-@router.get(
-    "/indice-salud",
-    response_model=IndiceSaludEcosistema,
-    summary="Índice de Salud del Ecosistema STEM (ISE)",
-    description="""
-Calcula el Índice de Salud del Ecosistema STEM de Ciudad Juárez.
+@router.get("", response_model=IndiceSaludResponse)
+def get_indice_salud(db: Session = Depends(get_db)):
+    """
+    Endpoint principal que obtiene los KPIs, evolución y benchmark 
+    para el ecosistema Ciudad Juárez de forma automática.
+    """
+    return get_indice(db=db)
 
-**Fórmula:**
-`ISE = Cobertura×0.25 + Diversidad×0.20 + Inclusión×0.20 + Alcance×0.20 + Madurez×0.15`
+@router.get("/{ecosistema_id}/brechas", response_model=EcosistemaResponse)
+def obtener_brechas(db: Session = Depends(get_db)):
+    """
+    Endpoint para consultar las brechas y fortalezas del ecosistema STEM 
+    comparado con sus referentes.
+    """
+    return calcular_brechas(db=db)
 
-**Justificación de pesos:**
-Los pesos fueron definidos para priorizar el impacto territorial y la diversidad de la oferta educativa, 
-asegurando un equilibrio entre la presencia física en colonias y la calidad de los programas ofrecidos en la ciudad.
-
-**Niveles:**
-- EXCELENTE: ≥ 75
-- BUENO: ≥ 50
-- EN DESARROLLO: ≥ 25
-- CRÍTICO: < 25
-
-Alimenta el **Módulo 8 — Índice de Salud** del dashboard.
-    """,
-    responses={
-        200: {"description": "ISE calculado exitosamente"},
-        500: {"description": "Error interno al calcular el ISE"},
-    },
-)
-def indice_salud(db: Session = Depends(get_db)) -> IndiceSaludEcosistema:
-    """Indicador estratégico — Índice de Salud del Ecosistema STEM."""
+@router.delete("/seed-test-data")
+def limpiar_datos_sinteticos(db: Session = Depends(get_db)):
+    """
+    Elimina los ecosistemas y sus benchmarks, y reinicia los contadores 
+    de ID de ambas tablas a 1, conservando intactos los indicadores[cite: 1, 2, 3].
+    """
     try:
-        return get_indice_salud(db)
-    except Exception as exc:
-        logger.error("Error en /metricas/indice-salud: %s", exc, exc_info=True)
-        raise HTTPException(status_code=500, detail="Error al calcular el Índice de Salud.")
+        # TRUNCATE con CASCADE limpia las tablas y RESTART IDENTITY reinicia los IDs a 1.
+        # Respetamos la tabla 'indicadores' para que no sea tocada.
+        db.execute(text("TRUNCATE TABLE benchmark_valores, ecosistemas RESTART IDENTITY CASCADE;"))
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al limpiar y reiniciar IDs: {str(e)}")
+
+    return {
+        "mensaje": "¡Datos depurados con éxito y contadores de ID reiniciados a 1!"
+    }

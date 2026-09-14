@@ -101,3 +101,48 @@ class OrganizacionMapPin(BaseModel):
 
     class Config:
         from_attributes = True
+
+class EcosistemaBase(BaseModel):
+    nombre: str
+    rol: str  # ej. "local", "referente", "par"
+
+class EcosistemaCreate(EcosistemaBase):
+    pass
+
+class EcosistemaUpdate(BaseModel):
+    nombre: Optional[str] = None
+    rol: Optional[str] = None
+
+class EcosistemaOut(EcosistemaBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class BenchmarkValorItem(BaseModel):
+    indicador_id: int
+    anio: int
+    valor: float
+
+class BenchmarkValorUpdateBatch(BaseModel):
+    anio: int
+    valores: List[BenchmarkValorItem]
+
+class BenchmarkValorOut(BaseModel):
+    id: int
+    indicador_id: int
+    ecosistema_id: int
+    anio: int
+    valor: float
+
+    class Config:
+        from_attributes = True
+
+class IndicadorOut(BaseModel):
+    id: int
+    clave: str
+    nombre: str
+    unidad: str
+ 
+    class Config:
+        from_attributes = True

@@ -1,16 +1,66 @@
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Literal, Optional
 
 # Pestaña 8 - Modulo 8
-class DimensionISE(BaseModel):
+# KPIs
+class KPIIndicador(BaseModel):
+    clave: str
     nombre: str
-    score: float # 0-100
-    peso: float # peso en la fórmula
-    descripcion: str
+    valor_actual: float
+    unidad: str
+    cambio_porcentual: Optional[float] = None
 
-class IndiceSaludEcosistema(BaseModel):
-    score_global: float # 0-100
-    nivel: str # Crítico | En desarrollo | Bueno | Excelente
-    dimensiones: List[DimensionISE]
-    # Cobertura * 0.25 + Diversidad * 0.20 + Inclusión * 0.20
-    # + Alcance * 0.20 + Madurez * 0.15
+# Graficas
+class PuntoEvolucionAnio(BaseModel):
+    anio: int
+    valor: float
+
+class SlideEvolucionIndicador(BaseModel):
+    indicador_clave: str
+    indicador_nombre: str
+    unidad: str
+    serie_historica: List[PuntoEvolucionAnio]
+
+class ValorBenchmarkEcosistema(BaseModel):
+    ecosistema: str
+    rol: str
+    valor: float
+
+class SlideBenchmarkIndicador(BaseModel):
+    indicador_clave: str
+    indicador_nombre: str
+    unidad: str
+    comparativa_ecosistemas: List[ValorBenchmarkEcosistema]
+
+# Apartado de brechas y oportunidades
+class AnalisisItem(BaseModel):
+    indicador_clave: str
+    indicador_nombre: str
+    tipo: Literal["brecha", "fortaleza"]
+    valor_actual: float
+    valor_referente: float
+    referente: str
+    diferencia: float
+    mensaje: str
+
+    class Config:
+        from_attributes = True
+
+# Responses
+class EcosistemaResponse(BaseModel):
+    ecosistema: str
+    rol: str
+    anio: int
+    analisis: List[AnalisisItem]
+
+    class Config:
+        from_attributes = True
+
+class IndiceSaludResponse(BaseModel):
+    ecosistema_actual: str
+    kpis: List[KPIIndicador]
+    carrusel_evolucion: List[SlideEvolucionIndicador]
+    carrusel_benchmark: List[SlideBenchmarkIndicador]
+
+    class Config:
+        from_attributes = True

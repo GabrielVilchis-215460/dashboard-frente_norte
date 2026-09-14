@@ -53,7 +53,7 @@ export function PublicLayout() {
         <div className={styles.navSideDesktop}>{links}</div>
 
         <Link to={ROUTES.HOME} className={styles.logo} aria-label="Frente Norte">
-          <img src="/frente_norte_logo.png" alt="" className={styles.logoImg} />
+          <img src="/ecosistema-stem.svg" alt="Home" className={styles.logoImg} />
         </Link>
 
         <div className={styles.navSideDesktop}>{linksDerecha}</div>
@@ -86,11 +86,7 @@ export function PublicLayout() {
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <div className={styles.footerBrand}>
-            <img src="/frente_norte_logo.png" alt="" className={styles.footerLogoImg} />
-            <div>
-              <div className={styles.footerTitle}>Frente Norte</div>
-              <div className={styles.footerSubtitle}>Ecosistema STEM &ndash; Eventos</div>
-            </div>
+            <img src="/ecosistema-stem.svg" alt="" className={styles.footerLogoImg} />
           </div>
 
           <nav className={styles.footerLinks}>
