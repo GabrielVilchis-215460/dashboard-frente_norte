@@ -5,10 +5,10 @@
 }
 
 .glass {
-  background: rgba(8, 16, 40, 0.60);
+  background: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: var(--radius-lg);
   padding: var(--space-8) var(--space-8);
 }
@@ -21,7 +21,7 @@
   font-size: var(--text-sm);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent-a);
+  color: var(--accent-b);
   margin-bottom: var(--space-3);
 }
 .title {
@@ -33,7 +33,7 @@
 .lead {
   margin-top: var(--space-5);
   font-size: var(--text-lg);
-  color: var(--text-80);
+  color: var(--text-100);
   line-height: 1.7;
 }
 
@@ -44,7 +44,7 @@
 }
 
 .section {
-  border-left: 2px solid rgba(45, 212, 168, 0.35);
+  border-left: 2px solid var(--accent-b);
   padding-left: var(--space-6);
 }
 .sectionTitle {
@@ -54,7 +54,7 @@
   margin-bottom: var(--space-3);
 }
 .paragraph {
-  color: var(--text-80);
+  color: var(--text-100);
   line-height: 1.75;
   margin-bottom: var(--space-4);
 }
@@ -71,9 +71,9 @@
   margin: 0 auto;
   padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-md);
-  background: rgba(45, 212, 168, 0.10);
+  background: rgb(48 197 177 / 20%);
   border: 1px solid rgba(45, 212, 168, 0.45);
-  color: var(--accent-a);
+  color: #5ce7c2;
   text-decoration: none;
   font-size: var(--text-base);
   font-weight: 500;
@@ -84,7 +84,71 @@
   border-color: var(--accent-a);
 }
 
+/* ---- Organizaciones colaboradoras: carrusel infinito ---- */
+
+.partnersSection {
+  text-align: center;
+}
+
+.sectionTitleCentered {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  color: var(--text-100);
+  margin-bottom: var(--space-6);
+}
+
+.partnersMarqueeWrap {
+  overflow: hidden;
+  width: 100%;
+  /* Desvanece los bordes izquierdo/derecho en vez de un corte brusco */
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, black 6%, black 94%, transparent);
+}
+
+.partnersTrack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  width: max-content;
+  animation: partnersScroll 80s linear infinite;
+}
+.partnersTrack:hover {
+  animation-play-state: paused;
+}
+
+@keyframes partnersScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); } /* el arreglo está duplicado, así que -50% = un set completo */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .partnersTrack {
+    animation: none;
+  }
+}
+
+/* Tarjeta glass por logo — mismo lenguaje visual que el resto del sitio */
+.partnerCard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-6);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  text-decoration: none;
+}
+
+.partnerLogo {
+  height: 56px;
+  width: auto;
+  max-width: 180px;
+  object-fit: contain;
+}
+
 @media (max-width: 600px) {
   .glass { padding: var(--space-6) var(--space-5); }
   .page  { padding: var(--space-8) var(--space-5) var(--space-10); }
+  .partnerLogo { height: 40px; }
+  .partnerCard { padding: var(--space-3) var(--space-4); }
 }
