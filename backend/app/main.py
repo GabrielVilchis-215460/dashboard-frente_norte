@@ -69,11 +69,3 @@ def _startup():
     msg = "Scheduler ETL activado: lunes 08:00 hora Juárez"
     print(f"INFO:     {msg}", flush=True)
     logger.info(msg)
-
-@app.get("/", tags=["Health"])
-def root():
-    return {"status": "ok", "proyecto": "Dashboard STEM Frente Norte", "version": "3.0.0"}
-
-@app.get("/health", tags=["Health"])
-def health():
-    return {"status": "healthy"}
