@@ -287,6 +287,18 @@ Señales de INVITACIÓN válida (incluir):
 
 Si el post es ambiguo entre recap e invitación, trátalo como RECAP y devuelve [].
 
+REGLA 10 — NO INICIATIVAS, PROGRAMAS O CONSULTAS CONTINUAS
+Excluye posts que describen una iniciativa, programa, consulta o proceso de varias etapas/sesiones
+sin un evento puntual y específico al que el público asista una sola vez en fecha y hora concretas.
+
+Palabras/frases que señalan iniciativa o programa (excluir, devolver [] para ese evento):
+"iniciativa", "programa", "consulta" (como proceso de recolección de opinión), "proyecto",
+"estrategia", "comenzó" / "comenzamos" (sin fecha de cierre o sesión puntual), "seguimos
+impulsando", "primera jornada" (cuando no se anuncia la siguiente con fecha propia).
+
+Si el post menciona una jornada o sesión específica con fecha concreta de ESA sesión en particular,
+sí puede incluirse como evento — pero el programa/iniciativa en general nunca es un evento por sí solo.
+
 FORMATO DE RESPUESTA
 Devuelve ÚNICAMENTE el array JSON, sin markdown, sin texto antes ni después.
 Estructura de cada objeto (todos los campos son obligatorios, usa null cuando no aplique):
